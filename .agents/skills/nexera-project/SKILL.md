@@ -1,0 +1,71 @@
+---
+name: nexera-project
+description: >-
+  Use this skill when you are working on the Nexera E-commerce and CRM project.
+  It provides the core business context, the agreed-upon technical stack (Next.js, NestJS, Supabase),
+  and the architectural guidelines for the project. Activate this skill whenever you need to
+  write code, plan features, or understand the overall structure of the Nexera system.
+---
+
+# Nexera Project Manager Skill
+
+You are working on the **Nexera Integrated Solutions Ecosystem** project. This project is a modern E-commerce and CRM platform.
+
+## Core Technical Stack
+
+Always adhere to the following technology stack when writing code or planning features:
+- **Frontend (Storefront & Admin Dashboard):** Next.js (App Router), React, TypeScript, Tailwind CSS. The Admin Dashboard is integrated into the same repository under the `/admin` route.
+- **Backend (Payment & Secure Logic):** Node.js with NestJS framework.
+- **Database & Authentication:** Supabase (PostgreSQL) with Row Level Security (RLS).
+
+## Project Guidelines
+
+1. **Architecture Rule:** The Next.js frontend should fetch product and content data directly from Supabase to maximize speed. The NestJS backend should ONLY be used as a secure microservice to handle payment gateways (PayOS) and sensitive webhooks.
+2. **Business Context:** Nexera positions itself as an "Integrated Solutions Ecosystem" focusing on Smart Technology and Green Energy. The UI/UX should reflect a premium, modern, and tech-forward aesthetic.
+3. **Monolith Frontend:** The CRM and Admin dashboard are NOT a separate project. They share the Next.js codebase to reuse UI components and speed up development.
+4. **Language Rule (BẮT BUỘC):** Toàn bộ giao diện website (Storefront & Admin) phải sử dụng **Tiếng Việt**. Bao gồm: nội dung trang, label, placeholder, button text, thông báo lỗi, metadata SEO (title, description). Chỉ dùng tiếng Anh cho: tên biến trong code, tên file, và các thuật ngữ kỹ thuật không có bản dịch phù hợp.
+5. **Ministry of Industry and Trade (Bộ Công Thương) Compliance:** Toàn bộ Footer phải luôn hiển thị đầy đủ 5 chính sách (Bảo mật, Vận chuyển, Đổi trả, Thanh toán, Điều khoản) và Thông tin công ty (Tên công ty, MST, Địa chỉ, SĐT, Email). Code phải tuân thủ chuẩn `siteConfig.company` và `siteConfig.policies`.
+
+## Brand Guidelines & Colors
+
+Nexera uses a bright, professional, and tech-forward palette. Always use these exact hex codes or their CSS variables when building UI components:
+- **Background / White:** `#ffffff` (`var(--background)`) - Used for primary backgrounds.
+- **Foreground / Deep Blue:** `#13426e` (`var(--foreground)` or `var(--accent)`) - Used for main text, headings, dark backgrounds, and the footer.
+- **Primary / Vibrant Green:** `#80bf49` (`var(--primary)`) - Used for primary buttons, highlighted text, badges, and accents.
+- **Primary Light / Light Green:** `#9ad166` (`var(--primary-light)`) - Used for hover states on primary buttons.
+- **Surface / Light Blue:** `#f0f7fb` (`var(--surface)`) - Used for alternate section backgrounds and card backgrounds to break up white space.
+- **Border / Light Blue-Gray:** `#d4e6f1` (`var(--border)`) - Used for dividers and borders.
+
+Avoid using default dark mode or pure black (`#000000`). Stick strictly to the blue, green, and white theme.
+
+## Execution Phases (Priorities)
+
+Always prioritize tasks according to this execution order unless instructed otherwise:
+1. **Phase 1 (Setup):** Initialize Next.js, NestJS, and Supabase projects.
+2. **Phase 2 (Customer Storefront - HIGH PRIORITY):** Build the public-facing UI first (Home, About, Products, News, Contact Form) to establish the brand aesthetic.
+3. **Phase 3 (DB & Backend):** Create Supabase schemas, setup Prisma ORM, and configure PayOS webhooks.
+4. **Phase 4 (E-commerce):** Integrate Cart state (Zustand) and PayOS checkout flow.
+5. **Phase 5 (Admin/CRM):** Build the `/admin` dashboard for managing products, leads, and orders.
+
+## Reference Materials
+
+Before making major architectural decisions, always refer to these core documents:
+
+1. **Implementation Plan & SRS:** Detailed system features, user requirements, and technical breakdown.
+   [implementation_plan.md](../../../docs/implementation_plan.md)
+   
+2. **Business Profile (Hồ sơ Năng lực):** The company's vision, core values, and branding details. Use this to understand the context of the content being displayed.
+   [NEXERA HoSoGioiThieu DayDu.md](../../../docs/NEXERA%20HoSoGioiThieu%20DayDu.md)
+
+## Skill Routing (Bắt buộc)
+
+As the master project skill, you MUST activate or read the following specialized skills based on the task:
+- **For Frontend tasks (Next.js, UI, Tailwind):** You must refer to the `nexera-frontend` skill (`.agents/skills/nexera-frontend/SKILL.md`).
+- **For Backend tasks (NestJS, PayOS, APIs):** You must refer to the `nexera-backend` skill (`.agents/skills/nexera-backend/SKILL.md`).
+- **For Database tasks (Supabase, PostgreSQL, RLS):** You must refer to the `nexera-database` skill (`.agents/skills/nexera-database/SKILL.md`), which contains the full ERD and schema.
+
+## Common Workflows
+
+- **When asked to build a UI component:** Activate `nexera-frontend`. Default to Tailwind CSS and ensure it aligns with the Nexera "Smart Technology" branding.
+- **When asked to design a database table:** Activate `nexera-database`. Write Supabase SQL scripts and enable RLS policies immediately.
+- **When asked to handle payments:** Activate `nexera-backend`. Write NestJS modules and controllers, not Next.js API routes.
