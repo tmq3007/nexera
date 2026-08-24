@@ -41,11 +41,12 @@ Avoid using default dark mode or pure black (`#000000`). Stick strictly to the b
 ## Execution Phases (Priorities)
 
 Always prioritize tasks according to this execution order unless instructed otherwise:
-1. **Phase 1 (Setup):** Initialize Next.js, NestJS, and Supabase projects.
-2. **Phase 2 (Customer Storefront - HIGH PRIORITY):** Build the public-facing UI first (Home, About, Products, News, Contact Form) to establish the brand aesthetic.
-3. **Phase 3 (DB & Backend):** Create Supabase schemas, setup Prisma ORM, and configure PayOS webhooks.
-4. **Phase 4 (E-commerce):** Integrate Cart state (Zustand) and PayOS checkout flow.
-5. **Phase 5 (Admin/CRM):** Build the `/admin` dashboard for managing products, leads, and orders.
+1. **Phase 1 (Setup - DONE):** Initialize Next.js, NestJS, and Supabase projects.
+2. **Phase 2 (Customer Storefront - DONE):** Build the public-facing UI first (Home, About, Products, News, Contact Form) to establish the brand aesthetic.
+3. **Phase 3 (Database - DONE):** Create Supabase schemas for Products, Orders, Leads, and Content. Enable RLS policies.
+4. **Phase 4 (Admin/CRM UI - HIGH PRIORITY):** Build the `/admin` dashboard for managing products, leads, and orders. **Chưa cần Authentication**, truy cập trực tiếp để phát triển giao diện trước.
+5. **Phase 5 (Authentication):** Tích hợp Supabase Auth, bảo vệ route `/admin`, phân quyền Admin.
+6. **Phase 6 (Backend & PayOS - LAST):** Integrate Cart state (Zustand), setup NestJS microservice, configure PayOS webhooks, and integrate payment checkout flow.
 
 ## Reference Materials
 

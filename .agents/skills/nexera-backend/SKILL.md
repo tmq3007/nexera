@@ -28,3 +28,28 @@ You are working on the Backend Microservice of the Nexera platform.
   2. Validate cart and calculate total.
   3. Generate PayOS Checkout URL (VietQR) and return to Frontend.
   4. Await Webhook confirmation, verify signature, and update the Order status in Supabase.
+
+## File Storage & Upload Strategy (Images)
+Images for Products, Articles, Projects, etc., must be uploaded rather than using plain external URLs.
+
+**Storage Location Analysis (Optimizing for Free Tier):**
+While Supabase Storage is convenient since it is built-in, its Free Tier is quite limited (1GB Storage, 2GB Bandwidth/month). For an e-commerce platform that might have many product images, this can quickly be exhausted.
+
+Therefore, the recommended solution for image storage on a free tier is **Cloudinary**.
+- **Cloudinary Free Tier:** Provides 25 monthly credits (1 credit = 1GB Storage OR 1GB Bandwidth OR 1000 Transformations). This is extremely generous for a startup/MVP.
+- **Benefits:** Built-in CDN, automatic format optimization (serving WebP/AVIF), and on-the-fly resizing.
+
+**Upload Workflow Strategy (Cloudinary):**
+1. **Unsigned Direct Upload (Frontend - MVP Phase):** 
+   - The Next.js Frontend uses a Cloudinary Unsigned Upload Preset to upload images directly from the browser to Cloudinary.
+   - *Pros:* Very fast to implement, zero backend code required, saves backend bandwidth.
+   - *Cons:* Slightly less secure as anyone with the preset name can upload images to your Cloudinary account (though Cloudinary allows restricting upload origins and file sizes).
+2. **Signed Upload via Backend (Production Phase):**
+   - The Frontend requests a "Signed Signature" from the NestJS Backend.
+   - The NestJS Backend generates a signature using the Cloudinary API Secret.
+   - The Frontend uses this signature to upload directly to Cloudinary safely.
+   - *Pros:* Fully secure, still saves backend bandwidth since the heavy file doesn't pass through the backend.
+
+**Decision for Nexera:**
+- Update the system to use **Cloudinary** for all image hosting to save costs and leverage their generous free tier.
+- The `ImageUpload.tsx` component in Next.js should be configured to upload directly to Cloudinary (using an Unsigned preset initially for speed of development).

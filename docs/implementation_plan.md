@@ -60,7 +60,39 @@ Sản phẩm là một hệ thống web nguyên khối (Monolith Frontend) bao g
 
 ---
 
-## 4. Yêu cầu Phi chức năng (Non-Functional Requirements)
+## 4. Kế hoạch thiết kế Cơ sở dữ liệu (Phase 3)
+
+Dựa trên yêu cầu của hệ thống E-commerce và CRM, sơ đồ cơ sở dữ liệu (ERD) sẽ được triển khai trên Supabase với các bảng chính sau:
+
+### 4.1. Phân hệ Bán hàng (E-commerce)
+- **`categories`**: Phân loại sản phẩm (VD: Tấm pin năng lượng, Biến tần, Gói lắp đặt). 
+  - *Cột:* `id` (UUID), `name`, `slug`, `created_at`.
+- **`products`**: Thông tin thiết bị và các gói lắp đặt.
+  - *Cột:* `id`, `category_id`, `name`, `slug`, `description`, `price`, `stock`, `type` (Thiết bị / Gói), `image_url`.
+- **`orders`**: Thông tin đơn đặt hàng tổng quát.
+  - *Cột:* `id`, `customer_id`, `total_amount`, `status` (PENDING, PAID, SHIPPED, COMPLETED), `payment_method`, `payos_order_code`, `created_at`.
+- **`order_items`**: Chi tiết sản phẩm trong đơn hàng (Mua sản phẩm nào, số lượng, giá tiền).
+  - *Cột:* `id`, `order_id`, `product_id`, `quantity`, `unit_price`.
+
+### 4.2. Phân hệ CRM & Khách hàng
+- **`customers`**: Thông tin khách hàng mua hàng (liên kết với Supabase Auth nếu họ tạo tài khoản).
+  - *Cột:* `id`, `full_name`, `email`, `phone`, `address`, `auth_user_id`.
+- **`leads`**: Hứng dữ liệu từ Form Đăng ký tư vấn (SF-05) để nhân viên Sale xử lý.
+  - *Cột:* `id`, `name`, `email`, `phone`, `message`, `status` (NEW, CONTACTED, RESOLVED), `created_at`.
+
+### 4.3. Phân hệ Nội dung (CMS)
+- **`articles`**: Lưu trữ tin tức công ty, kiến thức năng lượng xanh.
+  - *Cột:* `id`, `title`, `slug`, `content`, `image_url`, `published_at`.
+- **`projects`**: Danh sách các dự án tiêu biểu (Công nghiệp, Dân dụng).
+  - *Cột:* `id`, `name`, `category`, `description`, `image_url`, `completion_date`.
+
+### 4.4. Kế hoạch Bảo mật (Row Level Security - RLS)
+- **Truy cập công khai (Public Read):** Các bảng `products`, `categories`, `articles`, và `projects` sẽ được cấp quyền `SELECT` cho tất cả mọi người.
+- **Truy cập hạn chế (Restricted):** Bảng `orders`, `leads`, `customers` chỉ được phép ghi (INSERT/UPDATE) bởi Admin, hoặc thông qua Backend bảo mật sử dụng Service Role Key.
+
+---
+
+## 5. Yêu cầu Phi chức năng (Non-Functional Requirements)
 
 - **NFR-01 (Hiệu năng):** Storefront tận dụng SSR/SSG của Next.js, tốc độ tải trang cực nhanh để tối ưu SEO cho các bài viết truyền thông.
 - **NFR-02 (Bảo mật):** 
@@ -73,8 +105,8 @@ Sản phẩm là một hệ thống web nguyên khối (Monolith Frontend) bao g
 ## User Review Required
 
 > [!IMPORTANT]
-> Tôi đã cập nhật Kế hoạch theo sát các góp ý của bạn:
-> 1. Toàn bộ tính năng (Bài viết giới thiệu, Tin tức, Dự án, Form tư vấn) của Manfusi đã được thiết kế lại thành các chức năng cụ thể (SF-01 đến SF-05).
-> 2. Phân hệ Admin Dashboard (Quản lý) sẽ được **"dùng chung"** trên một bộ mã nguồn Next.js để phát triển siêu tốc độ.
+> Tôi đã thêm **Phần 4: Kế hoạch thiết kế Cơ sở dữ liệu (Phase 3)** vào bản Kế hoạch. 
+> 
+> Trong đó đã liệt kê cụ thể 8 bảng (tables) quan trọng phân bổ cho E-commerce, CRM, và CMS, cùng với chiến lược Row Level Security (RLS) để đảm bảo bảo mật đúng theo thiết kế.
 >
-> Vui lòng kiểm tra lại lần cuối. Nếu bạn thấy mọi thứ đã hoàn hảo, hãy phản hồi **"Bắt đầu code"** để tôi cập nhật bảng `task.md` và thực thi các lệnh khởi tạo dự án!
+> Bạn vui lòng xem qua danh sách các bảng trên, nếu mọi thứ đầy đủ và đúng ý bạn, hãy phản hồi **"Bắt đầu code"** để tôi tạo Script SQL thiết lập các bảng này trên Supabase!

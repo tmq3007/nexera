@@ -3,8 +3,18 @@ import { ContactForm } from "@/components/home/ContactForm";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Zap, PiggyBank, RefreshCcw, Banknote, House, FileCheck2, Cpu } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  
+  // Fetch latest 4 articles
+  const { data: articles } = await supabase
+    .from("articles")
+    .select("*")
+    .order("published_at", { ascending: false })
+    .limit(4);
+
   return (
     <>
       <HeroSlider />
@@ -20,21 +30,21 @@ export default function Home() {
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                 <div key={i} className="group bg-[#F0F7FB] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+              {articles?.map((article) => (
+                 <Link href={`/tin-tuc/${article.id}`} key={article.id} className="group bg-[#F0F7FB] rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow block">
                     <div className="aspect-[16/9] relative bg-gray-200">
-                       <Image src="/doi.png" alt="Tin tức" fill className="object-cover" />
+                       <Image src={article.image_url || "/doi.png"} alt={article.title} fill className="object-cover" />
                        <div className="absolute inset-0 bg-[#13426E]/10 group-hover:bg-transparent transition-colors"></div>
                     </div>
                     <div className="p-4">
                        <h3 className="font-bold text-[#13426E] mb-2 line-clamp-2 group-hover:text-[#80BF49] transition-colors">
-                          Cú hích lớn để phát triển điện mặt trời mái nhà tại Việt Nam
+                          {article.title}
                        </h3>
                        <p className="text-sm text-gray-600 line-clamp-3">
-                          Ngày 26/6/2026, Chính phủ đã ban hành Nghị định số 243/2026/NĐ-CP, bổ sung một số chính sách...
+                          {article.content}
                        </p>
                     </div>
-                 </div>
+                 </Link>
               ))}
            </div>
            

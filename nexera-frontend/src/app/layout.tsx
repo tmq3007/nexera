@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { FloatingContact } from "@/components/layout/FloatingContact";
+import { StorefrontShell } from "@/components/layout/StorefrontShell";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -32,11 +31,11 @@ export default function RootLayout({
       className={`${inter.variable} ${montserrat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-[#13426E]">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <FloatingContact />
+        <ToastProvider>
+          <StorefrontShell>{children}</StorefrontShell>
+        </ToastProvider>
       </body>
     </html>
   );
 }
+

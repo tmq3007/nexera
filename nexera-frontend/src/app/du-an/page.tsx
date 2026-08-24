@@ -2,40 +2,44 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function ProjectsPage() {
-  const categories = [
-    {
+export default async function ProjectsPage() {
+  const supabase = await createClient();
+  
+  const { data: projectsData } = await supabase
+    .from("projects")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const categoryMap: Record<string, any> = {
+    INDUSTRIAL: {
       id: "cong-nghiep",
       title: "Dự án Công nghiệp & Thương mại",
       desc: "Giải pháp tối ưu hóa chi phí điện năng, tăng tính cạnh tranh và đáp ứng tiêu chuẩn xanh cho các nhà máy, khu công nghiệp và doanh nghiệp lớn.",
-      projects: [
-        { name: "Nhà máy Dệt May A", capacity: "1.5 MWp", location: "Bình Dương" },
-        { name: "Kho lạnh B", capacity: "800 kWp", location: "Long An" },
-        { name: "Khu Công Nghiệp C", capacity: "3.2 MWp", location: "Đồng Nai" },
-      ]
+      projects: []
     },
-    {
+    RESIDENTIAL: {
       id: "dan-dung",
       title: "Dự án Dân dụng & Hộ gia đình",
       desc: "Hệ thống điện mặt trời áp mái an toàn, thẩm mỹ, giúp các hộ gia đình tiết kiệm tối đa hóa đơn tiền điện và tự chủ năng lượng.",
-      projects: [
-        { name: "Biệt thự KĐT D", capacity: "15 kWp", location: "TP.HCM" },
-        { name: "Nhà phố E", capacity: "8 kWp", location: "Hà Nội" },
-        { name: "Homestay F", capacity: "20 kWp", location: "Đà Lạt" },
-      ]
+      projects: []
     },
-    {
+    AGRICULTURAL: {
       id: "nong-nghiep",
       title: "Nông nghiệp Công nghệ cao",
       desc: "Kết hợp điện mặt trời với mô hình Smart Farm, nhà kính, hệ thống tưới tiêu thông minh, tạo ra giải pháp nông nghiệp tuần hoàn đột phá.",
-      projects: [
-        { name: "Trang trại công nghệ cao G", capacity: "500 kWp", location: "Lâm Đồng" },
-        { name: "Nhà màng sấy nông sản H", capacity: "250 kWp", location: "Đồng Tháp" },
-        { name: "Hệ thống tưới tự động I", capacity: "100 kWp", location: "Đắk Lắk" },
-      ]
+      projects: []
     }
-  ];
+  };
+
+  projectsData?.forEach((p) => {
+    if (categoryMap[p.category]) {
+      categoryMap[p.category].projects.push(p);
+    }
+  });
+
+  const categories = Object.values(categoryMap).filter(c => c.projects.length > 0);
 
   return (
     <>
@@ -70,17 +74,14 @@ export default function ProjectsPage() {
               {/* Grid Side */}
               <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.projects.map((project, idx) => (
-                  <div key={idx} className="bg-white rounded-xl shadow-md overflow-hidden group">
+                  <div key={project.id} className="bg-white rounded-xl shadow-md overflow-hidden group">
                     <div className="relative aspect-[4/3] bg-gray-200 overflow-hidden">
-                      <Image src="/doi.png" alt={project.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                      <Image src={project.image_url || "/doi.png"} alt={project.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-[#13426E]/10 group-hover:bg-transparent transition-colors"></div>
                     </div>
                     <div className="p-4 border-t-4 border-[#80BF49]">
-                      <h4 className="font-bold text-[#13426E] mb-2">{project.name}</h4>
-                      <div className="flex items-center justify-between text-sm text-gray-600">
-                        <span>{project.capacity}</span>
-                        <span>{project.location}</span>
-                      </div>
+                      <h4 className="font-bold text-[#13426E] mb-2 line-clamp-1">{project.name}</h4>
+                      <p className="text-sm text-gray-600 line-clamp-2">{project.description}</p>
                     </div>
                   </div>
                 ))}

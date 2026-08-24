@@ -52,9 +52,9 @@ export const siteConfig = {
       title: "Truyền Thông",
       href: "/tin-tuc",
       items: [
-        { title: "Tin tức Nexera", href: "/tin-tuc#nexera" },
-        { title: "Tin tức năng lượng", href: "/tin-tuc#nang-luong" },
-        { title: "Kinh nghiệm hay", href: "/tin-tuc#kinh-nghiem" },
+        { title: "Tin tức Nexera", href: "/tin-tuc?type=NEXERA" },
+        { title: "Tin tức năng lượng", href: "/tin-tuc?type=ENERGY" },
+        { title: "Kinh nghiệm hay", href: "/tin-tuc?type=EXPERIENCE" },
       ],
     },
   ],
