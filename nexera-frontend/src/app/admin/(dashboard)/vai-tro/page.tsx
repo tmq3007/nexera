@@ -310,7 +310,7 @@ export default function RolesAndPermissionsPage() {
       {/* Page Header (Fixed) */}
       <div className="mb-4 flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Vai trò & Phân quyền</h1>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Vai trò & Phân quyền</h1>
           <p className="text-gray-500 text-sm mt-1">
             Định nghĩa các vai trò quản trị và phân quyền truy cập tính năng chi tiết cho từng module
           </p>

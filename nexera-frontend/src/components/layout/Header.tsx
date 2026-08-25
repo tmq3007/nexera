@@ -113,15 +113,15 @@ export function Header() {
                   {item.href ? (
                     <Link 
                       href={item.href} 
-                      className="text-[#13426E] font-bold uppercase hover:text-[#80BF49] transition-colors py-8 flex items-center gap-1 text-sm tracking-wide"
+                      className="text-[#13426E] font-extrabold uppercase hover:text-[#80BF49] transition-colors py-8 flex items-center gap-1.5 text-base xl:text-lg tracking-wide"
                     >
                       {item.title}
-                      {dropdownItems && <ChevronDown className="h-4 w-4 opacity-70 group-hover:rotate-180 transition-transform duration-200" />}
+                      {dropdownItems && <ChevronDown className="h-4.5 w-4.5 opacity-70 group-hover:rotate-180 transition-transform duration-200" />}
                     </Link>
                   ) : (
-                    <button className="text-[#13426E] font-bold uppercase hover:text-[#80BF49] transition-colors py-8 flex items-center gap-1 text-sm tracking-wide">
+                    <button className="text-[#13426E] font-extrabold uppercase hover:text-[#80BF49] transition-colors py-8 flex items-center gap-1.5 text-base xl:text-lg tracking-wide">
                       {item.title}
-                      {dropdownItems && <ChevronDown className="h-4 w-4 opacity-70 group-hover:rotate-180 transition-transform duration-200" />}
+                      {dropdownItems && <ChevronDown className="h-4.5 w-4.5 opacity-70 group-hover:rotate-180 transition-transform duration-200" />}
                     </button>
                   )}
                   
@@ -134,7 +134,7 @@ export function Header() {
                           <li key={subItem.title}>
                             <Link 
                               href={subItem.href} 
-                              className="block px-4 py-2.5 text-xs text-[#13426E] uppercase font-bold hover:bg-[#F0F7FB] hover:text-[#80BF49] rounded-xl transition-all"
+                              className="block px-4 py-3 text-sm text-[#13426E] uppercase font-extrabold hover:bg-[#F0F7FB] hover:text-[#80BF49] rounded-xl transition-all"
                             >
                               {subItem.title}
                             </Link>
@@ -295,18 +295,18 @@ export function Header() {
                 return (
                   <div key={item.title}>
                     {item.href ? (
-                      <Link href={item.href} className="text-[#13426E] font-bold uppercase block py-2" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Link href={item.href} className="text-[#13426E] font-extrabold text-lg uppercase block py-2.5" onClick={() => setIsMobileMenuOpen(false)}>
                         {item.title}
                       </Link>
                     ) : (
-                      <div className="text-[#13426E] font-bold uppercase py-2">
+                      <div className="text-[#13426E] font-extrabold text-lg uppercase py-2.5">
                         {item.title}
                       </div>
                     )}
                     {dropdownItems && (
-                      <div className="pl-4 flex flex-col gap-2 mt-2">
+                      <div className="pl-4 flex flex-col gap-2 mt-1">
                         {dropdownItems.map((subItem) => (
-                           <Link key={subItem.title} href={subItem.href} className="text-sm text-[#325B7F] font-bold block py-1" onClick={() => setIsMobileMenuOpen(false)}>
+                           <Link key={subItem.title} href={subItem.href} className="text-base text-[#325B7F] font-bold block py-1.5" onClick={() => setIsMobileMenuOpen(false)}>
                              {subItem.title}
                            </Link>
                         ))}
