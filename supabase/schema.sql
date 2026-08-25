@@ -372,6 +372,16 @@ CREATE POLICY "Customer sửa thông tin của mình" ON public.customers
 CREATE POLICY "Admin đọc tất cả customers" ON public.customers
   FOR SELECT USING (public.is_admin());
 
+-- === Content & E-commerce Admin CRUD Policies ===
+CREATE POLICY "Admin quản lý categories" ON public.categories FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý products" ON public.products FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý articles" ON public.articles FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý projects" ON public.projects FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý orders" ON public.orders FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý order_items" ON public.order_items FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý leads" ON public.leads FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+CREATE POLICY "Admin quản lý customers" ON public.customers FOR ALL TO authenticated USING (public.is_admin()) WITH CHECK (public.is_admin());
+
 -- ==========================================
 -- PHẦN 7: TRIGGERS
 -- ==========================================
