@@ -73,7 +73,7 @@ export default async function ProjectsPage() {
 
               {/* Grid Side */}
               <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {category.projects.map((project, idx) => (
+                {category.projects.map((project: any, idx: number) => (
                   <div key={project.id} className="bg-white rounded-xl shadow-md overflow-hidden group">
                     <div className="relative aspect-[4/3] bg-gray-200 overflow-hidden">
                       <Image src={project.image_url || "/doi.png"} alt={project.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />

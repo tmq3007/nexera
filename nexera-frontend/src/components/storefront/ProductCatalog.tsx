@@ -2,13 +2,40 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, Tags, Zap, BadgeDollarSign, ChevronRight, ChevronLeft, ShoppingCart, Eye, Scale, Plus, Check, X, ArrowLeftRight, Minus } from "lucide-react";
+import { Search, Filter, Tags, Zap, BadgeDollarSign, ChevronRight, ChevronLeft, ShoppingCart, Eye, Scale, Plus, Check, X, ArrowLeftRight, Minus, ShoppingBag } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
+import { useCartStore } from "@/store/cartStore";
 
 export function ProductCatalog({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const toast = useToast();
+  const { addItem } = useCartStore();
+
+  const handleAddToCart = (product: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    addItem({
+      id: product.id,
+      name: product.name,
+      price: product.price * (1 - (product.discount_rate || 0) / 100),
+      image_url: product.image_url,
+      type: product.type,
+      quantity: 1
+    });
+    toast.success(`Đã thêm ${product.name} vào giỏ hàng!`);
+  };
+
+  const handleBuyNow = (product: any, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    handleAddToCart(product);
+    router.push('/gio-hang');
+  };
 
   // URL State
   const urlCategory = searchParams.get("category");
@@ -360,9 +387,21 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                              {product.stock > 0 ? "Còn hàng" : "Hết hàng"}
                            </span>
                         </div>
-                        <button className="w-full py-2.5 bg-[#13426E] text-white rounded-lg font-medium hover:bg-[#1a5b99] shadow-sm transition-colors text-sm flex items-center justify-center gap-2">
-                          Nhận báo giá
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={(e) => handleAddToCart(product, e)}
+                            className="flex-1 py-2.5 bg-white border border-[#13426E] text-[#13426E] rounded-lg font-medium hover:bg-gray-50 shadow-sm transition-colors text-sm flex items-center justify-center gap-2"
+                            title="Thêm vào giỏ"
+                          >
+                            <ShoppingCart className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={(e) => handleBuyNow(product, e)}
+                            className="flex-[3] py-2.5 bg-[#13426E] text-white rounded-lg font-medium hover:bg-[#1a5b99] shadow-sm transition-colors text-sm flex items-center justify-center gap-2"
+                          >
+                            Mua ngay
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -534,8 +573,19 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
               </div>
               
               <div className="flex items-center gap-3 mt-auto pt-4 border-t border-gray-100">
-                <button className="flex-1 py-3 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors flex items-center justify-center gap-2">
-                  Đăng ký tư vấn
+                <button 
+                  onClick={() => handleBuyNow(quickViewProduct)}
+                  className="flex-1 py-3 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors flex items-center justify-center gap-2"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  Mua ngay
+                </button>
+                <button 
+                  onClick={() => handleAddToCart(quickViewProduct)}
+                  className="w-12 h-12 rounded-lg border flex items-center justify-center transition-colors bg-white border-[#13426E] text-[#13426E] hover:bg-gray-50"
+                  title="Thêm vào giỏ"
+                >
+                  <ShoppingCart className="w-5 h-5" />
                 </button>
                 <button 
                   onClick={() => toggleCompare(quickViewProduct)}

@@ -7,14 +7,21 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { ProductForm } from "./ProductForm";
+import { ProductDetailView } from "./ProductDetailView";
+import { AdminPagination } from "./AdminPagination";
+import { useToast } from "@/contexts/ToastContext";
 
 export function ProductManager({ products, categories }: { products: any[]; categories: any[] }) {
   const router = useRouter();
   const supabase = createClient();
+  const toast = useToast();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any | null>(null);
   
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewingProduct, setViewingProduct] = useState<any | null>(null);
+
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingProduct, setDeletingProduct] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -39,6 +46,11 @@ export function ProductManager({ products, categories }: { products: any[]; cate
     setIsFormOpen(true);
   };
 
+  const handleOpenView = (product: any) => {
+    setViewingProduct(product);
+    setIsViewOpen(true);
+  };
+
   const handleOpenDelete = (product: any) => {
     setDeletingProduct(product);
     setIsDeleteOpen(true);
@@ -52,8 +64,9 @@ export function ProductManager({ products, categories }: { products: any[]; cate
     
     setIsDeleting(false);
     if (error) {
-      alert("Lỗi khi xoá: " + error.message);
+      toast.error(error.message || "Lỗi không xác định khi xóa sản phẩm");
     } else {
+      toast.success("Xóa sản phẩm thành công!");
       setIsDeleteOpen(false);
       setDeletingProduct(null);
       router.refresh();
@@ -89,8 +102,9 @@ export function ProductManager({ products, categories }: { products: any[]; cate
               <tr className="border-b border-gray-100">
                 <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Tên sản phẩm</th>
                 <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Danh mục</th>
+                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Thương hiệu</th>
                 <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Loại</th>
-                <th className="text-right px-6 py-3.5 font-semibold text-gray-600">Giá (VNĐ)</th>
+                <th className="text-right px-6 py-3.5 font-semibold text-gray-600">Báo giá (VNĐ)</th>
                 <th className="text-right px-6 py-3.5 font-semibold text-gray-600">Tồn kho</th>
                 <th className="text-center px-6 py-3.5 font-semibold text-gray-600">Thao tác</th>
               </tr>
@@ -98,7 +112,7 @@ export function ProductManager({ products, categories }: { products: any[]; cate
             <tbody>
               {(!products || products.length === 0) && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-400">
+                  <td colSpan={7} className="text-center py-12 text-gray-400">
                     Chưa có sản phẩm nào.{" "}
                     <button onClick={handleOpenAdd} className="text-[var(--primary)] hover:underline">
                       Thêm sản phẩm đầu tiên
@@ -116,23 +130,45 @@ export function ProductManager({ products, categories }: { products: any[]; cate
                         <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">N/A</div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-800">{product.name}</p>
+                        <button 
+                          onClick={() => handleOpenView(product)}
+                          className="font-medium text-[#13426E] hover:text-[#80BF49] hover:underline text-left transition-colors"
+                        >
+                          {product.name}
+                        </button>
                         <p className="text-xs text-gray-400">{product.slug}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-gray-600">{(product.categories as { name: string } | null)?.name ?? "—"}</td>
+                  <td className="px-6 py-4 text-gray-600 font-medium">{product.brand || "—"}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${product.type === "EQUIPMENT" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
                       {product.type === "EQUIPMENT" ? "Thiết bị" : "Gói lắp đặt"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-right font-medium text-gray-800">{Number(product.price).toLocaleString("vi-VN")}</td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex flex-col items-end gap-1 text-sm">
+                      <div className="text-gray-400">
+                        <span className="text-[10px] uppercase font-semibold mr-2">Nhập</span>
+                        {Number(product.import_price || 0).toLocaleString("vi-VN")}
+                      </div>
+                      <div className="font-bold text-[#E30019]">
+                        <span className="text-[10px] uppercase font-semibold text-gray-400 mr-2">Bán</span>
+                        {Number(product.price).toLocaleString("vi-VN")}
+                      </div>
+                      {(product.discount_rate > 0) && (
+                        <div className="text-green-600 font-semibold text-xs bg-green-50 px-2 py-0.5 rounded-full">
+                          Sale: {product.discount_rate}%
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <span className={`font-medium ${product.stock > 0 ? "text-green-600" : "text-red-500"}`}>{product.stock}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-center gap-2">
+                    <div className="flex items-center justify-center gap-1 md:gap-2">
                       <button
                         onClick={() => handleOpenEdit(product)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -156,73 +192,14 @@ export function ProductManager({ products, categories }: { products: any[]; cate
         </div>
         
         {/* Fixed Pagination Controls Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4 bg-white shrink-0">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500 whitespace-nowrap">
-              Hiển thị {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, products.length)} / {products.length}
-            </span>
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Số dòng:</span>
-              <select 
-                value={itemsPerPage} 
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="border border-gray-200 rounded px-2 py-1 outline-none focus:border-[var(--primary)]"
-              >
-                <option value={10}>10</option>
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-            </div>
-          </div>
-            <div className="flex flex-wrap justify-center gap-1">
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1 border rounded text-sm text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition-colors"
-              >
-                Trước
-              </button>
-              
-              {(() => {
-                const getPageNumbers = () => {
-                  if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
-                  if (currentPage <= 3) return [1, 2, 3, 4, '...', totalPages];
-                  if (currentPage >= totalPages - 2) return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-                  return [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
-                };
-
-                return getPageNumbers().map((pageNum, idx) => (
-                  pageNum === '...' ? (
-                    <span key={`ellipsis-${idx}`} className="px-1 text-gray-400 flex items-end">...</span>
-                  ) : (
-                    <button
-                      key={`page-${pageNum}`}
-                      onClick={() => setCurrentPage(pageNum as number)}
-                      className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
-                        currentPage === pageNum
-                          ? "bg-[var(--primary)] text-white shadow-sm"
-                          : "border text-gray-600 hover:bg-gray-50"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                ));
-              })()}
-
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 border rounded text-sm text-gray-600 disabled:opacity-50 hover:bg-gray-50 transition-colors"
-              >
-                Sau
-              </button>
-            </div>
-          </div>
+        <AdminPagination 
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={setItemsPerPage}
+          totalItems={products?.length || 0}
+          totalPages={totalPages}
+        />
       </div>
 
       {/* Form Modal (Thêm/Sửa) */}
@@ -252,6 +229,15 @@ export function ProductManager({ products, categories }: { products: any[]; cate
         loading={isDeleting}
         confirmText="Xoá sản phẩm"
       />
+
+      {/* View Detail Modal */}
+      <Modal
+        isOpen={isViewOpen}
+        onClose={() => setIsViewOpen(false)}
+        title="Chi tiết sản phẩm"
+      >
+        <ProductDetailView product={viewingProduct} />
+      </Modal>
     </div>
   );
 }

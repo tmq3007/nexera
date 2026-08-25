@@ -7,6 +7,7 @@ export const siteConfig = {
     address: "Hà Nội, Việt Nam",
     phone: "0123.456.789",
     email: "contact@nexera.com",
+    mapUrl: "https://maps.google.com/?q=Hà+Nội,+Việt+Nam",
   },
   social: {
     facebook: "https://www.facebook.com/nexerasolar",

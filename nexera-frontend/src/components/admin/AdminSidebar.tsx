@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 import {
   LayoutDashboard,
   Package,
@@ -16,8 +16,11 @@ import {
   Newspaper,
   FolderKanban,
   Tags,
+  User,
+  ShieldCheck,
+  Lock,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const navItems = [
   { label: "Tổng quan", href: "/admin", icon: LayoutDashboard },
@@ -28,11 +31,32 @@ const navItems = [
   { label: "Khách hàng", href: "/admin/khach-hang", icon: Users },
   { label: "Bài viết", href: "/admin/bai-viet", icon: Newspaper },
   { label: "Dự án", href: "/admin/du-an", icon: FolderKanban },
+  { label: "Quản lý tài khoản", href: "/admin/tai-khoan", icon: ShieldCheck },
+  { label: "Vai trò & Phân quyền", href: "/admin/vai-tro", icon: Lock },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    async function getUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserEmail(user.email ?? null);
+      }
+    }
+    getUser();
+  }, [supabase.auth]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/dang-nhap/admin");
+    router.refresh();
+  };
 
   return (
     <aside
@@ -42,15 +66,9 @@ export function AdminSidebar() {
     >
       {/* Logo - Link về trang chủ */}
       <div className="h-16 flex items-center px-3 border-b border-white/10">
-        <Link href="/" className="flex items-center gap-2 w-full" title="Về trang chủ">
+        <Link href="/" className="flex items-center justify-center w-full" title="Về trang chủ">
           {!collapsed ? (
-            <Image
-              src="/logo.png"
-              alt="NEXERA"
-              width={160}
-              height={50}
-              className="h-[36px] w-auto object-contain brightness-0 invert"
-            />
+            <span className="font-bold text-2xl tracking-wider text-white">NEXERA</span>
           ) : (
             <div className="w-8 h-8 bg-[var(--primary)] rounded-lg flex items-center justify-center font-bold text-white text-sm mx-auto">
               N
@@ -96,12 +114,37 @@ export function AdminSidebar() {
         })}
       </nav>
 
-      {/* Footer */}
-      {!collapsed && (
-        <div className="p-4 border-t border-white/10">
-          <p className="text-xs text-white/40">NEXERA Admin v1.0</p>
-        </div>
-      )}
+      {/* Footer / User Info */}
+      <div className="p-3 border-t border-white/10 mt-auto">
+        {!collapsed ? (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4 text-white/70" />
+              </div>
+              <div className="flex flex-col overflow-hidden">
+                <span className="text-sm font-medium text-white truncate">{userEmail || "Admin"}</span>
+                <span className="text-[10px] text-white/40">Quản trị viên</span>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+              title="Đăng xuất"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+            title="Đăng xuất"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
+      </div>
     </aside>
   );
 }

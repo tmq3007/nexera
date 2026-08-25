@@ -7,10 +7,13 @@ import { FloatingContact } from "@/components/layout/FloatingContact";
 
 export function StorefrontShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname.startsWith("/admin");
+  const isAuthPage = 
+    pathname.startsWith("/admin") || 
+    pathname.startsWith("/dang-nhap") || 
+    pathname.startsWith("/dang-ky");
 
-  // Admin routes sử dụng layout riêng, không cần Header/Footer của Storefront
-  if (isAdmin) {
+  // Auth routes (/dang-nhap, /dang-ky) & Admin routes không sử dụng Header/Footer của Storefront
+  if (isAuthPage) {
     return <>{children}</>;
   }
 

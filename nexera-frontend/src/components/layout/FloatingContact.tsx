@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, MessageCircle } from "lucide-react";
+import { Phone, MessageCircle, MapPin } from "lucide-react";
 import { siteConfig } from "@/config/site";
 
 export function FloatingContact() {
@@ -25,6 +25,16 @@ export function FloatingContact() {
         aria-label="Liên hệ qua Zalo"
       >
         <span className="font-bold text-[12px]">Zalo</span>
+      </Link>
+
+      {/* Map */}
+      <Link
+        href={siteConfig.company.mapUrl}
+        target="_blank"
+        className="w-14 h-14 bg-[#34a853] rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 transition-transform animate-shake"
+        aria-label="Chỉ đường trên Google Maps"
+      >
+        <MapPin className="w-7 h-7" />
       </Link>
 
       {/* Hotline (Shaking Red Phone) */}

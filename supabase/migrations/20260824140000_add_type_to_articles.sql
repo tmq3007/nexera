@@ -1,1 +1,0 @@
-ALTER TABLE public.articles ADD COLUMN type TEXT DEFAULT 'NEXERA';

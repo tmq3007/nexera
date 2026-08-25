@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { useToast } from "@/contexts/ToastContext";
 
 interface ProductFormProps {
   initialData?: any;
@@ -15,6 +16,7 @@ interface ProductFormProps {
 export function ProductForm({ initialData, categories, onSuccess, onCancel }: ProductFormProps) {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const [form, setForm] = useState({
     name: initialData?.name || "",
@@ -22,6 +24,8 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
     category_id: initialData?.category_id || "",
     type: initialData?.type || "EQUIPMENT",
     price: initialData?.price || "",
+    import_price: initialData?.import_price || "",
+    discount_rate: initialData?.discount_rate || "",
     stock: initialData?.stock || "",
     description: initialData?.description || "",
     image_url: initialData?.image_url || "",
@@ -58,6 +62,8 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
       category_id: form.category_id || null,
       type: form.type,
       price: Number(form.price) || 0,
+      import_price: Number(form.import_price) || 0,
+      discount_rate: Number(form.discount_rate) || 0,
       stock: Number(form.stock) || 0,
       description: form.description || null,
       image_url: form.image_url || null,
@@ -78,8 +84,9 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
     setLoading(false);
 
     if (error) {
-      alert("Lỗi: " + error.message);
+      toast.error(error.message || "Lỗi không xác định khi lưu sản phẩm");
     } else {
+      toast.success("Lưu sản phẩm thành công!");
       onSuccess();
     }
   };
@@ -135,7 +142,17 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Giá nhập (VNĐ)</label>
+          <input
+            type="number"
+            min="0"
+            value={form.import_price}
+            onChange={(e) => setForm((prev) => ({ ...prev, import_price: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all"
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Giá bán (VNĐ) <span className="text-red-500">*</span></label>
           <input
@@ -148,7 +165,18 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Số lượng tồn kho</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">% Sale</label>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={form.discount_rate}
+            onChange={(e) => setForm((prev) => ({ ...prev, discount_rate: e.target.value }))}
+            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Tồn kho</label>
           <input
             type="number"
             min="0"

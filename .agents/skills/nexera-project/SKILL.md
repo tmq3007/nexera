@@ -26,6 +26,31 @@ Always adhere to the following technology stack when writing code or planning fe
 4. **Language Rule (BẮT BUỘC):** Toàn bộ giao diện website (Storefront & Admin) phải sử dụng **Tiếng Việt**. Bao gồm: nội dung trang, label, placeholder, button text, thông báo lỗi, metadata SEO (title, description). Chỉ dùng tiếng Anh cho: tên biến trong code, tên file, và các thuật ngữ kỹ thuật không có bản dịch phù hợp.
 5. **Ministry of Industry and Trade (Bộ Công Thương) Compliance:** Toàn bộ Footer phải luôn hiển thị đầy đủ 5 chính sách (Bảo mật, Vận chuyển, Đổi trả, Thanh toán, Điều khoản) và Thông tin công ty (Tên công ty, MST, Địa chỉ, SĐT, Email). Code phải tuân thủ chuẩn `siteConfig.company` và `siteConfig.policies`.
 
+## Authentication Architecture (2 Hệ thống riêng biệt)
+
+Hệ thống xác thực được chia thành **2 phần hoàn toàn tách biệt**:
+
+### A. Khách hàng (Storefront Authentication)
+- **Bảng DB:** `customers` (có cột `auth_user_id` FK tới `auth.users`).
+- **Đăng ký / Đăng nhập:** Tại `/dang-nhap`, `/dang-ky` (trang Storefront).
+- **Cơ chế:** Dùng Supabase Auth (email/password hoặc OAuth).
+- **Sau đăng nhập:** Tự động tạo/liên kết record trong bảng `customers`.
+- **Quyền hạn:** Xem đơn hàng cá nhân, quản lý thông tin tài khoản, đặt hàng.
+
+### B. Quản trị viên (Admin Authentication + RBAC)
+- **Bảng DB:** `admin_accounts` (FK tới `auth.users` và `roles`), `roles`, `permissions`, `role_permissions`.
+- **Đăng nhập:** Tại `/dang-nhap/admin` (trang riêng biệt, không nằm trong `/admin`).
+- **Cơ chế:** Dùng Supabase Auth (email/password), sau đó middleware kiểm tra `auth.uid()` có tồn tại trong bảng `admin_accounts` VÀ `is_active = true` hay không.
+- **Nếu không có record hoặc bị vô hiệu hóa:** Từ chối truy cập, redirect về `/dang-nhap/admin`.
+- **Phân quyền RBAC:**
+  - Mỗi admin được gắn 1 `role` (FK tới bảng `roles`).
+  - Mỗi role có nhiều `permissions` (qua bảng trung gian `role_permissions`).
+  - Role mặc định: `super_admin` (toàn quyền), `editor` (nội dung), `sales` (đơn hàng/leads).
+  - Có thể tạo thêm role mới và gắn permissions tùy ý mà không cần sửa code.
+  - Dùng hàm SQL `has_permission('module.action')` để kiểm tra quyền.
+
+> **Lưu ý quan trọng:** Trang đăng nhập Admin nằm ở `/dang-nhap/admin`, KHÔNG phải `/admin/login`. Tất cả route `/admin/*` đều được bảo vệ bởi middleware.
+
 ## Brand Guidelines & Colors
 
 Nexera uses a bright, professional, and tech-forward palette. Always use these exact hex codes or their CSS variables when building UI components:
@@ -44,9 +69,10 @@ Always prioritize tasks according to this execution order unless instructed othe
 1. **Phase 1 (Setup - DONE):** Initialize Next.js, NestJS, and Supabase projects.
 2. **Phase 2 (Customer Storefront - DONE):** Build the public-facing UI first (Home, About, Products, News, Contact Form) to establish the brand aesthetic.
 3. **Phase 3 (Database - DONE):** Create Supabase schemas for Products, Orders, Leads, and Content. Enable RLS policies.
-4. **Phase 4 (Admin/CRM UI - HIGH PRIORITY):** Build the `/admin` dashboard for managing products, leads, and orders. **Chưa cần Authentication**, truy cập trực tiếp để phát triển giao diện trước.
-5. **Phase 5 (Authentication):** Tích hợp Supabase Auth, bảo vệ route `/admin`, phân quyền Admin.
-6. **Phase 6 (Backend & PayOS - LAST):** Integrate Cart state (Zustand), setup NestJS microservice, configure PayOS webhooks, and integrate payment checkout flow.
+4. **Phase 4 (Admin/CRM UI - DONE):** Build the `/admin` dashboard for managing products, leads, and orders.
+5. **Phase 5a (Admin Auth - IN PROGRESS):** Tạo bảng `admin_accounts`, middleware kiểm tra role, bảo vệ `/admin` routes. Login tại `/dang-nhap/admin`.
+6. **Phase 5b (Customer Auth):** Tạo trang đăng ký/đăng nhập Storefront (`/dang-nhap`, `/dang-ky`), liên kết với bảng `customers`.
+7. **Phase 6 (Backend & PayOS - LAST):** Integrate Cart state (Zustand), setup NestJS microservice, configure PayOS webhooks, and integrate payment checkout flow.
 
 ## Reference Materials
 
