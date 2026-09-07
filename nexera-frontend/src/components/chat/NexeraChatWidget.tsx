@@ -170,25 +170,18 @@ export function NexeraChatWidget({ isOpen, onClose }: NexeraChatWidgetProps) {
       let conv = convData && convData.length > 0 ? convData[0] : null;
 
       if (!conv) {
-        // Create initial conversation
-        const { data: newConv } = await supabase
-          .from("conversations")
-          .insert({
-            customer_id: currentCustomerId,
-            guest_session_id: sId,
-            guest_name: savedName || (currentCustomerName || "Khách vãng lai"),
-            guest_phone: savedPhone || null,
-            guest_email: savedEmail || null,
-            status: "OPEN",
-            last_message_preview: "Bắt đầu cuộc trò chuyện mới",
-            unread_admin_count: 0,
-            unread_customer_count: 0
-          })
-          .select()
-          .single();
-
-        if (newConv) {
-          conv = newConv;
+        // DO NOT create initial conversation yet, wait until first message is sent
+        const welcomeMsg: ChatMessage = {
+          id: "welcome_init",
+          conversation_id: "local_welcome",
+          sender_type: "SYSTEM",
+          sender_name: "Nexera Support",
+          content: "Xin chào! Rất vui được đón tiếp Quý khách đến với NEXERA. Bạn đang quan tâm đến giải pháp Năng lượng xanh, Thiết bị thông minh hay cần hỗ trợ đơn hàng ạ?",
+          is_read: true,
+          created_at: new Date().toISOString()
+        };
+        if (isMounted) {
+          setMessages([welcomeMsg]);
         }
       }
 
@@ -270,32 +263,60 @@ export function NexeraChatWidget({ isOpen, onClose }: NexeraChatWidgetProps) {
   // Send message handler
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputValue).trim();
-    if (!text || isSending || !conversationId) return;
+    if (!text || isSending) return;
 
     setIsSending(true);
     setInputValue("");
 
     const senderName = customerName || guestName || "Khách hàng";
 
-    // Optimistic message
-    const tempId = "temp_" + Date.now();
-    const optimisticMsg: ChatMessage = {
-      id: tempId,
-      conversation_id: conversationId,
-      sender_type: "CUSTOMER",
-      sender_id: customerId,
-      sender_name: senderName,
-      content: text,
-      is_read: false,
-      created_at: new Date().toISOString()
-    };
-    setMessages((prev) => [...prev, optimisticMsg]);
-
     try {
+      let currentConvId = conversationId;
+
+      // CREATE CONVERSATION ON FIRST MESSAGE IF IT DOESN'T EXIST
+      if (!currentConvId) {
+        const { data: newConv, error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            customer_id: customerId,
+            guest_session_id: guestSessionId,
+            guest_name: guestName || (customerName || "Khách vãng lai"),
+            guest_phone: guestPhone || null,
+            guest_email: guestEmail || null,
+            status: "OPEN",
+            last_message_preview: text.length > 80 ? text.substring(0, 77) + "..." : text,
+            last_message_at: new Date().toISOString(),
+            unread_admin_count: 1,
+            unread_customer_count: 0
+          })
+          .select()
+          .single();
+          
+        if (convError || !newConv) {
+          throw convError;
+        }
+        currentConvId = newConv.id;
+        setConversationId(currentConvId);
+      }
+
+      // Optimistic message
+      const tempId = "temp_" + Date.now();
+      const optimisticMsg: ChatMessage = {
+        id: tempId,
+        conversation_id: currentConvId as string,
+        sender_type: "CUSTOMER",
+        sender_id: customerId,
+        sender_name: senderName,
+        content: text,
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+      setMessages((prev) => [...prev.filter(m => m.id !== "welcome_init"), optimisticMsg]);
+
       const { data, error } = await supabase
         .from("chat_messages")
         .insert({
-          conversation_id: conversationId,
+          conversation_id: currentConvId as string,
           sender_type: "CUSTOMER",
           sender_id: customerId,
           sender_name: senderName,
@@ -317,7 +338,7 @@ export function NexeraChatWidget({ isOpen, onClose }: NexeraChatWidgetProps) {
             last_message_at: new Date().toISOString(),
             status: "OPEN"
           })
-          .eq("id", conversationId);
+          .eq("id", currentConvId);
       }
     } catch (err) {
       console.error("Lỗi khi gửi tin nhắn:", err);

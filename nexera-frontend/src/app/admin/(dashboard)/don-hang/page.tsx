@@ -17,6 +17,7 @@ export default async function AdminOrdersPage({
   const status = typeof params?.status === 'string' ? params.status : "";
   const date = typeof params?.date === 'string' ? params.date : "";
   
+  const customer_id = typeof params?.customer_id === 'string' ? params.customer_id : "";
   const from = (page - 1) * limit;
   const to = from + limit - 1;
 
@@ -30,6 +31,7 @@ export default async function AdminOrdersPage({
     // Tìm theo mã đơn hàng hoặc tên khách hàng/email khách hàng (nếu có lookup - hiện Supabase text search không hỗ trợ join trực tiếp bằng ilike, nên ta tìm order code)
     query = query.ilike("id", `%${q}%`);
   }
+  if (customer_id) query = query.eq("customer_id", customer_id);
   if (status) query = query.eq("status", status);
   if (date) {
     query = query

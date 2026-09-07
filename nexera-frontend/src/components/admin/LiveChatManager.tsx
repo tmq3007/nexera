@@ -406,6 +406,9 @@ export function LiveChatManager({
 
   // Filter conversations
   const filteredConversations = conversations.filter((conv) => {
+    // Lọc bỏ các cuộc hội thoại rỗng (chưa có tin nhắn thực tế)
+    if (conv.last_message_preview === "Bắt đầu cuộc trò chuyện mới") return false;
+
     const name = conv.customer?.full_name || conv.guest_name || "Khách vãng lai";
     const phone = conv.customer?.phone || conv.guest_phone || "";
     const email = conv.customer?.email || conv.guest_email || "";
@@ -903,9 +906,7 @@ export function LiveChatManager({
                 <span className="text-xs font-bold text-gray-900">{customerOrdersCount} đơn</span>
               </div>
               <a
-                href={`/admin/don-hang?q=${encodeURIComponent(
-                  activeConversation.customer.phone || activeConversation.customer.full_name
-                )}`}
+                href={`/admin/don-hang?customer_id=${activeConversation.customer_id}`}
                 className="text-xs text-[#13426e] hover:underline"
               >
                 Xem chi tiết đơn hàng
