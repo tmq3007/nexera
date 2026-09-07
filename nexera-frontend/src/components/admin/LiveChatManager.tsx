@@ -84,6 +84,9 @@ export function LiveChatManager({
   const [newNoteContent, setNewNoteContent] = useState("");
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isConvertingGuest, setIsConvertingGuest] = useState(false);
+  
+  const [convertPhone, setConvertPhone] = useState("");
+  const [convertEmail, setConvertEmail] = useState("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -236,6 +239,17 @@ export function LiveChatManager({
     loadContext();
   }, [activeConversation?.customer_id, supabase]);
 
+  // Sync guest convert inputs
+  useEffect(() => {
+    if (activeConversation && !activeConversation.customer_id) {
+      setConvertPhone(activeConversation.guest_phone || "");
+      setConvertEmail(activeConversation.guest_email || "");
+    } else {
+      setConvertPhone("");
+      setConvertEmail("");
+    }
+  }, [selectedConvId, activeConversation?.customer_id, activeConversation?.guest_phone, activeConversation?.guest_email]);
+
   // Auto scroll messages to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -338,37 +352,131 @@ export function LiveChatManager({
   // Convert Guest to Customer
   const handleConvertGuest = async () => {
     if (!activeConversation || activeConversation.customer_id) return;
+    
+    const phone = convertPhone.trim();
+    const email = convertEmail.trim();
+
+    if (!phone) {
+      alert("Vui lòng nhập số điện thoại để chuyển thành khách hàng!");
+      return;
+    }
+
     setIsConvertingGuest(true);
 
     const fullName = activeConversation.guest_name || "Khách hàng tư vấn";
-    const phone = activeConversation.guest_phone || null;
-    const email = activeConversation.guest_email || null;
 
     try {
-      const { data: newCustomer, error: custError } = await supabase
-        .from("customers")
-        .insert({
-          full_name: fullName,
-          phone: phone,
-          email: email,
-          phone_numbers: phone ? [phone] : [],
-          emails: email ? [email] : [],
-          tier: "POTENTIAL",
-          notes: `Tạo tự động từ cuộc hội thoại trực tiếp #${activeConversation.id.substring(0, 8)}`,
-        })
-        .select()
-        .single();
+      // 1. Kiểm tra xem SĐT hoặc Email đã tồn tại chưa
+      let existingCustomer = null;
+      
+      let query = supabase.from("customers").select("id, phone_numbers, emails").limit(1);
+      
+      if (phone && email) {
+        query = query.or(`phone.eq.${phone},email.eq.${email}`);
+      } else if (phone) {
+        query = query.eq("phone", phone);
+      } else if (email) {
+        query = query.eq("email", email);
+      }
 
-      if (!custError && newCustomer) {
+      const { data: custData, error: searchError } = await query;
+      if (!searchError && custData && custData.length > 0) {
+        existingCustomer = custData[0];
+      }
+
+      let mergedIntoOldConvId = null;
+      let customerIdToLink = null;
+
+      if (existingCustomer) {
+        // Khách đã tồn tại -> Cập nhật thông tin nếu thiếu và link
+        customerIdToLink = existingCustomer.id;
+        
+        const updates: any = {};
+        const phoneNumbers = existingCustomer.phone_numbers || [];
+        const emails = existingCustomer.emails || [];
+
+        if (phone && !phoneNumbers.includes(phone)) {
+          updates.phone_numbers = [...phoneNumbers, phone];
+        }
+        if (email && !emails.includes(email)) {
+          updates.emails = [...emails, email];
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from("customers").update(updates).eq("id", customerIdToLink);
+        }
+
+        // Kiểm tra xem khách này đã có hội thoại cũ chưa
+        const { data: oldConvs } = await supabase
+          .from("conversations")
+          .select("id, last_message_at")
+          .eq("customer_id", customerIdToLink)
+          .order("last_message_at", { ascending: false })
+          .limit(1);
+
+        if (oldConvs && oldConvs.length > 0) {
+          mergedIntoOldConvId = oldConvs[0].id;
+        }
+      } else {
+        // Tạo khách hàng mới
+        const { data: newCustomer, error: custError } = await supabase
+          .from("customers")
+          .insert({
+            full_name: fullName,
+            phone: phone,
+            email: email || null,
+            phone_numbers: phone ? [phone] : [],
+            emails: email ? [email] : [],
+            tier: "POTENTIAL",
+            notes: `Tạo tự động từ cuộc hội thoại trực tiếp #${activeConversation.id.substring(0, 8)}`,
+          })
+          .select()
+          .single();
+
+        if (custError || !newCustomer) {
+          throw custError || new Error("Failed to create customer");
+        }
+        customerIdToLink = newCustomer.id;
+      }
+
+      if (mergedIntoOldConvId) {
+        // Chuyển toàn bộ tin nhắn từ hội thoại mới sang hội thoại cũ
+        await supabase
+          .from("chat_messages")
+          .update({ conversation_id: mergedIntoOldConvId })
+          .eq("conversation_id", activeConversation.id);
+          
+        // Cập nhật last_message_at cho hội thoại cũ
         await supabase
           .from("conversations")
-          .update({ customer_id: newCustomer.id })
+          .update({ 
+            last_message_at: activeConversation.last_message_at,
+            last_message_preview: activeConversation.last_message_preview,
+            unread_admin_count: 1, // Đánh dấu chưa đọc để admin chú ý
+            status: "OPEN" // Mở lại hội thoại cũ nếu đang đóng
+          })
+          .eq("id", mergedIntoOldConvId);
+
+        // Xóa hội thoại rác mới tạo
+        await supabase
+          .from("conversations")
+          .delete()
           .eq("id", activeConversation.id);
 
-        fetchConversations();
+        // Đổi view sang hội thoại cũ
+        setSelectedConvId(mergedIntoOldConvId);
+      } else {
+        // Link conversation hiện tại với customer
+        await supabase
+          .from("conversations")
+          .update({ customer_id: customerIdToLink })
+          .eq("id", activeConversation.id);
       }
+
+      fetchConversations();
     } catch (err) {
       console.error("Lỗi chuyển đổi khách hàng:", err);
+      alert("Có lỗi xảy ra khi chuyển đổi khách hàng!");
     } finally {
       setIsConvertingGuest(false);
     }
@@ -884,15 +992,34 @@ export function LiveChatManager({
               </div>
             </div>
 
-            {/* Convert to Customer button for Guest */}
+            {/* Convert to Customer Form for Guest */}
             {!activeConversation.customer && (
-              <div className="mt-4">
+              <div className="mt-4 bg-gray-50 p-3 rounded border border-gray-100">
+                <h4 className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                  Tạo mới / Liên kết Khách hàng
+                </h4>
+                <div className="space-y-2 mb-3">
+                  <input
+                    type="text"
+                    value={convertPhone}
+                    onChange={(e) => setConvertPhone(e.target.value)}
+                    placeholder="Số điện thoại (*)"
+                    className="w-full px-3 py-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-[#13426e] focus:border-[#13426e] outline-none"
+                  />
+                  <input
+                    type="email"
+                    value={convertEmail}
+                    onChange={(e) => setConvertEmail(e.target.value)}
+                    placeholder="Email (không bắt buộc)"
+                    className="w-full px-3 py-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-[#13426e] focus:border-[#13426e] outline-none"
+                  />
+                </div>
                 <button
                   onClick={handleConvertGuest}
                   disabled={isConvertingGuest}
-                  className="w-full py-2 px-3 bg-[#13426e] hover:bg-[#1e5a92] text-white rounded-lg text-xs font-semibold transition-colors"
+                  className="w-full py-1.5 px-3 bg-[#13426e] hover:bg-[#1e5a92] disabled:bg-gray-400 text-white rounded text-xs font-semibold transition-colors"
                 >
-                  {isConvertingGuest ? "Đang lưu..." : "Chuyển thành Khách hàng"}
+                  {isConvertingGuest ? "Đang xử lý..." : "Chuyển thành Khách hàng"}
                 </button>
               </div>
             )}
