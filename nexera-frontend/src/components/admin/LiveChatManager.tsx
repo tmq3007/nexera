@@ -441,11 +441,13 @@ export function LiveChatManager({
 
       if (mergedIntoOldConvId) {
         // Chuyển toàn bộ tin nhắn từ hội thoại mới sang hội thoại cũ
-        await supabase
+        const { error: moveMsgError } = await supabase
           .from("chat_messages")
           .update({ conversation_id: mergedIntoOldConvId })
           .eq("conversation_id", activeConversation.id);
           
+        if (moveMsgError) console.error("Lỗi khi chuyển tin nhắn:", moveMsgError);
+
         // Cập nhật last_message_at cho hội thoại cũ
         await supabase
           .from("conversations")
@@ -457,10 +459,10 @@ export function LiveChatManager({
           })
           .eq("id", mergedIntoOldConvId);
 
-        // Xóa hội thoại rác mới tạo
+        // Ẩn hội thoại rác mới tạo bằng cách đổi status thành MERGED (do RLS không cho phép DELETE)
         await supabase
           .from("conversations")
-          .delete()
+          .update({ status: "MERGED" })
           .eq("id", activeConversation.id);
 
         // Đổi view sang hội thoại cũ
@@ -473,7 +475,7 @@ export function LiveChatManager({
           .eq("id", activeConversation.id);
       }
 
-      fetchConversations();
+      await fetchConversations();
     } catch (err) {
       console.error("Lỗi chuyển đổi khách hàng:", err);
       alert("Có lỗi xảy ra khi chuyển đổi khách hàng!");
@@ -514,8 +516,9 @@ export function LiveChatManager({
 
   // Filter conversations
   const filteredConversations = conversations.filter((conv) => {
-    // Lọc bỏ các cuộc hội thoại rỗng (chưa có tin nhắn thực tế)
+    // Lọc bỏ các cuộc hội thoại rỗng hoặc đã bị gộp
     if (conv.last_message_preview === "Bắt đầu cuộc trò chuyện mới") return false;
+    if (conv.status === "MERGED") return false;
 
     const name = conv.customer?.full_name || conv.guest_name || "Khách vãng lai";
     const phone = conv.customer?.phone || conv.guest_phone || "";
