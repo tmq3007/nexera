@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { logActivity } from "@/lib/logger";
 
 interface ArticleFormProps {
   initialData?: any;
@@ -55,13 +56,31 @@ export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormPro
     };
 
     let error;
+    let createdItem;
 
     if (initialData?.id) {
       const result = await supabase.from("articles").update(dataToSave).eq("id", initialData.id);
       error = result.error;
+      if (!error) {
+        logActivity({
+          action: "UPDATE_ARTICLE",
+          entity_type: "articles",
+          entity_id: initialData.id,
+          details: { title: form.title, changes: dataToSave },
+        });
+      }
     } else {
-      const result = await supabase.from("articles").insert(dataToSave);
+      const result = await supabase.from("articles").insert(dataToSave).select("id").single();
       error = result.error;
+      createdItem = result.data;
+      if (!error) {
+        logActivity({
+          action: "CREATE_ARTICLE",
+          entity_type: "articles",
+          entity_id: createdItem?.id,
+          details: { title: form.title, data: dataToSave },
+        });
+      }
     }
 
     setLoading(false);

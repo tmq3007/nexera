@@ -1,8 +1,42 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { siteConfig } from "@/config/site";
 import { MapPin, Phone, Mail } from "lucide-react";
+import { getBusinessInformation, getActivePolicies, BusinessInfo, PolicyItem } from "@/utils/policies";
 
 export function Footer() {
+  const [company, setCompany] = useState<BusinessInfo>({
+    business_name: siteConfig.company.name,
+    tax_code: siteConfig.company.taxCode,
+    address: siteConfig.company.address,
+    phone: siteConfig.company.phone,
+    email: siteConfig.company.email,
+  });
+
+  const [policies, setPolicies] = useState<PolicyItem[]>(
+    siteConfig.policies.map((p) => ({
+      id: p.href,
+      type: "CUSTOM",
+      slug: p.href.replace("/chinh-sach/", ""),
+      title: p.title,
+      href: p.href,
+    }))
+  );
+
+  useEffect(() => {
+    async function loadFooterData() {
+      const [info, policyList] = await Promise.all([
+        getBusinessInformation(),
+        getActivePolicies(),
+      ]);
+      if (info) setCompany(info);
+      if (policyList && policyList.length > 0) setPolicies(policyList);
+    }
+    loadFooterData();
+  }, []);
+
   return (
     <footer className="bg-[#13426E] text-white pt-16 pb-8">
       <div className="container mx-auto px-4">
@@ -66,20 +100,20 @@ export function Footer() {
           <div>
             <h3 className="text-xl font-bold mb-4">THÔNG TIN CÔNG TY</h3>
             <div className="w-12 h-1 bg-[#80BF49] mb-6"></div>
-            <p className="font-bold text-gray-100 mb-2 uppercase">{siteConfig.company.name}</p>
-            <p className="text-sm text-gray-200 mb-4">Mã số thuế: {siteConfig.company.taxCode}</p>
+            <p className="font-bold text-gray-100 mb-2 uppercase">{company.business_name}</p>
+            <p className="text-sm text-gray-200 mb-4">Mã số thuế: {company.tax_code}</p>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-[#80BF49] shrink-0 mt-1" />
-                <span className="text-sm text-gray-200">{siteConfig.company.address}</span>
+                <span className="text-sm text-gray-200">{company.address}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-[#80BF49] shrink-0" />
-                <span className="text-sm text-gray-200">{siteConfig.company.phone}</span>
+                <span className="text-sm text-gray-200">{company.phone}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-[#80BF49] shrink-0" />
-                <span className="text-sm text-gray-200">{siteConfig.company.email}</span>
+                <span className="text-sm text-gray-200">{company.email}</span>
               </li>
             </ul>
           </div>
@@ -89,8 +123,8 @@ export function Footer() {
             <h3 className="text-xl font-bold mb-4">CHÍNH SÁCH</h3>
             <div className="w-12 h-1 bg-[#80BF49] mb-6"></div>
             <ul className="space-y-3">
-              {siteConfig.policies.map((policy) => (
-                <li key={policy.title}>
+              {policies.map((policy) => (
+                <li key={policy.id || policy.href}>
                   <Link href={policy.href} className="text-sm text-gray-200 hover:text-[#80BF49] transition-colors flex items-center gap-2">
                     <span className="text-[#80BF49]">❯</span> {policy.title}
                   </Link>

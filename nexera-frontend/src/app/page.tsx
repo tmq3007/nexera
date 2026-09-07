@@ -1,5 +1,6 @@
 import { HeroSlider } from "@/components/home/HeroSlider";
 import { ContactForm } from "@/components/home/ContactForm";
+import { BestSellersSection } from "@/components/home/BestSellersSection";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Zap, PiggyBank, RefreshCcw, Banknote, House, FileCheck2, Cpu } from "lucide-react";
@@ -15,9 +16,21 @@ export default async function Home() {
     .order("published_at", { ascending: false })
     .limit(4);
 
+  // Fetch Bestseller products (or top products)
+  const { data: bestSellerProducts } = await supabase
+    .from("products")
+    .select("*")
+    .eq("is_active", true)
+    .order("is_bestseller", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(8);
+
   return (
     <>
       <HeroSlider />
+
+      {/* Sản Phẩm Bán Chạy Section */}
+      <BestSellersSection products={bestSellerProducts || []} />
 
       {/* Tin tức Section */}
       <section className="py-16 bg-white">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { logActivity } from "@/lib/logger";
 
 interface ProjectFormProps {
   initialData?: any;
@@ -36,13 +37,31 @@ export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormPro
     };
 
     let error;
+    let createdItem;
 
     if (initialData?.id) {
       const result = await supabase.from("projects").update(dataToSave).eq("id", initialData.id);
       error = result.error;
+      if (!error) {
+        logActivity({
+          action: "UPDATE_PROJECT",
+          entity_type: "projects",
+          entity_id: initialData.id,
+          details: { name: form.name, changes: dataToSave },
+        });
+      }
     } else {
-      const result = await supabase.from("projects").insert(dataToSave);
+      const result = await supabase.from("projects").insert(dataToSave).select("id").single();
       error = result.error;
+      createdItem = result.data;
+      if (!error) {
+        logActivity({
+          action: "CREATE_PROJECT",
+          entity_type: "projects",
+          entity_id: createdItem?.id,
+          details: { name: form.name, data: dataToSave },
+        });
+      }
     }
 
     setLoading(false);

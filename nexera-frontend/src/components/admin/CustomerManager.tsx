@@ -3,85 +3,138 @@
 import { useState } from "react";
 import { Users, Mail, Phone, MapPin, Eye } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AdminPagination } from "./AdminPagination";
 
-export function CustomerManager({ customers }: { customers: any[] }) {
+import { AdminTableToolbar } from "./AdminTableToolbar";
+
+export function CustomerManager({ 
+  customers,
+  totalCount = 0,
+  currentPage = 1,
+  itemsPerPage = 10,
+}: { 
+  customers: any[];
+  totalCount?: number;
+  currentPage?: number;
+  itemsPerPage?: number;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
-  return (
-    <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Khách hàng</h1>
-        <p className="text-gray-500 text-sm mt-1">Quản lý hồ sơ khách hàng đã mua hàng</p>
-      </div>
+  // Helper for URL pagination
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Họ tên</th>
-                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Email</th>
-                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Số điện thoại</th>
-                <th className="text-center px-6 py-3.5 font-semibold text-gray-600">Số đơn hàng</th>
-                <th className="text-center px-6 py-3.5 font-semibold text-gray-600">Thao tác</th>
+  const handleLimitChange = (limit: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("limit", limit.toString());
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+  const [density, setDensity] = useState<"compact" | "normal">("compact");
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)]">
+      {/* Header Toolbar */}
+      <AdminTableToolbar
+        title="Khách hàng"
+        totalCount={totalCount}
+        subtitle="Danh sách khách hàng đã mua hàng"
+        density={density}
+        onDensityChange={setDensity}
+      />
+
+      {/* Table & Pagination Container */}
+      <div className="bg-white rounded-2xl border border-gray-200/90 overflow-hidden flex flex-col min-h-0 flex-1 shadow-2xs">
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-50/90 backdrop-blur-xs shadow-2xs z-10">
+              <tr className="border-b border-gray-200/80 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2.5">Khách hàng</th>
+                <th className="px-3 py-2.5">Email</th>
+                <th className="px-3 py-2.5">Số điện thoại</th>
+                <th className="px-3 py-2.5 text-center">Đơn hàng</th>
+                <th className="px-3 py-2.5 text-center w-16">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {(!customers || customers.length === 0) && (
                 <tr>
-                  <td colSpan={5} className="text-center py-12 text-gray-400">
-                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <td colSpan={5} className="text-center py-16 text-gray-400 text-sm">
+                    <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
                     <p>Chưa có khách hàng nào.</p>
                   </td>
                 </tr>
               )}
-              {customers?.map((customer) => (
-                <tr key={customer.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[var(--primary)]/10 flex items-center justify-center text-[var(--primary)] font-semibold text-sm">
-                        {customer.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+              {customers?.map((customer) => {
+                const isCompact = density === "compact";
+                const cellPadding = isCompact ? "px-3 py-2" : "px-3 py-3";
+
+                return (
+                  <tr key={customer.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className={cellPadding}>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] font-bold text-xs flex items-center justify-center shrink-0">
+                          {customer.full_name?.charAt(0)?.toUpperCase() ?? "?"}
+                        </div>
+                        <span className="font-semibold text-gray-900 text-xs md:text-sm">{customer.full_name}</span>
                       </div>
-                      <span className="font-medium text-gray-800">{customer.full_name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {customer.email ? (
-                      <span className="flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-gray-400" /> {customer.email}
+                    </td>
+                    <td className={`${cellPadding} text-xs text-gray-600`}>
+                      {customer.email ? (
+                        <span>{customer.email}</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className={`${cellPadding} text-xs text-gray-600`}>
+                      {customer.phone ? (
+                        <span className="font-mono">{customer.phone}</span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      <span className="text-xs font-medium text-gray-700">
+                        {Array.isArray(customer.orders) ? customer.orders.length : 0} đơn
                       </span>
-                    ) : (
-                      <span className="text-gray-300">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {customer.phone ? (
-                      <span className="flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-gray-400" /> {customer.phone}
-                      </span>
-                    ) : (
-                      <span className="text-gray-300">—</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                      {Array.isArray(customer.orders) ? customer.orders.length : 0}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <button
-                      onClick={() => setSelectedCustomer(customer)}
-                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex"
-                      title="Xem chi tiết"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className={cellPadding}>
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => setSelectedCustomer(customer)}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <AdminPagination 
+          currentPage={currentPage}
+          setCurrentPage={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={handleLimitChange}
+          totalItems={totalCount}
+          totalPages={totalPages}
+        />
       </div>
 
       <Modal isOpen={!!selectedCustomer} onClose={() => setSelectedCustomer(null)} title="Hồ sơ khách hàng">
@@ -132,6 +185,6 @@ export function CustomerManager({ customers }: { customers: any[] }) {
           </div>
         )}
       </Modal>
-    </>
+    </div>
   );
 }

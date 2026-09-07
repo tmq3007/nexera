@@ -8,7 +8,7 @@ export default async function ProductsPage() {
 
   // Lấy toàn bộ danh mục và sản phẩm
   const { data: categories } = await supabase.from("categories").select("*");
-  const { data: products } = await supabase.from("products").select("*").order("created_at", { ascending: false });
+  const { data: products } = await supabase.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false });
 
   return (
     <>
@@ -17,7 +17,7 @@ export default async function ProductsPage() {
       <section className="py-16 bg-[#F0F7FB] min-h-[600px]">
         <div className="container mx-auto px-4">
            {/* Bọc trong Suspense vì dùng useSearchParams bên trong ProductCatalog */}
-           <Suspense fallback={<div className="text-center py-20">Đang tải sản phẩm...</div>}>
+           <Suspense fallback={<div className="text-center py-20 text-[#13426E]">Đang tải sản phẩm...</div>}>
              <ProductCatalog initialProducts={products || []} categories={categories || []} />
            </Suspense>
         </div>

@@ -18,6 +18,9 @@ export const metadata: Metadata = {
   title: "NEXERA | Hệ sinh thái Giải pháp Tích hợp",
   description:
     "NEXERA - Công nghệ thông minh, Năng lượng xanh, Tương lai bền vững. Cung cấp giải pháp tích hợp cho chuyển đổi số, chuyển đổi xanh và phát triển bền vững.",
+  other: {
+    "color-scheme": "only light",
+  },
 };
 
 export default function RootLayout({
@@ -29,6 +32,7 @@ export default function RootLayout({
     <html
       lang="vi"
       className={`${inter.variable} ${montserrat.variable} h-full antialiased`}
+      style={{ colorScheme: "only light" }}
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-[#13426E]">
         <ToastProvider>

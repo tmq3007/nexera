@@ -357,25 +357,18 @@ export default function AdminAccountsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`text-xs font-semibold ${
                         admin.roles?.name === 'super_admin' 
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-blue-100 text-blue-700'
+                          ? 'text-purple-700'
+                          : 'text-blue-600'
                       }`}>
-                        <Lock className="w-3 h-3" />
                         {admin.roles?.display_name || "Chưa phân role"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {admin.is_active ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                          Hoạt động
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                          Tạm khóa
-                        </span>
-                      )}
+                      <span className={`text-xs font-semibold ${admin.is_active ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {admin.is_active ? "Hoạt động" : "Tạm khóa"}
+                      </span>
                     </td>
                     <td className="px-6 py-4 text-gray-500 text-xs">
                       {new Date(admin.created_at).toLocaleDateString('vi-VN')}

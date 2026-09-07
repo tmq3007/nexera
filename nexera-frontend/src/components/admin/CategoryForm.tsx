@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { logActivity } from "@/lib/logger";
 
 interface CategoryFormProps {
   initialData?: any;
@@ -52,13 +53,31 @@ export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormP
     };
 
     let error;
+    let createdItem;
 
     if (initialData?.id) {
       const result = await supabase.from("categories").update(dataToSave).eq("id", initialData.id);
       error = result.error;
+      if (!error) {
+        logActivity({
+          action: "UPDATE_CATEGORY",
+          entity_type: "products",
+          entity_id: initialData.id,
+          details: { category_name: form.name, changes: dataToSave },
+        });
+      }
     } else {
-      const result = await supabase.from("categories").insert(dataToSave);
+      const result = await supabase.from("categories").insert(dataToSave).select("id").single();
       error = result.error;
+      createdItem = result.data;
+      if (!error) {
+        logActivity({
+          action: "CREATE_CATEGORY",
+          entity_type: "products",
+          entity_id: createdItem?.id,
+          details: { category_name: form.name, data: dataToSave },
+        });
+      }
     }
 
     setLoading(false);

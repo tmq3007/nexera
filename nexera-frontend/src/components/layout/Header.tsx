@@ -108,6 +108,25 @@ export function Header() {
                   : item.items;
               }
 
+              // Responsive dropdown layout based on items count
+              let dropdownWidthClass = "w-64 left-0";
+              let gridClass = "space-y-1";
+              let maxHClass = "";
+              let isMega = false;
+              
+              if (dropdownItems) {
+                if (dropdownItems.length > 12) {
+                   dropdownWidthClass = "w-[850px] left-1/2 -translate-x-1/2";
+                   gridClass = "grid grid-cols-3 gap-x-4 gap-y-1";
+                   maxHClass = "max-h-[70vh] overflow-y-auto"; // Thêm scroll nếu quá dài
+                   isMega = true;
+                } else if (dropdownItems.length > 6) {
+                   dropdownWidthClass = "w-[600px] left-1/2 -translate-x-1/2";
+                   gridClass = "grid grid-cols-2 gap-x-4 gap-y-1";
+                   isMega = true;
+                }
+              }
+
               return (
                 <div key={item.title} className="relative group">
                   {item.href ? (
@@ -127,14 +146,15 @@ export function Header() {
                   
                   {/* Dropdown Menu */}
                   {dropdownItems && (
-                    <div className="absolute top-full left-0 hidden group-hover:block w-64 pt-2 z-50">
-                      <div className="bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100/80 overflow-hidden p-2">
-                        <ul className="space-y-1">
+                    <div className={`absolute top-full hidden group-hover:block pt-2 z-50 ${dropdownWidthClass}`}>
+                      <div className={`bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100/80 overflow-hidden p-3 ${maxHClass} custom-scrollbar`}>
+                        <ul className={gridClass}>
                         {dropdownItems.map((subItem) => (
                           <li key={subItem.title}>
                             <Link 
                               href={subItem.href} 
-                              className="block px-4 py-3 text-sm text-[#13426E] uppercase font-extrabold hover:bg-[#F0F7FB] hover:text-[#80BF49] rounded-xl transition-all"
+                              className={`block px-4 py-3 text-sm text-[#13426E] uppercase font-extrabold hover:bg-[#F0F7FB] hover:text-[#80BF49] rounded-xl transition-all ${isMega ? 'truncate' : ''}`}
+                              title={subItem.title}
                             >
                               {subItem.title}
                             </Link>
@@ -151,17 +171,6 @@ export function Header() {
 
           {/* Right Icons */}
           <div className="flex items-center gap-3">
-             {mounted && isAdmin && (
-               <Link 
-                 href="/admin"
-                 className="text-[#13426E] hover:text-white hover:bg-[#13426E] transition-all bg-[#F0F7FB] px-3.5 py-1.5 rounded-full hidden sm:flex items-center gap-2 border border-[#80BF49]/40 shadow-sm"
-                 title="Hệ thống Quản trị"
-               >
-                 <Settings className="h-4 w-4 text-[#80BF49]" />
-                 <span className="text-xs font-bold uppercase tracking-wider">Quản trị</span>
-               </Link>
-             )}
-
              {mounted && !authLoading && (
                isAuth ? (
                  <div className="relative group">
@@ -172,33 +181,15 @@ export function Header() {
                      <div className="w-9 h-9 rounded-full bg-[#13426E]/5 group-hover:bg-[#80BF49]/15 border border-[#13426E]/10 group-hover:border-[#80BF49]/40 flex items-center justify-center transition-all shadow-sm">
                        <User className="h-4.5 w-4.5 text-[#13426E] group-hover:text-[#80BF49] transition-colors" />
                      </div>
-                     {isAdmin ? (
-                       <span className="hidden lg:block text-sm font-bold truncate max-w-[120px] text-[#80BF49]">Nexera Admin</span>
-                     ) : (
+                     {!isAdmin && (
                        <span className="hidden lg:block text-sm font-bold truncate max-w-[120px] text-[#13426E]">{customerName}</span>
                      )}
                    </button>
                    
                    {/* Dropdown User Menu */}
-                   <div className="absolute top-full right-0 hidden group-hover:block w-64 pt-2 z-50 transition-all duration-200">
+                   <div className="absolute top-full right-0 hidden group-hover:block w-52 pt-2 z-50 transition-all duration-200">
                      <div className="bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100/80">
                        
-                       {/* Header Profile Info */}
-                       <div className="p-4 bg-gradient-to-br from-[#13426E]/5 via-[#F0F7FB] to-[#80BF49]/10 flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-full bg-[#13426E] text-[#80BF49] flex items-center justify-center font-bold text-base shadow-md shrink-0 border-2 border-white">
-                           {isAdmin ? "A" : (customerName?.[0] || "K").toUpperCase()}
-                         </div>
-                         <div className="min-w-0 flex-1">
-                           <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Xin chào,</p>
-                           <p className="text-sm font-bold text-[#13426E] truncate">
-                             {isAdmin ? "Quản trị viên Nexera" : customerName}
-                           </p>
-                           <span className="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-semibold bg-[#80BF49]/20 text-[#13426E] rounded-full">
-                             {isAdmin ? "System Admin" : "Khách hàng"}
-                           </span>
-                         </div>
-                       </div>
-
                        {/* Action Links */}
                        <div className="p-2 space-y-1">
                          {isAdmin ? (
@@ -209,7 +200,7 @@ export function Header() {
                              <div className="p-2 rounded-lg bg-[#80BF49]/10 text-[#80BF49] group-hover/item:bg-[#80BF49] group-hover/item:text-white transition-colors">
                                <Settings className="w-4 h-4" />
                              </div>
-                             <span>Vào trang Admin</span>
+                             <span>Quản trị</span>
                            </Link>
                          ) : (
                            <>

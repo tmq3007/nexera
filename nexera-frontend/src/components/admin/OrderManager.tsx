@@ -1,75 +1,282 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Clock, CheckCircle, Truck, MapPin, Phone, Mail } from "lucide-react";
+import { Eye, Clock, CheckCircle, Truck, MapPin, Phone, Mail, Trash2, Edit } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { createClient } from "@/utils/supabase/client";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useToast } from "@/contexts/ToastContext";
+import { AdminPagination } from "./AdminPagination";
+import { AdminFilterBar } from "./AdminFilterBar";
+import { AdminBulkActionBar } from "./AdminBulkActionBar";
+import { AdminTableToolbar } from "./AdminTableToolbar";
+import { logActivity } from "@/lib/logger";
+import { formatErrorMessage } from "@/lib/messages";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  PENDING: { label: "Chờ xử lý", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-  PAID: { label: "Đã thanh toán", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
-  SHIPPED: { label: "Đang vận chuyển", color: "bg-purple-100 text-purple-700", icon: Truck },
-  COMPLETED: { label: "Hoàn thành", color: "bg-green-100 text-green-700", icon: CheckCircle },
+  PENDING: { label: "Chờ xử lý", color: "text-amber-600", icon: Clock },
+  PAID: { label: "Đã thanh toán", color: "text-blue-600", icon: CheckCircle },
+  SHIPPED: { label: "Đang vận chuyển", color: "text-purple-600", icon: Truck },
+  COMPLETED: { label: "Hoàn thành", color: "text-emerald-600", icon: CheckCircle },
 };
 
-export function OrderManager({ orders }: { orders: any[] }) {
+export function OrderManager({ 
+  orders,
+  totalCount = 0,
+  currentPage = 1,
+  itemsPerPage = 10,
+}: { 
+  orders: any[];
+  totalCount?: number;
+  currentPage?: number;
+  itemsPerPage?: number;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+  const toast = useToast();
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
-  return (
-    <>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Đơn hàng</h1>
-        <p className="text-gray-500 text-sm mt-1">Theo dõi và quản lý trạng thái đơn hàng</p>
-      </div>
+  // Bulk Actions State
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-      <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-100">
-                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Mã đơn</th>
-                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Khách hàng</th>
-                <th className="text-right px-6 py-3.5 font-semibold text-gray-600">Tổng tiền</th>
-                <th className="text-center px-6 py-3.5 font-semibold text-gray-600">Trạng thái</th>
-                <th className="text-left px-6 py-3.5 font-semibold text-gray-600">Ngày tạo</th>
-                <th className="text-center px-6 py-3.5 font-semibold text-gray-600">Thao tác</th>
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(orders.map(o => o.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} đơn hàng đã chọn?`)) return;
+    setIsDeleting(true);
+    const { error } = await supabase.from("orders").delete().in("id", selectedIds);
+    setIsDeleting(false);
+    if (!error) {
+      logActivity({
+        action: "DELETE_ORDERS_BULK",
+        entity_type: "orders",
+        details: { count: selectedIds.length, ids: selectedIds },
+        severity: "WARNING",
+      });
+      toast.success(`Đã xóa ${selectedIds.length} đơn hàng!`);
+      setSelectedIds([]);
+      router.refresh();
+    } else {
+      toast.error(formatErrorMessage(error, "Lỗi khi xóa đơn hàng"));
+    }
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    const { error } = await supabase.from("orders").update({ status: newStatus }).in("id", selectedIds);
+    if (!error) {
+      logActivity({
+        action: "UPDATE_ORDERS_STATUS_BULK",
+        entity_type: "orders",
+        details: { new_status: newStatus, count: selectedIds.length, ids: selectedIds },
+      });
+      toast.success(`Đã cập nhật trạng thái cho ${selectedIds.length} đơn hàng!`);
+      setSelectedIds([]);
+      router.refresh();
+    } else {
+      toast.error(formatErrorMessage(error, "Lỗi khi cập nhật trạng thái đơn hàng"));
+    }
+  };
+
+  // Helper for URL pagination
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const handleLimitChange = (limit: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("limit", limit.toString());
+    params.set("page", "1");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+
+  const [density, setDensity] = useState<"compact" | "normal">("compact");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const currentStatusTab = searchParams.get("status") ?? "all";
+
+  const handleStatusTabChange = (status: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (status === "all") {
+      params.delete("status");
+    } else {
+      params.set("status", status);
+    }
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const hasActiveDateFilter = Boolean(searchParams.get("date"));
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)]">
+      {/* Top Controls Bar: Reusable AdminTableToolbar */}
+      <AdminTableToolbar
+        tabs={[
+          { key: "all", label: "Tất cả", count: totalCount },
+          { key: "PENDING", label: "Chờ xử lý" },
+          { key: "PAID", label: "Đã thanh toán" },
+          { key: "SHIPPED", label: "Đang giao" },
+          { key: "COMPLETED", label: "Hoàn thành" },
+        ]}
+        activeTabKey={currentStatusTab}
+        onTabChange={handleStatusTabChange}
+        showFilterToggle={true}
+        isFiltersOpen={showFilters}
+        onToggleFilters={() => setShowFilters(prev => !prev)}
+        activeFiltersCount={hasActiveDateFilter ? 1 : 0}
+        density={density}
+        onDensityChange={setDensity}
+      />
+
+      {/* Date Filter (collapsible) */}
+      {showFilters && (
+        <div className="shrink-0 animate-in fade-in duration-200">
+          <AdminFilterBar 
+            filters={[
+              {
+                key: "date",
+                label: "Ngày đặt hàng",
+                type: "date"
+              }
+            ]}
+          />
+        </div>
+      )}
+
+      <AdminBulkActionBar 
+        selectedCount={selectedIds.length}
+        onClearSelection={() => setSelectedIds([])}
+        actions={[
+          {
+            label: "Xóa",
+            icon: Trash2,
+            onClick: handleBulkDelete,
+            variant: "danger"
+          },
+          {
+            label: "Chờ xử lý",
+            icon: Clock,
+            onClick: () => handleBulkStatusUpdate("PENDING"),
+            variant: "default"
+          },
+          {
+            label: "Đã thanh toán",
+            icon: CheckCircle,
+            onClick: () => handleBulkStatusUpdate("PAID"),
+            variant: "primary"
+          },
+          {
+            label: "Đang giao",
+            icon: Truck,
+            onClick: () => handleBulkStatusUpdate("SHIPPED"),
+            variant: "primary"
+          },
+          {
+            label: "Hoàn thành",
+            icon: CheckCircle,
+            onClick: () => handleBulkStatusUpdate("COMPLETED"),
+            variant: "primary"
+          }
+        ]}
+      />
+
+      {/* Table & Pagination Container */}
+      <div className="bg-white rounded-2xl border border-gray-200/90 overflow-hidden flex flex-col min-h-0 flex-1 shadow-2xs">
+        <div className="flex-1 overflow-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 bg-gray-50/90 backdrop-blur-xs shadow-2xs z-10">
+              <tr className="border-b border-gray-200/80 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                <th className="text-center px-3 py-2.5 w-10">
+                  <input 
+                    type="checkbox" 
+                    onChange={handleSelectAll}
+                    checked={orders.length > 0 && selectedIds.length === orders.length}
+                    className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)] cursor-pointer"
+                  />
+                </th>
+                <th className="px-3 py-2.5">Mã đơn</th>
+                <th className="px-3 py-2.5">Khách hàng</th>
+                <th className="px-3 py-2.5 text-right">Tổng tiền</th>
+                <th className="px-3 py-2.5 text-center">Trạng thái</th>
+                <th className="px-3 py-2.5">Ngày tạo</th>
+                <th className="px-3 py-2.5 text-center w-16">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {(!orders || orders.length === 0) && (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-gray-400">
-                    Chưa có đơn hàng nào.
+                  <td colSpan={7} className="text-center py-16 text-gray-400 text-sm">
+                    Chưa có đơn hàng nào phù hợp bộ lọc.
                   </td>
                 </tr>
               )}
               {orders?.map((order) => {
                 const status = statusConfig[order.status] ?? statusConfig.PENDING;
                 const StatusIcon = status.icon;
+                const isCompact = density === "compact";
+                const cellPadding = isCompact ? "px-3 py-2" : "px-3 py-3";
+
                 return (
-                  <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-mono text-xs text-gray-500">{order.id.slice(0, 8)}...</td>
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-gray-800">{(order.customers as any)?.full_name ?? "—"}</p>
-                      <p className="text-xs text-gray-400">{(order.customers as any)?.phone ?? ""}</p>
+                  <tr key={order.id} className="hover:bg-slate-50/70 transition-colors">
+                    <td className={`text-center ${cellPadding} w-10`}>
+                      <input 
+                        type="checkbox" 
+                        onChange={() => handleSelectOne(order.id)}
+                        checked={selectedIds.includes(order.id)}
+                        className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)] cursor-pointer"
+                      />
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-800">{Number(order.total_amount).toLocaleString("vi-VN")} ₫</td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${status.color}`}>
-                        <StatusIcon className="w-3 h-3" />
+                    <td className={cellPadding}>
+                      <span className="font-mono text-xs font-semibold text-gray-700">
+                        #{order.id.slice(0, 8).toUpperCase()}
+                      </span>
+                    </td>
+                    <td className={cellPadding}>
+                      <div>
+                        <p className="font-semibold text-gray-900 text-xs md:text-sm">{(order.customers as any)?.full_name ?? "Khách vãng lai"}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{(order.customers as any)?.phone ?? "—"}</p>
+                      </div>
+                    </td>
+                    <td className={`${cellPadding} text-right font-bold text-gray-900 text-xs md:text-sm tracking-tight`}>
+                      {Number(order.total_amount).toLocaleString("vi-VN")} ₫
+                    </td>
+                    <td className={`${cellPadding} text-center`}>
+                      <span className={`text-xs font-semibold ${status.color}`}>
                         {status.label}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 text-xs">
+                    <td className={`${cellPadding} text-gray-500 text-xs`}>
                       {new Date(order.created_at).toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors inline-flex"
-                        title="Xem chi tiết"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                    <td className={cellPadding}>
+                      <div className="flex items-center justify-center">
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Xem chi tiết"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -77,6 +284,16 @@ export function OrderManager({ orders }: { orders: any[] }) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        <AdminPagination 
+          currentPage={currentPage}
+          setCurrentPage={handlePageChange}
+          itemsPerPage={itemsPerPage}
+          setItemsPerPage={handleLimitChange}
+          totalItems={totalCount}
+          totalPages={totalPages}
+        />
       </div>
 
       <Modal isOpen={!!selectedOrder} onClose={() => setSelectedOrder(null)} title="Chi tiết đơn hàng" maxWidth="max-w-3xl">
@@ -107,7 +324,7 @@ export function OrderManager({ orders }: { orders: any[] }) {
                   </p>
                   <p className="flex items-center justify-between">
                     <span>Trạng thái:</span>
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${statusConfig[selectedOrder.status]?.color}`}>
+                    <span className={`text-xs font-semibold ${statusConfig[selectedOrder.status]?.color}`}>
                       {statusConfig[selectedOrder.status]?.label}
                     </span>
                   </p>
@@ -134,6 +351,6 @@ export function OrderManager({ orders }: { orders: any[] }) {
           </div>
         )}
       </Modal>
-    </>
+    </div>
   );
 }
