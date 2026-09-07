@@ -154,7 +154,8 @@ export function NexeraChatWidget({ isOpen, onClose }: NexeraChatWidgetProps) {
       let query = supabase
         .from("conversations")
         .select("*")
-        .order("created_at", { ascending: false })
+        .neq("status", "MERGED") // Bỏ qua các hội thoại rác đã bị gộp
+        .order("last_message_at", { ascending: false }) // Ưu tiên hội thoại mới có tin nhắn nhất (hội thoại cũ sau khi gộp sẽ nảy lên đây)
         .limit(1);
 
       if (currentCustomerId && sId) {
@@ -251,6 +252,27 @@ export function NexeraChatWidget({ isOpen, onClose }: NexeraChatWidgetProps) {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
+        }
+      )
+      .on(
+        "broadcast",
+        { event: "CONVERSATION_MERGED" },
+        async (payload) => {
+          const newConvId = payload.payload.newConversationId;
+          if (newConvId) {
+            setConversationId(newConvId);
+            
+            // Tự động fetch lại tin nhắn của cuộc hội thoại cũ vừa được gộp
+            const { data: msgData } = await supabase
+              .from("chat_messages")
+              .select("*")
+              .eq("conversation_id", newConvId)
+              .order("created_at", { ascending: true });
+              
+            if (msgData) {
+              setMessages(msgData as ChatMessage[]);
+            }
+          }
         }
       )
       .subscribe();

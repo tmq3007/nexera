@@ -11,7 +11,7 @@ interface Conversation {
   guest_name?: string | null;
   guest_phone?: string | null;
   guest_email?: string | null;
-  status: "OPEN" | "PENDING" | "RESOLVED" | "CLOSED";
+  status: "OPEN" | "PENDING" | "RESOLVED" | "CLOSED" | "MERGED";
   assigned_admin_id?: string | null;
   last_message_preview?: string | null;
   last_message_at?: string | null;
@@ -448,16 +448,31 @@ export function LiveChatManager({
           
         if (moveMsgError) console.error("Lỗi khi chuyển tin nhắn:", moveMsgError);
 
-        // Cập nhật last_message_at cho hội thoại cũ
+        // Cập nhật last_message_at và guest_session_id cho hội thoại cũ
         await supabase
           .from("conversations")
           .update({ 
             last_message_at: activeConversation.last_message_at,
             last_message_preview: activeConversation.last_message_preview,
+            guest_session_id: activeConversation.guest_session_id, // Link session cũ của khách vào hội thoại này
             unread_admin_count: 1, // Đánh dấu chưa đọc để admin chú ý
             status: "OPEN" // Mở lại hội thoại cũ nếu đang đóng
           })
           .eq("id", mergedIntoOldConvId);
+
+        // Phát Broadcast báo cho Storefront widget biết để chuyển sang hội thoại cũ
+        const channel = supabase.channel(`chat_messages_${activeConversation.id}`);
+        channel.subscribe(async (status) => {
+          if (status === 'SUBSCRIBED') {
+            await channel.send({
+              type: "broadcast",
+              event: "CONVERSATION_MERGED",
+              payload: { newConversationId: mergedIntoOldConvId }
+            });
+            supabase.removeChannel(channel);
+          }
+        });
+
 
         // Ẩn hội thoại rác mới tạo bằng cách đổi status thành MERGED (do RLS không cho phép DELETE)
         await supabase
