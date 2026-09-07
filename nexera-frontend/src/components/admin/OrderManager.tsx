@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, Clock, CheckCircle, Truck, MapPin, Phone, Mail, Trash2, Edit } from "lucide-react";
+import { Eye, Clock, CheckCircle, Truck, Trash2, Edit } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { createClient } from "@/utils/supabase/client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -304,11 +304,11 @@ export function OrderManager({
                 <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Thông tin khách hàng</h3>
                 <p className="font-medium text-gray-800">{(selectedOrder.customers as any)?.full_name}</p>
                 <div className="text-sm text-gray-600 mt-2 space-y-1">
-                  <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-gray-400"/> {(selectedOrder.customers as any)?.phone}</p>
+                  <p><span className="text-gray-400 text-xs mr-1.5">SĐT:</span> {(selectedOrder.customers as any)?.phone || "—"}</p>
                   {(selectedOrder.customers as any)?.email && (
-                     <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-gray-400"/> {(selectedOrder.customers as any)?.email}</p>
+                     <p><span className="text-gray-400 text-xs mr-1.5">Email:</span> {(selectedOrder.customers as any)?.email}</p>
                   )}
-                  <p className="flex items-start gap-2"><MapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5"/> {selectedOrder.shipping_address || (selectedOrder.customers as any)?.address}</p>
+                  <p><span className="text-gray-400 text-xs mr-1.5">Địa chỉ:</span> {selectedOrder.shipping_address || (selectedOrder.customers as any)?.address || "—"}</p>
                 </div>
               </div>
               <div>

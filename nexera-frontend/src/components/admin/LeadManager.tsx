@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Phone, Mail, Clock, Eye, Trash2, Edit } from "lucide-react";
+import { Eye, Trash2, Edit, Clock, Phone } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { createClient } from "@/utils/supabase/client";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -224,7 +224,6 @@ export function LeadManager({
         <div className="flex-1 overflow-auto p-3 space-y-2.5">
           {(!leads || leads.length === 0) && (
             <div className="py-16 text-center text-gray-400 text-sm">
-              <MessageSquare className="w-10 h-10 mx-auto mb-2 text-gray-300" />
               <p>Chưa có yêu cầu tư vấn nào phù hợp bộ lọc.</p>
             </div>
           )}
@@ -304,15 +303,15 @@ export function LeadManager({
                   {statusConfig[selectedLead.status]?.label || statusConfig.NEW.label}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Phone className="w-4 h-4 text-gray-400" /> {selectedLead.phone || "—"}
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="text-gray-700">
+                  <span className="text-gray-400 mr-1.5">SĐT:</span> <span className="font-mono font-medium">{selectedLead.phone || "—"}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Mail className="w-4 h-4 text-gray-400" /> {selectedLead.email || "—"}
+                <div className="text-gray-700">
+                  <span className="text-gray-400 mr-1.5">Email:</span> <span className="font-medium">{selectedLead.email || "—"}</span>
                 </div>
-                <div className="flex items-center gap-2 text-gray-600 col-span-2">
-                  <Clock className="w-4 h-4 text-gray-400" /> {new Date(selectedLead.created_at).toLocaleString("vi-VN")}
+                <div className="text-gray-700 col-span-2">
+                  <span className="text-gray-400 mr-1.5">Thời gian gửi:</span> <span>{new Date(selectedLead.created_at).toLocaleString("vi-VN")}</span>
                 </div>
               </div>
             </div>

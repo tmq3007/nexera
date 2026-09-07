@@ -21,6 +21,7 @@ import {
   Building2,
   FileText,
   Activity,
+  MessageCircle,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -38,6 +39,7 @@ const navSections = [
       { label: "Sản phẩm", href: "/admin/san-pham", icon: Package },
       { label: "Danh mục", href: "/admin/danh-muc", icon: Tags },
       { label: "Yêu cầu tư vấn", href: "/admin/leads", icon: MessageSquare },
+      { label: "Hội thoại tư vấn", href: "/admin/hoi-thoai", icon: MessageCircle },
       { label: "Khách hàng", href: "/admin/khach-hang", icon: Users },
     ],
   },

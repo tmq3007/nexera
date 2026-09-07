@@ -3,12 +3,10 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { 
-  ShieldCheck, 
   Search, 
   Loader2, 
   CheckCircle2, 
   XCircle, 
-  Edit3, 
   Lock, 
   Users,
   AlertCircle,
@@ -338,7 +336,6 @@ export default function AdminAccountsPage() {
               {filteredAdmins.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-12 text-gray-400">
-                    <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                     <p>Không tìm thấy tài khoản nào.</p>
                   </td>
                 </tr>
@@ -379,10 +376,10 @@ export default function AdminAccountsPage() {
                           setEditAdmin(admin);
                           setEditRoleId(admin.role_id);
                         }}
-                        className="px-3 py-1.5 bg-gray-100 hover:bg-[var(--accent)] hover:text-white text-gray-700 rounded-lg text-xs font-medium transition-colors inline-flex items-center gap-1"
+                        className="px-3 py-1.5 bg-gray-100 hover:bg-[var(--accent)] hover:text-white text-gray-700 rounded-lg text-xs font-medium transition-colors"
                         title="Đổi vai trò"
                       >
-                        <Edit3 className="w-3.5 h-3.5" /> Vai trò
+                        Đổi vai trò
                       </button>
 
                       <button

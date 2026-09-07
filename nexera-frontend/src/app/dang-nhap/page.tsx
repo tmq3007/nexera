@@ -32,19 +32,85 @@ export default function CustomerLoginPage() {
     }
 
     if (data.user) {
-      // Bảo đảm customer profile tồn tại
-      const { data: custData } = await supabase
-        .from("customers")
-        .select("id")
-        .eq("auth_user_id", data.user.id)
-        .single();
+      // 1. Tìm customer profile theo auth_user_id hoặc email
+      let customerId: string | null = null;
+      let existingPhones: string[] = [];
+      let existingEmails: string[] = [];
+      let existingPhone: string | null = null;
+      let existingEmail: string | null = null;
 
-      if (!custData) {
-        await supabase.from("customers").insert({
-          auth_user_id: data.user.id,
-          email: data.user.email,
-          full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Khách hàng",
-        });
+      const { data: custList } = await supabase
+        .from("customers")
+        .select("id, phone, email, phone_numbers, emails, auth_user_id")
+        .or(`auth_user_id.eq.${data.user.id},email.eq.${data.user.email}`)
+        .limit(1);
+
+      if (custList && custList.length > 0) {
+        const cust = custList[0];
+        customerId = cust.id;
+        existingPhone = cust.phone || null;
+        existingEmail = cust.email || null;
+        existingPhones = Array.isArray(cust.phone_numbers) ? [...cust.phone_numbers] : [];
+        existingEmails = Array.isArray(cust.emails) ? [...cust.emails] : [];
+
+        // Nếu auth_user_id chưa liên kết thì cập nhật
+        if (cust.auth_user_id !== data.user.id) {
+          await supabase
+            .from("customers")
+            .update({ auth_user_id: data.user.id })
+            .eq("id", cust.id);
+        }
+      } else {
+        const { data: newCust } = await supabase
+          .from("customers")
+          .insert({
+            auth_user_id: data.user.id,
+            email: data.user.email,
+            emails: data.user.email ? [data.user.email] : [],
+            full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Khách hàng",
+          })
+          .select("id")
+          .single();
+
+        if (newCust) {
+          customerId = newCust.id;
+        }
+      }
+
+      // 2. Tự động đồng bộ phiên chat vãng lai và gộp SĐT/Email nếu có
+      if (customerId) {
+        const guestSessionId = localStorage.getItem("nexera_chat_guest_session");
+        const guestPhone = localStorage.getItem("nexera_chat_guest_phone");
+        const guestEmail = localStorage.getItem("nexera_chat_guest_email");
+
+        if (guestSessionId) {
+          await supabase
+            .from("conversations")
+            .update({ customer_id: customerId })
+            .eq("guest_session_id", guestSessionId);
+        }
+
+        let needsUpdate = false;
+        if (guestPhone && !existingPhones.includes(guestPhone)) {
+          existingPhones.push(guestPhone);
+          needsUpdate = true;
+        }
+        if (guestEmail && !existingEmails.includes(guestEmail)) {
+          existingEmails.push(guestEmail);
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await supabase
+            .from("customers")
+            .update({
+              phone: existingPhone || guestPhone || undefined,
+              email: existingEmail || guestEmail || undefined,
+              phone_numbers: existingPhones,
+              emails: existingEmails,
+            })
+            .eq("id", customerId);
+        }
       }
 
       window.location.href = "/";
