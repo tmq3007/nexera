@@ -1,8 +1,23 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Search, RefreshCw, Trash2, ExternalLink } from "lucide-react";
+import { 
+  Search, 
+  RefreshCw, 
+  Trash2, 
+  ExternalLink,
+  Volume2,
+  VolumeX,
+  PanelRightClose,
+  PanelRightOpen,
+  ShoppingBag,
+  Image as ImageIcon,
+  Paperclip,
+  X,
+  Zap
+} from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { playNotificationChime, playSendFeedback } from "@/lib/audio-chime";
 
 interface Conversation {
   id: string;
@@ -58,6 +73,15 @@ const CANNED_RESPONSES = [
   "Nexera cam kết cung cấp thiết bị chính hãng đầy đủ CO/CQ và hỗ trợ khảo sát tận nơi miễn phí.",
 ];
 
+const SLASH_TEMPLATES = [
+  { cmd: "/chao", title: "Chào khách hàng", text: "Xin chào Quý khách! NEXERA có thể hỗ trợ gì cho bạn hôm nay ạ?" },
+  { cmd: "/baohanh", title: "Chính sách bảo hành", text: "Sản phẩm tại NEXERA được bảo hành chính hãng từ 24-36 tháng, cam kết 1 đổi 1 trong 30 ngày nếu có lỗi kỹ thuật." },
+  { cmd: "/stk", title: "Thông tin thanh toán", text: "Thông tin chuyển khoản: Ngân hàng MB Bank - STK: 123456789 - Chủ TK: CÔNG TY NEXERA VIỆT NAM." },
+  { cmd: "/giaohang", title: "Chính sách giao hàng", text: "NEXERA miễn phí giao hàng toàn quốc cho đơn từ 2 triệu đồng. Thời gian giao hàng từ 1-3 ngày làm việc." },
+  { cmd: "/showroom", title: "Địa chỉ showroom", text: "Kính mời Quý khách ghé trải nghiệm showroom NEXERA tại Hà Nội. Mở cửa từ 8h00 - 21h00 hàng ngày." },
+  { cmd: "/tuvan", title: "Hỏi nhu cầu chi tiết", text: "Quý khách vui lòng cho Nexera xin nhu cầu công suất hoặc model đang quan tâm để kỹ thuật viên tư vấn giải pháp tối ưu nhất ạ!" },
+];
+
 export function LiveChatManager({
   initialConversations = [],
 }: {
@@ -87,6 +111,27 @@ export function LiveChatManager({
   
   const [convertPhone, setConvertPhone] = useState("");
   const [convertEmail, setConvertEmail] = useState("");
+
+  const [isCustomerTyping, setIsCustomerTyping] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
+  const [isCrmOpen, setIsCrmOpen] = useState(true);
+
+  // Product Selector Modal
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [catalogProducts, setCatalogProducts] = useState<any[]>([]);
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+
+  // Image upload & Lightbox
+  const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Slash commands menu (/)
+  const [showSlashMenu, setShowSlashMenu] = useState(false);
+
+  const activeChannelRef = useRef<any>(null);
+  const isTypingSentRef = useRef<boolean>(false);
+  const typingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
@@ -142,7 +187,10 @@ export function LiveChatManager({
           schema: "public",
           table: "conversations",
         },
-        () => {
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            if (!isSoundMuted) playNotificationChime();
+          }
           fetchConversations();
         }
       )
@@ -151,12 +199,13 @@ export function LiveChatManager({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, [supabase, isSoundMuted]);
 
   // 3. Load messages when selectedConvId changes
   useEffect(() => {
     if (!selectedConvId) {
       setMessages([]);
+      setIsCustomerTyping(false);
       return;
     }
 
@@ -185,8 +234,9 @@ export function LiveChatManager({
 
     loadMessages();
 
+    // Dùng chung channel "chat_messages_${selectedConvId}" với Storefront widget để trao đổi broadcast typing
     const channel = supabase
-      .channel(`admin_chat_messages_${selectedConvId}`)
+      .channel(`chat_messages_${selectedConvId}`)
       .on(
         "postgres_changes",
         {
@@ -197,19 +247,37 @@ export function LiveChatManager({
         },
         (payload) => {
           const newMsg = payload.new as Message;
+          if (newMsg.sender_type === "CUSTOMER") {
+            setIsCustomerTyping(false);
+            if (!isSoundMuted) {
+              playNotificationChime();
+            }
+          }
           setMessages((prev) => {
             if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
         }
       )
+      .on(
+        "broadcast",
+        { event: "typing" },
+        (payload) => {
+          if (payload.payload?.sender === "CUSTOMER") {
+            setIsCustomerTyping(!!payload.payload?.isTyping);
+          }
+        }
+      )
       .subscribe();
+
+    activeChannelRef.current = channel;
 
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
+      activeChannelRef.current = null;
     };
-  }, [selectedConvId, supabase]);
+  }, [selectedConvId, supabase, isSoundMuted]);
 
   // 4. Load Customer Context (Orders and Notes)
   useEffect(() => {
@@ -255,13 +323,64 @@ export function LiveChatManager({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Handle Send Message as Admin
-  const handleSendMessage = async (textToSend?: string) => {
-    const text = (textToSend || inputValue).trim();
-    if (!text || isSending || !selectedConvId) return;
+  // Typing event handler for Admin & Slash command detection
+  const handleAdminInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setInputValue(val);
+
+    if (val.startsWith("/")) {
+      setShowSlashMenu(true);
+    } else {
+      setShowSlashMenu(false);
+    }
+
+    if (selectedConvId && activeChannelRef.current) {
+      if (!isTypingSentRef.current) {
+        activeChannelRef.current.send({
+          type: "broadcast",
+          event: "typing",
+          payload: { sender: "ADMIN", isTyping: true },
+        });
+        isTypingSentRef.current = true;
+      }
+
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        if (activeChannelRef.current) {
+          activeChannelRef.current.send({
+            type: "broadcast",
+            event: "typing",
+            payload: { sender: "ADMIN", isTyping: false },
+          });
+        }
+        isTypingSentRef.current = false;
+      }, 1500);
+    }
+  };
+
+  // Handle Send Message as Admin (supports attachments)
+  const handleSendMessage = async (textToSend?: string, attachmentsToSend?: any[]) => {
+    const text = (textToSend !== undefined ? textToSend : inputValue).trim();
+    if ((!text && (!attachmentsToSend || attachmentsToSend.length === 0)) || isSending || !selectedConvId) return;
 
     setIsSending(true);
     setInputValue("");
+    setShowSlashMenu(false);
+
+    // Cancel typing broadcast immediately when sending
+    if (activeChannelRef.current) {
+      activeChannelRef.current.send({
+        type: "broadcast",
+        event: "typing",
+        payload: { sender: "ADMIN", isTyping: false },
+      });
+    }
+    isTypingSentRef.current = false;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+
+    playSendFeedback();
+
+    const finalContent = text || (attachmentsToSend?.[0]?.type === "image" ? "[Hình ảnh]" : "[Đính kèm]");
 
     const tempId = "temp_" + Date.now();
     const optimisticMsg: Message = {
@@ -270,7 +389,8 @@ export function LiveChatManager({
       sender_type: "ADMIN",
       sender_id: adminUser.id || null,
       sender_name: adminUser.name,
-      content: text,
+      content: finalContent,
+      attachments: attachmentsToSend || [],
       is_read: true,
       created_at: new Date().toISOString(),
     };
@@ -284,7 +404,8 @@ export function LiveChatManager({
           sender_type: "ADMIN",
           sender_id: adminUser.id || null,
           sender_name: adminUser.name,
-          content: text,
+          content: finalContent,
+          attachments: attachmentsToSend || [],
           is_read: true,
         })
         .select()
@@ -296,7 +417,7 @@ export function LiveChatManager({
         await supabase
           .from("conversations")
           .update({
-            last_message_preview: text.length > 80 ? text.substring(0, 77) + "..." : text,
+            last_message_preview: finalContent.length > 80 ? finalContent.substring(0, 77) + "..." : finalContent,
             last_message_at: new Date().toISOString(),
             unread_customer_count: (activeConversation?.unread_customer_count || 0) + 1,
             status: "OPEN",
@@ -310,6 +431,93 @@ export function LiveChatManager({
     } finally {
       setIsSending(false);
     }
+  };
+
+  // Product selector modal handlers
+  const handleOpenProductModal = async () => {
+    setIsProductModalOpen(true);
+    if (catalogProducts.length === 0) {
+      setIsLoadingProducts(true);
+      const { data } = await supabase
+        .from("products")
+        .select("id, name, price, sale_price, images, thumbnail, slug, stock, is_active")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+      if (data) {
+        setCatalogProducts(data);
+      }
+      setIsLoadingProducts(false);
+    }
+  };
+
+  const handleSendProduct = (product: any) => {
+    const productAttachment = {
+      type: "product",
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      sale_price: product.sale_price,
+      image: product.images?.[0] || product.thumbnail,
+      slug: product.slug,
+    };
+    handleSendMessage(`[Sản phẩm] ${product.name}`, [productAttachment]);
+    setIsProductModalOpen(false);
+  };
+
+  // Image upload & paste handlers for Admin
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      alert("Vui lòng chỉ chọn tệp hình ảnh (PNG, JPG, WebP)!");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Dung lượng ảnh tối đa là 5MB!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        handleSendMessage("[Hình ảnh]", [
+          {
+            type: "image",
+            url: dataUrl,
+            name: file.name,
+          },
+        ]);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageFile(file);
+      e.target.value = "";
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          e.preventDefault();
+          handleImageFile(file);
+          break;
+        }
+      }
+    }
+  };
+
+  const handleSelectSlashCommand = (cmd: typeof SLASH_TEMPLATES[0]) => {
+    setInputValue(cmd.text);
+    setShowSlashMenu(false);
   };
 
   // Toggle conversation status
@@ -654,9 +862,15 @@ export function LiveChatManager({
                     </p>
 
                     <div className="flex items-center gap-2 text-[10px]">
-                      <span className={`font-medium ${isRegistered ? "text-blue-700" : "text-gray-500"}`}>
-                        {isRegistered ? "Thành viên" : "Vãng lai"}
-                      </span>
+                      {displayName.includes("(Quản trị viên)") || displayName.includes("(Admin)") ? (
+                        <span className="font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200">
+                          Quản trị viên
+                        </span>
+                      ) : (
+                        <span className={`font-medium ${isRegistered ? "text-blue-700" : "text-gray-500"}`}>
+                          {isRegistered ? "Thành viên" : "Vãng lai"}
+                        </span>
+                      )}
 
                       {conv.status === "RESOLVED" && (
                         <span className="text-gray-400">· Đã giải quyết</span>
@@ -718,8 +932,22 @@ export function LiveChatManager({
                 </p>
               </div>
 
-              {/* Status Action */}
+              {/* Actions & Controls */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSoundMuted(!isSoundMuted)}
+                  className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                  title={isSoundMuted ? "Bật âm thanh chuông báo" : "Tắt âm thanh chuông báo"}
+                >
+                  {isSoundMuted ? <VolumeX className="w-4 h-4 text-rose-500" /> : <Volume2 className="w-4 h-4 text-emerald-600" />}
+                </button>
+                <button
+                  onClick={() => setIsCrmOpen(!isCrmOpen)}
+                  className="p-1.5 text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                  title={isCrmOpen ? "Thu gọn hồ sơ CRM" : "Mở rộng hồ sơ CRM"}
+                >
+                  {isCrmOpen ? <PanelRightClose className="w-4 h-4 text-[#13426e]" /> : <PanelRightOpen className="w-4 h-4 text-gray-400" />}
+                </button>
                 <button
                   onClick={handleToggleStatus}
                   className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium transition-colors"
@@ -787,11 +1015,80 @@ export function LiveChatManager({
                           </span>
                         </div>
                         <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+
+                        {/* Attachments rendering */}
+                        {msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                          <div className="mt-2 space-y-2">
+                            {msg.attachments.map((att: any, attIdx: number) => {
+                              if (att.type === "product") {
+                                return (
+                                  <div
+                                    key={attIdx}
+                                    className="bg-white text-gray-800 rounded-xl border border-gray-200 overflow-hidden shadow-xs p-2.5 max-w-[260px]"
+                                  >
+                                    {att.image && (
+                                      <div className="h-24 w-full bg-gray-50 rounded-lg overflow-hidden mb-2 flex items-center justify-center">
+                                        <img src={att.image} alt={att.name} className="w-full h-full object-cover" />
+                                      </div>
+                                    )}
+                                    <h4 className="font-bold text-xs text-gray-900 line-clamp-2 leading-tight">
+                                      {att.name}
+                                    </h4>
+                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                      <span className="font-bold text-xs text-[#e11d48]">
+                                        {new Intl.NumberFormat("vi-VN").format(att.sale_price || att.price)} đ
+                                      </span>
+                                      {att.sale_price && att.sale_price < att.price && (
+                                        <span className="text-[10px] text-gray-400 line-through">
+                                          {new Intl.NumberFormat("vi-VN").format(att.price)} đ
+                                        </span>
+                                      )}
+                                    </div>
+                                    {att.slug && (
+                                      <a
+                                        href={`/san-pham/${att.slug}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="mt-2 block w-full py-1 bg-[#13426e] hover:bg-[#1e5a92] text-white text-[10px] font-semibold text-center rounded-lg transition-colors"
+                                      >
+                                        Xem chi tiết sản phẩm →
+                                      </a>
+                                    )}
+                                  </div>
+                                );
+                              }
+
+                              if (att.type === "image") {
+                                return (
+                                  <div
+                                    key={attIdx}
+                                    className="rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity border border-gray-100 max-w-[220px]"
+                                    onClick={() => setSelectedLightboxImage(att.url)}
+                                    title="Nhấp để phóng to ảnh"
+                                  >
+                                    <img src={att.url} alt={att.name || "Hình ảnh"} className="w-full h-auto max-h-[180px] object-cover" />
+                                  </div>
+                                );
+                              }
+
+                              return null;
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })
               )}
+
+              {/* Customer Typing Indicator */}
+              {isCustomerTyping && (
+                <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium py-1 animate-in fade-in duration-150">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <span>Khách hàng đang soạn tin nhắn...</span>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
 
@@ -811,6 +1108,44 @@ export function LiveChatManager({
               ))}
             </div>
 
+            {/* Slash Command Quick Templates Popup */}
+            {showSlashMenu && (
+              <div className="mx-3 mb-1 p-2 bg-white rounded-xl shadow-xl border border-gray-200 animate-in slide-in-from-bottom-2 duration-150 z-20">
+                <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 mb-1.5">
+                  <span className="text-[11px] font-bold text-[#13426e] flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                    Mẫu trả lời nhanh (Phím tắt /)
+                  </span>
+                  <button
+                    onClick={() => setShowSlashMenu(false)}
+                    className="text-gray-400 hover:text-gray-600 p-0.5"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto">
+                  {SLASH_TEMPLATES.map((tmpl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSelectSlashCommand(tmpl)}
+                      className="text-left p-2 rounded-lg hover:bg-[#f0f7fb] hover:border-[#80bf49] border border-transparent transition-all group"
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="font-bold text-xs text-[#13426e] group-hover:text-[#80bf49]">
+                          {tmpl.title}
+                        </span>
+                        <span className="font-mono text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-semibold">
+                          {tmpl.cmd}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 line-clamp-1">{tmpl.text}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Input Bar */}
             <form
               onSubmit={(e) => {
@@ -820,10 +1155,34 @@ export function LiveChatManager({
               className="p-3 border-t border-gray-200 bg-white flex items-center gap-2 shrink-0"
             >
               <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-8 h-8 rounded-lg text-gray-400 hover:text-[#13426e] hover:bg-gray-100 flex items-center justify-center transition-colors shrink-0"
+                title="Gửi hình ảnh đính kèm (hoặc dán Ctrl+V)"
+              >
+                <ImageIcon className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenProductModal}
+                className="w-8 h-8 rounded-lg text-gray-400 hover:text-[#13426e] hover:bg-gray-100 flex items-center justify-center transition-colors shrink-0"
+                title="Chọn sản phẩm từ kho để gửi thẻ tư vấn"
+              >
+                <ShoppingBag className="w-4 h-4" />
+              </button>
+              <input
                 type="text"
-                placeholder="Nhập câu trả lời cho khách hàng (Enter để gửi)..."
+                placeholder="Nhập câu trả lời (Gõ / để chọn mẫu nhanh, dán ảnh Ctrl+V)..."
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={handleAdminInputChange}
+                onPaste={handlePaste}
                 disabled={isSending}
                 className="flex-1 text-xs px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-hidden focus:border-gray-400 focus:bg-white text-gray-800"
               />
@@ -844,7 +1203,7 @@ export function LiveChatManager({
       </div>
 
       {/* ===================== CỘT 3: HỒ SƠ NGỮ CẢNH KHÁCH HÀNG (CRM) ===================== */}
-      {activeConversation && (
+      {activeConversation && isCrmOpen && (
         <div className="w-72 md:w-80 border-l border-gray-200 flex flex-col bg-white shrink-0 overflow-y-auto">
           <div className="p-4 border-b border-gray-100">
             <h3 className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-3">
@@ -1110,6 +1469,134 @@ export function LiveChatManager({
                 Chuyển khách vãng lai thành Khách hàng để lưu ghi chú CRM.
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Product Selector Modal */}
+      {isProductModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsProductModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-xl max-h-[85vh] flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#13426e]/10 text-[#13426e] flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-gray-900">Chọn sản phẩm tư vấn từ kho</h3>
+                  <p className="text-[11px] text-gray-500">Gửi thẻ sản phẩm trực tiếp vào khung chat</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsProductModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Search */}
+            <div className="p-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên sản phẩm..."
+                  value={productSearchTerm}
+                  onChange={(e) => setProductSearchTerm(e.target.value)}
+                  className="w-full text-xs pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#80bf49]"
+                />
+              </div>
+            </div>
+
+            {/* Products List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+              {isLoadingProducts ? (
+                <div className="py-12 text-center text-xs text-gray-400 flex flex-col items-center gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-[#80bf49]" />
+                  <span>Đang tải danh sách sản phẩm...</span>
+                </div>
+              ) : catalogProducts.filter((p) => p.name.toLowerCase().includes(productSearchTerm.toLowerCase())).length === 0 ? (
+                <div className="py-12 text-center text-xs text-gray-400">
+                  Không tìm thấy sản phẩm nào phù hợp.
+                </div>
+              ) : (
+                catalogProducts
+                  .filter((p) => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()))
+                  .map((product) => {
+                    const img = product.images?.[0] || product.thumbnail;
+                    return (
+                      <div
+                        key={product.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#80bf49] hover:bg-[#f0f7fb]/40 transition-all group"
+                      >
+                        <div className="w-14 h-14 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center border border-gray-200">
+                          {img ? (
+                            <img src={img} alt={product.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <ShoppingBag className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-xs text-gray-900 truncate">
+                            {product.name}
+                          </h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="font-bold text-xs text-[#e11d48]">
+                              {new Intl.NumberFormat("vi-VN").format(product.sale_price || product.price)} đ
+                            </span>
+                            {product.sale_price && product.sale_price < product.price && (
+                              <span className="text-[10px] text-gray-400 line-through">
+                                {new Intl.NumberFormat("vi-VN").format(product.price)} đ
+                              </span>
+                            )}
+                            <span className="text-[10px] text-gray-400 ml-auto">
+                              Kho: {product.stock ?? 0}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleSendProduct(product)}
+                          className="px-3 py-1.5 bg-[#13426e] hover:bg-[#1e5a92] text-white text-xs font-medium rounded-lg transition-colors shrink-0 shadow-xs"
+                        >
+                          Gửi vào chat
+                        </button>
+                      </div>
+                    );
+                  })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Lightbox Modal */}
+      {selectedLightboxImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedLightboxImage(null)}
+        >
+          <div className="relative max-w-3xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedLightboxImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 p-1.5 rounded-full bg-white/10 transition-colors"
+              title="Đóng ảnh"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={selectedLightboxImage}
+              alt="Chi tiết ảnh"
+              className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+            />
           </div>
         </div>
       )}

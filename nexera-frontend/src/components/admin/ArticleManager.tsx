@@ -148,7 +148,7 @@ export function ArticleManager({
       {/* Table & Pagination Container */}
       <div className="bg-white rounded-2xl border border-gray-200/90 overflow-hidden flex flex-col min-h-0 flex-1 shadow-2xs">
         <div className="flex-1 overflow-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[700px] text-left border-collapse">
             <thead className="sticky top-0 bg-gray-50/90 backdrop-blur-xs shadow-2xs z-10">
               <tr className="border-b border-gray-200/80 text-[11px] font-bold text-gray-500 uppercase tracking-wider">
                 <th className="px-3 py-2.5">Tiêu đề bài viết</th>

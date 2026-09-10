@@ -22,6 +22,7 @@ import {
   FileText,
   Activity,
   MessageCircle,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -33,7 +34,7 @@ const navSections = [
     ],
   },
   {
-    title: "BÁN HÀNG & KHÁCH HÀNG",
+    title: "BÁN HÀNG & KHÁCH HÀNG",
     items: [
       { label: "Đơn hàng", href: "/admin/don-hang", icon: ShoppingCart },
       { label: "Sản phẩm", href: "/admin/san-pham", icon: Package },
@@ -62,7 +63,12 @@ const navSections = [
   },
 ];
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
@@ -81,18 +87,19 @@ export function AdminSidebar() {
     getUser();
   }, [supabase.auth]);
 
+  // Auto-close mobile sidebar on navigation
+  useEffect(() => {
+    onMobileClose?.();
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/dang-nhap/admin");
     router.refresh();
   };
 
-  return (
-    <aside
-      className={`${
-        collapsed ? "w-[72px]" : "w-64"
-      } bg-[var(--accent)] text-white flex flex-col transition-all duration-300 ease-in-out relative shrink-0`}
-    >
+  const sidebarContent = (
+    <>
       {/* Logo - Link về trang chủ */}
       <div className="h-16 flex items-center px-3 border-b border-white/10 shrink-0">
         <Link href="/" className="flex items-center justify-center w-full" title="Về trang chủ">
@@ -104,12 +111,21 @@ export function AdminSidebar() {
             </div>
           )}
         </Link>
+        {/* Mobile close button */}
+        {onMobileClose && (
+          <button
+            onClick={onMobileClose}
+            className="md:hidden p-1.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg transition-colors ml-2 shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
-      {/* Collapse toggle */}
+      {/* Collapse toggle - desktop only */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 w-6 h-6 bg-[var(--primary)] rounded-full flex items-center justify-center text-white shadow-md hover:bg-[var(--primary-light)] transition-colors z-10"
+        className="hidden md:flex absolute -right-3 top-20 w-6 h-6 bg-[var(--primary)] rounded-full items-center justify-center text-white shadow-md hover:bg-[var(--primary-light)] transition-colors z-10"
       >
         {collapsed ? (
           <ChevronRight className="w-3.5 h-3.5" />
@@ -186,6 +202,34 @@ export function AdminSidebar() {
           </button>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop Sidebar — hidden on mobile */}
+      <aside
+        className={`hidden md:flex ${
+          collapsed ? "w-[72px]" : "w-64"
+        } bg-[var(--accent)] text-white flex-col transition-all duration-300 ease-in-out relative shrink-0`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Sidebar Overlay */}
+      {mobileOpen && (
+        <div className="md:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+            onClick={onMobileClose}
+          />
+          {/* Drawer */}
+          <aside className="relative w-72 max-w-[85vw] bg-[var(--accent)] text-white flex flex-col animate-in slide-in-from-left duration-200 shadow-2xl z-10">
+            {sidebarContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

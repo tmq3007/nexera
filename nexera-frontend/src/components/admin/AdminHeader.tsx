@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search } from "lucide-react";
+import { Bell, Search, Menu } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 
@@ -17,7 +17,11 @@ const pageTitles: Record<string, string> = {
   "/admin/vai-tro": "Vai Trò & Phân Quyền",
 };
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  onMenuToggle?: () => void;
+}
+
+export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,12 +55,22 @@ export function AdminHeader() {
     )?.[1] ?? "Quản Trị Hệ Thống";
 
   return (
-    <header className="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8 shadow-xs">
-      <div className="flex items-center gap-4">
-        <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">{title}</h2>
+    <header className="h-14 md:h-20 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-8 shadow-xs shrink-0">
+      <div className="flex items-center gap-3">
+        {/* Hamburger button — mobile only */}
+        {onMenuToggle && (
+          <button
+            onClick={onMenuToggle}
+            className="md:hidden p-2 -ml-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Mở menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <h2 className="text-lg md:text-2xl font-extrabold text-gray-900 tracking-tight truncate">{title}</h2>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Search */}
         <form onSubmit={handleSearchSubmit} className="relative hidden md:block">
           <button type="submit" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--primary)] transition-colors">

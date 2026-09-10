@@ -127,6 +127,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
   const [compareList, setCompareList] = useState<any[]>([]);
   const [isCompareDockHidden, setIsCompareDockHidden] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   useEffect(() => {
     setSelectedCategory(searchParams.get("category"));
@@ -221,10 +222,37 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
     currentPage * itemsPerPage
   );
 
+  // Count active filters for badge
+  const activeFilterCount = [
+    selectedCategory && selectedCategory !== "all",
+    selectedType && selectedType !== "all",
+    selectedPrice && selectedPrice !== "all",
+    searchQuery,
+  ].filter(Boolean).length;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
+      {/* ================= MOBILE FILTER TOGGLE ================= */}
+      <div className="lg:hidden">
+        <button
+          onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
+          className="w-full flex items-center justify-between px-5 py-3.5 bg-white rounded-xl border border-gray-100 shadow-sm text-[#13426E] font-semibold text-sm transition-colors hover:bg-gray-50"
+        >
+          <span className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-[#80BF49]" />
+            {mobileFiltersOpen ? "Ẩn bộ lọc" : "Hiện bộ lọc"}
+            {activeFilterCount > 0 && (
+              <span className="ml-1 min-w-5 h-5 px-1.5 bg-[#80BF49] text-white text-[11px] font-bold rounded-full flex items-center justify-center">
+                {activeFilterCount}
+              </span>
+            )}
+          </span>
+          <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${mobileFiltersOpen ? "rotate-90" : ""}`} />
+        </button>
+      </div>
+
       {/* ================= LEFT SIDEBAR (STICKY) ================= */}
-      <div className="lg:col-span-3 space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full pr-1">
+      <div className={`lg:col-span-3 space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full pr-1 ${mobileFiltersOpen ? "block" : "hidden lg:block"}`}>
         
         {/* Search */}
         <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-colors">
