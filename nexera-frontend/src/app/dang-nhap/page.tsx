@@ -262,13 +262,22 @@ export default function CustomerLoginPage() {
               </button>
             </form>
 
-            <div className="mt-8 text-center">
+            <div className="mt-8 text-center space-y-3">
               <p className="text-white/70 text-sm">
                 Chưa có tài khoản?{" "}
                 <Link href="/dang-ky" className="text-[#80BF49] font-bold hover:underline transition-colors">
                   Đăng ký ngay
                 </Link>
               </p>
+              <div className="pt-2 border-t border-white/10">
+                <Link 
+                  href="/dang-nhap/admin" 
+                  className="text-xs text-white/50 hover:text-[#80BF49] transition-colors inline-flex items-center gap-1.5"
+                >
+                  <span>Dành cho Quản trị viên hệ thống</span>
+                  <span aria-hidden="true">&rarr;</span>
+                </Link>
+              </div>
             </div>
           </div>
         </div>

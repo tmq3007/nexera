@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, ChevronDown, ShoppingCart, User, Settings, LogOut, Package } from "lucide-react";
+import { Menu, ChevronDown, ShoppingCart, User, LogOut } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
-import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { MiniCart } from "@/components/storefront/MiniCart";
+import { ConfirmLogoutModal } from "@/components/ui/ConfirmLogoutModal";
+
+const AUTH_STORAGE_KEY = "nexera_auth_session";
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,19 +22,38 @@ export function Header() {
   const [isCustomer, setIsCustomer] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [authLoading, setAuthLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const cartTotalItems = useCartStore((state) => state.totalItems());
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     setMounted(true);
+
+    // 1. Tải tức thì trạng thái đã lưu từ cache client (0ms) để không bị giật icon khi F5
+    try {
+      const cached = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.isAuth) {
+          setIsAuth(true);
+          setIsAdmin(Boolean(parsed.isAdmin));
+          setIsCustomer(Boolean(parsed.isCustomer));
+          if (parsed.customerName) setCustomerName(parsed.customerName);
+          setAuthLoading(false);
+        }
+      }
+    } catch {
+      // Bỏ qua lỗi parse
+    }
+
     async function fetchData() {
       try {
         // Lấy danh mục sản phẩm
         const { data: catData } = await supabase.from("categories").select("name, slug");
         if (catData) setCategories(catData);
 
-        // Kiểm tra phiên đăng nhập
+        // Kiểm tra phiên đăng nhập từ Supabase
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setIsAuth(true);
@@ -43,11 +64,25 @@ export function Header() {
           
           if (adminRes.data) {
             setIsAdmin(true);
+            setIsCustomer(false);
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+              isAuth: true,
+              isAdmin: true,
+              isCustomer: false,
+              customerName: "",
+            }));
           } else {
-            // Mọi tài khoản không phải Admin đăng nhập ở Storefront đều là Customer
+            setIsAdmin(false);
             setIsCustomer(true);
             const name = customerRes.data?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
             setCustomerName(name);
+
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
+              isAuth: true,
+              isAdmin: false,
+              isCustomer: true,
+              customerName: name,
+            }));
 
             // Tự động đảm bảo tạo hồ sơ customer nếu chưa có trong DB
             if (!customerRes.data) {
@@ -58,7 +93,16 @@ export function Header() {
               });
             }
           }
+        } else {
+          // Phiên đã kết thúc hoặc chưa đăng nhập
+          setIsAuth(false);
+          setIsAdmin(false);
+          setIsCustomer(false);
+          setCustomerName("");
+          localStorage.removeItem(AUTH_STORAGE_KEY);
         }
+      } catch (err) {
+        console.error("Lỗi kiểm tra phiên:", err);
       } finally {
         setAuthLoading(false);
       }
@@ -66,12 +110,21 @@ export function Header() {
     fetchData();
   }, [supabase]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAdmin(false);
-    setIsCustomer(false);
-    setIsAuth(false);
-    window.location.href = "/";
+  const handleConfirmLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await supabase.auth.signOut();
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      setIsAdmin(false);
+      setIsCustomer(false);
+      setIsAuth(false);
+      setShowLogoutConfirm(false);
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Lỗi đăng xuất:", err);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -170,97 +223,71 @@ export function Header() {
           </nav>
 
           {/* Right Icons */}
-          <div className="flex items-center gap-3">
-             {mounted && !authLoading && (
-               isAuth ? (
-                 <div className="relative group">
-                   <button 
-                     className="text-[#13426E] hover:text-[#80BF49] transition-colors flex items-center gap-2.5 py-7 group"
-                     title="Tài khoản"
+          <div className="flex items-center gap-2.5">
+             {!mounted || authLoading ? (
+               // Skeleton loader nhẹ nhàng cùng kích thước (36px), giữ vị trí không bị giật hay xô lệch
+               <div className="w-9 h-9 rounded-full bg-gray-100/80 animate-pulse border border-gray-200/50" />
+             ) : isAuth ? (
+               isAdmin ? (
+                 <div className="flex items-center gap-2">
+                   <Link 
+                     href="/admin"
+                     className="w-9 h-9 rounded-full bg-[#80BF49]/15 hover:bg-[#80BF49] border border-[#80BF49]/40 text-[#80BF49] hover:text-white flex items-center justify-center transition-all shadow-sm group"
+                     title="Vào trang quản trị"
                    >
-                     <div className="w-9 h-9 rounded-full bg-[#13426E]/5 group-hover:bg-[#80BF49]/15 border border-[#13426E]/10 group-hover:border-[#80BF49]/40 flex items-center justify-center transition-all shadow-sm">
-                       <User className="h-4.5 w-4.5 text-[#13426E] group-hover:text-[#80BF49] transition-colors" />
-                     </div>
-                     {!isAdmin && (
-                       <span className="hidden lg:block text-sm font-bold truncate max-w-[120px] text-[#13426E]">{customerName}</span>
-                     )}
+                     <User className="h-4.5 w-4.5 transition-colors" />
+                   </Link>
+                   <button 
+                     type="button"
+                     onClick={() => setShowLogoutConfirm(true)}
+                     className="w-9 h-9 rounded-full bg-red-50 hover:bg-red-500 border border-red-200/70 text-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm cursor-pointer"
+                     title="Đăng xuất"
+                   >
+                     <LogOut className="h-4 w-4 transition-colors" />
                    </button>
-                   
-                   {/* Dropdown User Menu */}
-                   <div className="absolute top-full right-0 hidden group-hover:block w-52 pt-2 z-50 transition-all duration-200">
-                     <div className="bg-white/95 backdrop-blur-xl shadow-2xl rounded-2xl border border-gray-100 overflow-hidden divide-y divide-gray-100/80">
-                       
-                       {/* Action Links */}
-                       <div className="p-2 space-y-1">
-                         {isAdmin ? (
-                           <Link 
-                             href="/admin" 
-                             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#13426E] hover:bg-[#F0F7FB] hover:text-[#80BF49] transition-all group/item"
-                           >
-                             <div className="p-2 rounded-lg bg-[#80BF49]/10 text-[#80BF49] group-hover/item:bg-[#80BF49] group-hover/item:text-white transition-colors">
-                               <Settings className="w-4 h-4" />
-                             </div>
-                             <span>Quản trị</span>
-                           </Link>
-                         ) : (
-                           <>
-                             <Link 
-                               href="/tai-khoan" 
-                               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#13426E] hover:bg-[#F0F7FB] hover:text-[#80BF49] transition-all group/item"
-                             >
-                               <div className="p-2 rounded-lg bg-[#13426E]/5 text-[#13426E] group-hover/item:bg-[#80BF49] group-hover/item:text-white transition-colors">
-                                 <User className="w-4 h-4" />
-                               </div>
-                               <span>Tài khoản của tôi</span>
-                             </Link>
-                             <Link 
-                               href="/tai-khoan/don-hang" 
-                               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#13426E] hover:bg-[#F0F7FB] hover:text-[#80BF49] transition-all group/item"
-                             >
-                               <div className="p-2 rounded-lg bg-[#13426E]/5 text-[#13426E] group-hover/item:bg-[#80BF49] group-hover/item:text-white transition-colors">
-                                 <Package className="w-4 h-4" />
-                               </div>
-                               <span>Đơn hàng đã mua</span>
-                             </Link>
-                           </>
-                         )}
-                       </div>
-
-                       {/* Logout Button */}
-                       <div className="p-2">
-                         <button 
-                           onClick={handleLogout} 
-                           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 hover:text-red-600 transition-all text-left group/logout"
-                         >
-                           <div className="p-2 rounded-lg bg-red-50 text-red-500 group-hover/logout:bg-red-500 group-hover/logout:text-white transition-colors">
-                             <LogOut className="w-4 h-4" />
-                           </div>
-                           <span>Đăng xuất</span>
-                         </button>
-                       </div>
-
-                     </div>
-                   </div>
                  </div>
                ) : (
-                 <Link 
-                   href="/dang-nhap"
-                   className="p-2 text-[#13426E] hover:text-[#80BF49] transition-colors rounded-full hover:bg-gray-100"
-                   title="Đăng nhập"
-                 >
-                   <User className="h-5 w-5" />
-                 </Link>
+                 <div className="flex items-center gap-2">
+                   <div 
+                     className="flex items-center gap-2 py-1 px-2.5 rounded-full bg-[#13426E]/5 border border-[#13426E]/10" 
+                     title={`Tài khoản: ${customerName}`}
+                   >
+                     <div className="w-6 h-6 rounded-full bg-[#13426E]/10 flex items-center justify-center text-[#13426E]">
+                       <User className="h-3.5 w-3.5" />
+                     </div>
+                     <span className="hidden sm:inline text-xs font-bold text-[#13426E] max-w-[100px] truncate">
+                       {customerName}
+                     </span>
+                   </div>
+                   <button 
+                     type="button"
+                     onClick={() => setShowLogoutConfirm(true)}
+                     className="w-9 h-9 rounded-full bg-red-50 hover:bg-red-500 border border-red-200/70 text-red-500 hover:text-white flex items-center justify-center transition-all shadow-sm cursor-pointer"
+                     title="Đăng xuất"
+                   >
+                     <LogOut className="h-4 w-4 transition-colors" />
+                   </button>
+                 </div>
                )
+             ) : (
+               <Link 
+                 href="/dang-nhap"
+                 className="w-9 h-9 rounded-full bg-[#13426E]/5 hover:bg-[#80BF49]/15 border border-[#13426E]/10 hover:border-[#80BF49]/40 text-[#13426E] hover:text-[#80BF49] flex items-center justify-center transition-all shadow-sm"
+                 title="Đăng nhập"
+               >
+                 <User className="h-4.5 w-4.5" />
+               </Link>
              )}
 
-             {!isAdmin && (
+             {/* Giỏ hàng: Chỉ render khi đã xác thực xong và người dùng KHÔNG PHẢI là Admin */}
+             {mounted && !authLoading && !isAdmin && (
                <button 
-                 className="p-2 text-[#13426E] hover:text-[#80BF49] transition-colors relative rounded-full hover:bg-gray-100"
+                 className="p-2 text-[#13426E] hover:text-[#80BF49] transition-colors relative rounded-full hover:bg-gray-100 cursor-pointer"
                  onClick={() => setIsCartOpen(true)}
                  title="Giỏ hàng"
                >
                  <ShoppingCart className="h-5 w-5" />
-                 {mounted && cartTotalItems > 0 && (
+                 {cartTotalItems > 0 && (
                    <span className="absolute top-0 right-0 bg-[#ff0000] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-md">
                      {cartTotalItems}
                    </span>
@@ -312,6 +339,14 @@ export function Header() {
 
       {/* Mini Cart Drawer */}
       <MiniCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      {/* Modal xác nhận đăng xuất */}
+      <ConfirmLogoutModal 
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        isLoading={isLoggingOut}
+      />
     </header>
   );
 }

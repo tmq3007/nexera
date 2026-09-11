@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { ConfirmLogoutModal } from "@/components/ui/ConfirmLogoutModal";
 
 const navSections = [
   {
@@ -92,10 +93,26 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
     onMobileClose?.();
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push("/dang-nhap/admin");
-    router.refresh();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleConfirmLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await supabase.auth.signOut();
+      try {
+        localStorage.removeItem("nexera_auth_session");
+      } catch {
+        // ignore
+      }
+      setShowLogoutConfirm(false);
+      router.push("/dang-nhap/admin");
+      router.refresh();
+    } catch (err) {
+      console.error("Admin logout error:", err);
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const sidebarContent = (
@@ -185,8 +202,9 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
               </div>
             </div>
             <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white cursor-pointer"
               title="Đăng xuất"
             >
               <LogOut className="w-4 h-4" />
@@ -194,8 +212,9 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
           </div>
         ) : (
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white"
+            type="button"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-full flex items-center justify-center p-2 hover:bg-white/10 rounded-lg transition-colors text-white/70 hover:text-white cursor-pointer"
             title="Đăng xuất"
           >
             <LogOut className="w-4 h-4" />
@@ -230,6 +249,14 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
           </aside>
         </div>
       )}
+
+      {/* Modal xác nhận đăng xuất */}
+      <ConfirmLogoutModal 
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleConfirmLogout}
+        isLoading={isLoggingOut}
+      />
     </>
   );
 }
