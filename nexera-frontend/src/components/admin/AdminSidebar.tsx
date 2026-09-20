@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import {
@@ -121,11 +122,21 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
       <div className="h-16 flex items-center px-3 border-b border-white/10 shrink-0">
         <Link href="/" className="flex items-center justify-center w-full" title="Về trang chủ">
           {!collapsed ? (
-            <span className="font-bold text-2xl tracking-wider text-white">NEXERA</span>
+            <Image 
+              src="/Logo.png" 
+              alt="Nexera" 
+              width={120} 
+              height={40} 
+              className="h-8 w-auto object-contain brightness-0 invert" 
+            />
           ) : (
-            <div className="w-8 h-8 bg-[var(--primary)] rounded-lg flex items-center justify-center font-bold text-white text-sm mx-auto">
-              N
-            </div>
+            <Image 
+              src="/Symbol.png" 
+              alt="N" 
+              width={32} 
+              height={32} 
+              className="h-8 w-8 object-contain mx-auto brightness-0 invert" 
+            />
           )}
         </Link>
         {/* Mobile close button */}

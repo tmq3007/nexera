@@ -15,9 +15,35 @@ const montserrat = Montserrat({
 });
 
 export const metadata: Metadata = {
-  title: "NEXERA | Hệ sinh thái Giải pháp Tích hợp",
+  title: "NEXERA | Năng lượng xanh - vì tương lai bền vững",
   description:
-    "NEXERA - Công nghệ thông minh, Năng lượng xanh, Tương lai bền vững. Cung cấp giải pháp tích hợp cho chuyển đổi số, chuyển đổi xanh và phát triển bền vững.",
+    "NEXERA - Năng lượng xanh - vì tương lai bền vững. Cung cấp các thiết bị và giải pháp điện mặt trời, năng lượng tái tạo hàng đầu Việt Nam.",
+  icons: {
+    icon: "/Symbol.png",
+    apple: "/Symbol.png",
+  },
+  openGraph: {
+    title: "NEXERA | Năng lượng xanh - vì tương lai bền vững",
+    description: "NEXERA - Năng lượng xanh - vì tương lai bền vững.",
+    url: "https://nexera.vn",
+    siteName: "NEXERA",
+    images: [
+      {
+        url: "/Logo-slogan.png",
+        width: 1200,
+        height: 630,
+        alt: "NEXERA | Năng lượng xanh - vì tương lai bền vững",
+      },
+    ],
+    locale: "vi_VN",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "NEXERA | Năng lượng xanh - vì tương lai bền vững",
+    description: "NEXERA - Năng lượng xanh - vì tương lai bền vững.",
+    images: ["/Logo-slogan.png"],
+  },
   other: {
     "color-scheme": "only light",
   },

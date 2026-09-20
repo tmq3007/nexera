@@ -1,6 +1,6 @@
 export const siteConfig = {
   name: "Nexera Solar",
-  description: "Dẫn đầu giải pháp đầu tư điện mặt trời toàn diện tại Việt Nam.",
+  description: "Năng lượng xanh - vì tương lai bền vững",
   company: {
     name: "CÔNG TY CỔ PHẦN TẬP ĐOÀN NEXERA",
     taxCode: "0109999999", // Placeholder MST

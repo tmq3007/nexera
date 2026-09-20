@@ -143,7 +143,7 @@ export function Header() {
           {/* Logo */}
           <Link href="/" className="flex-shrink-0 flex items-center gap-2">
             <Image 
-               src="/logo.png" 
+               src="/Logo-slogan.png" 
                alt={siteConfig.name} 
                width={230} 
                height={76} 
