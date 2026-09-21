@@ -7,10 +7,18 @@ export default async function AdminLiveChatPage() {
   const supabase = await createClient();
 
   // Load initial conversations
-  const { data: conversations } = await supabase
+  let { data: conversations, error } = await supabase
     .from("conversations")
     .select("*, customer:customers(id, full_name, email, phone, phone_numbers, emails, address, tier)")
     .order("last_message_at", { ascending: false });
+
+  if (error) {
+    const fallback = await supabase
+      .from("conversations")
+      .select("*")
+      .order("last_message_at", { ascending: false });
+    conversations = fallback.data as any;
+  }
 
   return (
     <div className="h-full flex flex-col">

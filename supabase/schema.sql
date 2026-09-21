@@ -759,27 +759,7 @@ INSERT INTO public.products (name, slug, category_id, type, price, import_price,
 ('Tấm Pin LONGi 540W', 'tam-pin-longi-540w', (SELECT id FROM categories WHERE slug = 'dien-mat-troi' LIMIT 1), 'EQUIPMENT', 2450000, 2100000, 0, 120, 'Tấm pin LONGi đơn tinh thể.', 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&q=80', 'LG-540', 'LONGi', 'Trung Quốc', '12 năm', '{"Công suất": "540W", "Hiệu suất": "21.1%"}'::jsonb, '[{"url": "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&q=80", "is_primary": true}]'::jsonb, true, ARRAY['https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&q=80'], false, NULL),
 ('Biến Tần Hybrid Deye 8kW', 'bien-tan-hybrid-deye-8kw', (SELECT id FROM categories WHERE slug = 'bien-tan' LIMIT 1), 'EQUIPMENT', 35000000, 28000000, 0, 20, 'Inverter Hybrid Deye 8kW 1 pha.', 'https://images.unsplash.com/photo-1613665813446-82a78c468a1d?w=800&q=80', 'DEYE-8K', 'Deye', 'Trung Quốc', '5 năm', '{"Công suất AC": "8000W", "Pha": "1 Pha"}'::jsonb, '[{"url": "https://images.unsplash.com/photo-1613665813446-82a78c468a1d?w=800&q=80", "is_primary": true}]'::jsonb, true, ARRAY['https://images.unsplash.com/photo-1613665813446-82a78c468a1d?w=800&q=80'], true, NULL),
 ('Hệ Thống ĐMT Áp Mái 5kWp', 'he-thong-dien-mat-troi-ap-mai-5kwp', (SELECT id FROM categories WHERE slug = 'dien-mat-troi' LIMIT 1), 'PACKAGE', 65000000, 50000000, 0, 5, 'Trọn gói lắp đặt 5kWp cho hộ gia đình.', 'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=800&q=80', 'PKG-5KWP', 'Nexera', 'Việt Nam', '2 năm trọn gói', '{"Quy mô": "Hộ gia đình", "Sản lượng": "600-700 kWh/tháng"}'::jsonb, '[{"url": "https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=800&q=80", "is_primary": true}]'::jsonb, true, ARRAY['https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=800&q=80'], true, NULL),
-('Phần Mềm Quản Lý Kho N-WMS', 'phan-mem-quan-ly-kho-bai-n-wms', (SELECT id FROM categories WHERE slug = 'phan-mem-quan-ly' LIMIT 1), 'PACKAGE', 15000000, 5000000, 20, 999, 'Giải pháp quản lý kho thông minh tích hợp IoT.', 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80', 'SFT-NWMS', 'Nexera Tech', 'Việt Nam', '12 tháng', '{"Nền tảng": "Web/Mobile App"}'::jsonb, '[{"url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80", "is_primary": true}]'::jsonb, true, ARRAY['https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80'], false, NULL);
-
--- 6.9 SEED SAMPLE CUSTOMERS
-INSERT INTO public.customers (full_name, phone, email, address) VALUES
-('Nguyễn Văn An', '0901234567', 'an.nguyen@example.com', '123 Nguyễn Văn Linh, Quận 7, TP.HCM'),
-('Trần Thị Bình', '0987654321', 'binh.tran@example.com', '45 Lê Duẩn, Quận 1, TP.HCM'),
-('Công ty TNHH ABC', '0283456789', 'contact@abc.vn', 'KCN Sóng Thần, Bình Dương');
-
--- 6.10 SEED SAMPLE ORDERS
-INSERT INTO public.orders (customer_id, status, total_amount, note) VALUES
-((SELECT id FROM customers WHERE email = 'customer@nexera.vn' LIMIT 1), 'COMPLETED', 22000000, 'Giao hàng tận nơi - Đã thanh toán PayOS'),
-((SELECT id FROM customers WHERE email = 'customer@nexera.vn' LIMIT 1), 'PROCESSING', 2500000, 'Đã cọc 50% qua chuyển khoản'),
-((SELECT id FROM customers WHERE email = 'an.nguyen@example.com' LIMIT 1), 'COMPLETED', 65000000, 'Lắp đặt vào cuối tuần');
-
--- 6.11 SEED SAMPLE ORDER ITEMS
-INSERT INTO public.order_items (order_id, product_id, quantity, unit_price, total_price) VALUES
-((SELECT id FROM orders WHERE note = 'Giao hàng tận nơi - Đã thanh toán PayOS' LIMIT 1), (SELECT id FROM products WHERE slug = 'pin-luu-tru-lithium-ufo-5kwh' LIMIT 1), 1, 22000000, 22000000),
-((SELECT id FROM orders WHERE note = 'Đã cọc 50% qua chuyển khoản' LIMIT 1), (SELECT id FROM products WHERE slug = 'tam-pin-jinko-550w' LIMIT 1), 1, 2500000, 2500000),
-((SELECT id FROM orders WHERE note = 'Lắp đặt vào cuối tuần' LIMIT 1), (SELECT id FROM products WHERE slug = 'he-thong-dien-mat-troi-ap-mai-5kwp' LIMIT 1), 1, 65000000, 65000000);
-
--- 6.12 SEED SAMPLE LEADS
+('Phần Mềm Quản Lý Kho N-WMS', 'phan-mem-quan-ly-kho-bai-n-wms', (SELECT id FROM categories WHERE slug = 'phan-mem-quan-ly' LIMIT 1), 'PACKAGE', 15000000, 5000000, 20, 999, 'Giải pháp quản lý kho thông minh tích hợp IoT.', 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80', 'SFT-NWMS', 'Nexera Tech', 'Việt Nam', '12 tháng', '{"Nền tảng": "Web/Mobile App"}'::jsonb, '[{"url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80", "is_primary": true}]'::jsonb, true, ARRAY['-- 6.12 SEED SAMPLE LEADS
 INSERT INTO public.leads (name, phone, email, message, status) VALUES
 ('Lê Hoàng Khang', '0933112233', 'khang.le@gmail.com', 'Tôi muốn tư vấn hệ thống ĐMT 10kW cho nhà xưởng', 'NEW'),
 ('Phạm Thị Dung', '0911445566', '', 'Báo giá pin lưu trữ', 'CONTACTED'),
@@ -796,6 +776,77 @@ INSERT INTO public.projects (name, category, description, image_url, completion_
 ('Smart Home Villa Quận 2', 'RESIDENTIAL', 'Tích hợp ĐMT, pin lưu trữ và điều khiển thông minh.', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80', '2026-08-01');
 
 -- ==========================================
--- HOÀN TẤT SCHEMA HỢP NHẤT DỰ ÁN NEXERA (16 BẢNG)
--- Chạy duy nhất file này trong Supabase SQL Editor để thiết lập hoàn chỉnh DB.
+-- 7. FUNCTION: merge_guest_conversation
+-- Gộp lịch sử tin nhắn vãng lai vào tài khoản chính
 -- ==========================================
+CREATE OR REPLACE FUNCTION public.merge_guest_conversation(p_customer_id UUID, p_guest_session_id TEXT)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_guest_conv_id UUID;
+    v_customer_conv_id UUID;
+    v_cust_name TEXT;
+BEGIN
+    -- Lấy tên khách hàng
+    SELECT full_name INTO v_cust_name
+    FROM public.customers
+    WHERE id = p_customer_id;
+
+    -- Tìm hội thoại vãng lai đang mở
+    SELECT id INTO v_guest_conv_id
+    FROM public.conversations
+    WHERE guest_session_id = p_guest_session_id 
+      AND customer_id IS NULL
+      AND status != 'MERGED'
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    -- Nếu không có, thoát
+    IF v_guest_conv_id IS NULL THEN
+        RETURN;
+    END IF;
+
+    -- Tìm hội thoại chính thức của customer
+    SELECT id INTO v_customer_conv_id
+    FROM public.conversations
+    WHERE customer_id = p_customer_id
+      AND status != 'MERGED'
+    ORDER BY last_message_at DESC
+    LIMIT 1;
+
+    IF v_customer_conv_id IS NOT NULL THEN
+        -- Chuyển tin nhắn sang hội thoại chính
+        UPDATE public.chat_messages
+        SET conversation_id = v_customer_conv_id,
+            sender_id = COALESCE(sender_id, p_customer_id),
+            sender_name = COALESCE(v_cust_name, sender_name)
+        WHERE conversation_id = v_guest_conv_id;
+
+        -- Ẩn hội thoại vãng lai
+        UPDATE public.conversations
+        SET status = 'MERGED',
+            customer_id = p_customer_id
+        WHERE id = v_guest_conv_id;
+
+        -- Cập nhật thời gian và nội dung preview
+        UPDATE public.conversations
+        SET last_message_at = (SELECT last_message_at FROM public.conversations WHERE id = v_guest_conv_id),
+            last_message_preview = (SELECT last_message_preview FROM public.conversations WHERE id = v_guest_conv_id)
+        WHERE id = v_customer_conv_id;
+    ELSE
+        -- Nâng cấp luôn hội thoại vãng lai thành chính thức
+        UPDATE public.conversations
+        SET customer_id = p_customer_id,
+            guest_name = COALESCE(v_cust_name, guest_name)
+        WHERE id = v_guest_conv_id;
+
+        UPDATE public.chat_messages
+        SET sender_id = COALESCE(sender_id, p_customer_id),
+            sender_name = COALESCE(v_cust_name, sender_name)
+        WHERE conversation_id = v_guest_conv_id
+          AND sender_type = 'CUSTOMER';
+    END IF;
+END;
+$$;

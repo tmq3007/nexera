@@ -6,7 +6,7 @@ import { Search, Filter, Tags, Zap, BadgeDollarSign, ChevronRight, ChevronLeft, 
 import { useToast } from "@/contexts/ToastContext";
 import { useCartStore } from "@/store/cartStore";
 import { createClient } from "@/utils/supabase/client";
-import { ConsultationModal } from "./ConsultationModal";
+
 
 function stripHtml(html: string | null | undefined): string {
   if (!html) return "";
@@ -515,10 +515,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                         {!isAdmin && (
                           product.stock <= 0 ? (
                             <button 
-                              onClick={(e) => handleOpenConsult(product, e)}
-                              className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-bold shadow-sm transition-colors text-sm flex items-center justify-center gap-2"
+                              onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
+                              className="px-4 py-2.5 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all w-full md:w-auto mt-2 md:mt-0 shadow-sm whitespace-nowrap group"
                             >
-                              <MessageSquare className="w-4 h-4" />
+                              <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-white" />
                               Tư vấn ngay
                             </button>
                           ) : (
@@ -1041,11 +1041,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
       )}
 
       {/* Consultation Modal */}
-      <ConsultationModal
-        isOpen={isConsultOpen}
-        onClose={() => setIsConsultOpen(false)}
-        product={consultProduct}
-      />
+
 
     </div>
   );

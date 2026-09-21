@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Phone, MessageCircle, MapPin, X } from "lucide-react";
 import { siteConfig } from "@/config/site";
@@ -25,6 +25,14 @@ export function FloatingContact() {
     setUnreadCount(0);
     setShowTooltip(false);
   };
+
+  useEffect(() => {
+    const handleOpenChatEvent = () => {
+      handleOpenChat();
+    };
+    window.addEventListener("open-nexera-chat", handleOpenChatEvent);
+    return () => window.removeEventListener("open-nexera-chat", handleOpenChatEvent);
+  }, []);
 
   return (
     <>

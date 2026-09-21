@@ -92,6 +92,12 @@ export function Header() {
                 full_name: name,
               });
             }
+
+            // Tự động đồng bộ phiên chat vãng lai vào tài khoản ngay khi vào website
+            const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
+            if (guestSessionId) {
+              Promise.resolve(supabase.rpc("sync_customer_chat_session", { p_guest_session_id: guestSessionId })).catch(() => {});
+            }
           }
         } else {
           // Phiên đã kết thúc hoặc chưa đăng nhập

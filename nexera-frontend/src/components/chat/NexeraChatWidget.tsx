@@ -15,7 +15,8 @@ import {
   Minus,
   User,
   CheckCircle2,
-  PhoneCall
+  PhoneCall,
+  MessageSquarePlus
 } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { createClient } from "@/utils/supabase/client";
@@ -46,6 +47,29 @@ const QUICK_PROMPTS = [
   "Tra cứu tiến độ xử lý đơn hàng",
 ];
 
+const formatChatDate = (dateStr: string) => {
+  try {
+    const d = new Date(dateStr);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (d.toDateString() === today.toDateString()) {
+      return "Hôm nay";
+    } else if (d.toDateString() === yesterday.toDateString()) {
+      return "Hôm qua";
+    } else {
+      return d.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+    }
+  } catch {
+    return "";
+  }
+};
+
 export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChatWidgetProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
@@ -56,9 +80,11 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
   const [guestEmail, setGuestEmail] = useState<string>("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [customerName, setCustomerName] = useState<string>("");
+  const [customerTier, setCustomerTier] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [showPromptsMenu, setShowPromptsMenu] = useState<boolean>(false);
   const [showContactForm, setShowContactForm] = useState<boolean>(false);
   const [contactSaved, setContactSaved] = useState<boolean>(false);
   const [dismissedLeadCard, setDismissedLeadCard] = useState<boolean>(false);
@@ -90,7 +116,9 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
 
   // Scroll to bottom on new messages
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150); // Đợi 150ms để DOM render xong các block lớn (như form)
   };
 
   useEffect(() => {
@@ -129,24 +157,27 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
       // 2. Check if logged-in customer OR admin account
       let currentCustomerId: string | null = null;
       let currentCustomerName: string = "";
+      let isAdminLocal = false;
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const [custRes, adminRes] = await Promise.all([
           supabase
             .from("customers")
-            .select("id, full_name, phone, email, phone_numbers, emails, auth_user_id")
+            .select("id, full_name, phone, email, phone_numbers, emails, auth_user_id, tier")
             .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
             .limit(1),
           supabase
             .from("admin_accounts")
-            .select("id, display_name, email, role")
+            .select("id, display_name, role_id")
             .eq("auth_user_id", user.id)
             .maybeSingle()
         ]);
 
         const adminAcc = adminRes.data;
-        const cust = custRes.data && custRes.data.length > 0 ? custRes.data[0] : null;
+        let cust = Array.isArray(custRes.data)
+          ? (custRes.data.length > 0 ? custRes.data[0] : null)
+          : (custRes.data || null);
 
         if (adminAcc) {
           const adminTitle = adminAcc.display_name || user.email?.split("@")[0] || "Quản trị viên";
@@ -157,70 +188,144 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
             setIsAdmin(true);
             setCustomerName(fullAdminName);
             setGuestName(fullAdminName);
-            setGuestEmail(adminAcc.email || user.email || "");
+            setGuestEmail(user.email || ""); // Admin account table ko có cột email, lấy từ user auth
             setContactSaved(true); // Admin không bao giờ cần hiển thị form hỏi lại SĐT
           }
-
-          // Cập nhật tên các cuộc hội thoại cũ nếu đang gắn session này
-          await supabase
-            .from("conversations")
-            .update({ 
-              guest_name: fullAdminName,
-              guest_email: adminAcc.email || user.email || undefined
-            })
-            .eq("guest_session_id", sId);
-        } else if (cust) {
-          currentCustomerId = cust.id;
-          currentCustomerName = cust.full_name || "Khách hàng";
+          isAdminLocal = true;
+          // Chặn Admin: Không update guest_name và KHÔNG gộp hội thoại để tránh rác DB
+        } else {
+          // Xử lý danh tính khách hàng đã đăng nhập
+          currentCustomerId = cust?.id || null;
+          currentCustomerName = cust?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
+          
           if (isMounted) {
-            setCustomerId(cust.id);
+            if (cust?.id) setCustomerId(cust.id);
+            setCustomerTier(cust?.tier || "TIÊU CHUẨN");
             setCustomerName(currentCustomerName);
             setGuestName(currentCustomerName);
-            setGuestEmail(cust.email || user.email || "");
-            if (cust.phone) setGuestPhone(cust.phone);
+            setGuestEmail(cust?.email || user.email || "");
+            if (cust?.phone) setGuestPhone(cust.phone);
             setContactSaved(true);
           }
 
-          if (cust.auth_user_id !== user.id) {
-            await supabase.from("customers").update({ auth_user_id: user.id }).eq("id", cust.id);
-          }
+          // Luôn luôn gọi Backend API để đồng bộ và gộp phiên (Phương án A - Lịch sử xuyên suốt)
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+          try {
+            const syncRes = await fetch(`${backendUrl}/chat/sync-session`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                guestSessionId: sId,
+                customerId: cust?.id || undefined,
+                authUserId: user.id,
+                email: user.email,
+                fullName: currentCustomerName,
+                phone: cust?.phone || savedPhone || undefined,
+              }),
+            });
+            if (syncRes.ok) {
+              const syncData = await syncRes.json();
+              if (syncData.customer && isMounted) {
+                currentCustomerId = syncData.customer.id;
+                currentCustomerName = syncData.customer.full_name || currentCustomerName;
+                setCustomerId(syncData.customer.id);
+                setCustomerTier(syncData.customer.tier || "TIÊU CHUẨN");
+                setCustomerName(currentCustomerName);
+                setGuestName(currentCustomerName);
+                if (syncData.customer.phone) setGuestPhone(syncData.customer.phone);
+                if (syncData.customer.email) setGuestEmail(syncData.customer.email);
+                setContactSaved(true);
+              }
 
-          // Tự động gom SĐT và Email từ phiên vãng lai vào mảng của khách hàng
-          const updatedPhones: string[] = Array.isArray(cust.phone_numbers) ? [...cust.phone_numbers] : [];
-          const updatedEmails: string[] = Array.isArray(cust.emails) ? [...cust.emails] : [];
-          let needsUpdate = false;
+              if (syncData.conversationId && isMounted) {
+                const targetConvId = syncData.conversationId;
+                setConversationId(targetConvId);
 
-          if (savedPhone && !updatedPhones.includes(savedPhone)) {
-            updatedPhones.push(savedPhone);
-            needsUpdate = true;
-          }
-          if (savedEmail && !updatedEmails.includes(savedEmail)) {
-            updatedEmails.push(savedEmail);
-            needsUpdate = true;
-          }
+                // Tải ngay toàn bộ tin nhắn của hội thoại đã gộp (lịch sử xuyên suốt)
+                const { data: msgData } = await supabase
+                  .from("chat_messages")
+                  .select("*")
+                  .eq("conversation_id", targetConvId)
+                  .order("created_at", { ascending: true });
 
-          if (needsUpdate) {
-            await supabase
-              .from("customers")
-              .update({
-                phone: cust.phone || savedPhone || undefined,
-                email: cust.email || savedEmail || undefined,
-                phone_numbers: updatedPhones,
-                emails: updatedEmails,
-              })
-              .eq("id", cust.id);
-          }
+                if (isMounted) {
+                  setMessages((msgData as ChatMessage[]) || []);
+                  setIsLoading(false);
+                  scrollToBottom();
+                }
+                return; // Hoàn tất đồng bộ ngay lập tức!
+              }
+            }
+          } catch (syncErr) {
+            console.warn("Backend /chat/sync-session không khả dụng, dùng direct fallback:", syncErr);
+            try {
+              // Fallback trực tiếp: tìm cuộc hội thoại chính theo customer_id hoặc email
+              let existingConvQuery = supabase
+                .from("conversations")
+                .select("id")
+                .neq("status", "MERGED")
+                .order("created_at", { ascending: true })
+                .limit(1);
 
-          // Đồng bộ các hội thoại trước khi đăng nhập về customer_id này
-          await supabase
-            .from("conversations")
-            .update({ customer_id: cust.id })
-            .eq("guest_session_id", sId)
-            .is("customer_id", null);
+              if (cust?.id) {
+                existingConvQuery = existingConvQuery.eq("customer_id", cust.id);
+              } else if (user.email) {
+                existingConvQuery = existingConvQuery.eq("guest_email", user.email);
+              }
+
+              const { data: existingConvs } = await existingConvQuery;
+              const primaryConv = existingConvs && existingConvs.length > 0 ? existingConvs[0] : null;
+
+              const { data: currentGuestConv } = await supabase
+                .from("conversations")
+                .select("id")
+                .eq("guest_session_id", sId)
+                .neq("status", "MERGED")
+                .maybeSingle();
+
+              if (primaryConv && currentGuestConv && primaryConv.id !== currentGuestConv.id) {
+                await supabase
+                  .from("chat_messages")
+                  .update({ conversation_id: primaryConv.id })
+                  .eq("conversation_id", currentGuestConv.id);
+
+                await supabase
+                  .from("conversations")
+                  .update({ status: "MERGED", guest_name: currentCustomerName })
+                  .eq("id", currentGuestConv.id);
+
+                setConversationId(primaryConv.id);
+              } else if (primaryConv) {
+                setConversationId(primaryConv.id);
+              } else if (currentGuestConv) {
+                setConversationId(currentGuestConv.id);
+              }
+            } catch (updateErr) {
+              console.error("Lỗi cập nhật fallback conversation:", updateErr);
+            }
+          }
         }
       }
 
       // 3. Find existing conversation (tìm theo cả customer_id hoặc guest_session_id)
+      if (isAdminLocal) {
+        // Admin không được chat, nên không load tin nhắn cũ.
+        const welcomeMsg: ChatMessage = {
+          id: "welcome_init",
+          conversation_id: "local_welcome",
+          sender_type: "SYSTEM",
+          sender_name: "Nexera Support",
+          content: "Xin chào! Rất vui được đón tiếp Quý khách đến với NEXERA. Bạn đang quan tâm đến giải pháp Năng lượng xanh, Thiết bị thông minh hay cần hỗ trợ đơn hàng ạ?",
+          is_read: true,
+          created_at: new Date().toISOString()
+        };
+        if (isMounted) {
+          setMessages([welcomeMsg]);
+          setIsLoading(false);
+        }
+        return;
+      }
+
       let query = supabase
         .from("conversations")
         .select("*")
@@ -228,9 +333,7 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
         .order("last_message_at", { ascending: false }) // Ưu tiên hội thoại mới có tin nhắn nhất (hội thoại cũ sau khi gộp sẽ nảy lên đây)
         .limit(1);
 
-      if (currentCustomerId && sId) {
-        query = query.or(`customer_id.eq.${currentCustomerId},guest_session_id.eq.${sId}`);
-      } else if (currentCustomerId) {
+      if (currentCustomerId) {
         query = query.eq("customer_id", currentCustomerId);
       } else {
         query = query.eq("guest_session_id", sId);
@@ -297,8 +400,16 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
 
     initChat();
 
+    // Lắng nghe sự kiện auth để tự động đồng bộ & gộp chat ngay khi khách đăng nhập
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "SIGNED_OUT") {
+        initChat();
+      }
+    });
+
     return () => {
       isMounted = false;
+      subscription?.unsubscribe();
     };
   }, [supabase]);
 
@@ -332,6 +443,26 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
               unreadCountRef.current += 1;
               onUnreadChange?.(unreadCountRef.current, newMsg.content);
             }
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversations",
+          filter: `id=eq.${conversationId}`
+        },
+        (payload) => {
+          const updatedConv = payload.new as any;
+          if (updatedConv.guest_name && updatedConv.guest_name !== "Khách vãng lai") {
+            setCustomerName(updatedConv.guest_name);
+            setGuestName(updatedConv.guest_name);
+          }
+          if (updatedConv.customer_id) {
+            setCustomerId(updatedConv.customer_id);
+            setContactSaved(true);
           }
         }
       )
@@ -560,59 +691,58 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
   // Save guest contact info
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!guestName.trim() && !guestPhone.trim() && !guestEmail.trim()) return;
+    const name = guestName.trim();
+    const phone = guestPhone.trim();
+    const email = guestEmail.trim();
+    if (!name && !phone && !email) return;
 
-    localStorage.setItem("nexera_chat_guest_name", guestName.trim());
-    localStorage.setItem("nexera_chat_guest_phone", guestPhone.trim());
-    localStorage.setItem("nexera_chat_guest_email", guestEmail.trim());
+    localStorage.setItem("nexera_chat_guest_name", name);
+    localStorage.setItem("nexera_chat_guest_phone", phone);
+    localStorage.setItem("nexera_chat_guest_email", email);
     setContactSaved(true);
     setShowContactForm(false);
+
+    // Gọi Backend API để nhận diện / liên kết khách hàng thông minh mà không bị vướng RLS
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+    try {
+      const idRes = await fetch(`${backendUrl}/chat/identify-contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          guestSessionId,
+          phone: phone || undefined,
+          email: email || undefined,
+          fullName: name || undefined,
+        }),
+      });
+
+      if (idRes.ok) {
+        const idData = await idRes.json();
+        if (idData.customer) {
+          setCustomerId(idData.customer.id);
+          if (idData.customer.full_name) {
+            setCustomerName(idData.customer.full_name);
+            setGuestName(idData.customer.full_name);
+          }
+        }
+        if (idData.conversationId) {
+          setConversationId(idData.conversationId);
+        }
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend /chat/identify-contact call failed, using direct save:", err);
+    }
 
     if (conversationId) {
       await supabase
         .from("conversations")
         .update({
-          guest_name: guestName.trim() || undefined,
-          guest_phone: guestPhone.trim() || undefined,
-          guest_email: guestEmail.trim() || undefined,
+          guest_name: name || undefined,
+          guest_phone: phone || undefined,
+          guest_email: email || undefined,
         })
         .eq("id", conversationId);
-    }
-
-    // Nếu đã đăng nhập, tự động gom SĐT và Email vào mảng của khách hàng
-    if (customerId) {
-      const { data: cust } = await supabase
-        .from("customers")
-        .select("phone, email, phone_numbers, emails")
-        .eq("id", customerId)
-        .maybeSingle();
-
-      if (cust) {
-        const updatedPhones: string[] = Array.isArray(cust.phone_numbers) ? [...cust.phone_numbers] : [];
-        const updatedEmails: string[] = Array.isArray(cust.emails) ? [...cust.emails] : [];
-        let needsUpdate = false;
-
-        if (guestPhone.trim() && !updatedPhones.includes(guestPhone.trim())) {
-          updatedPhones.push(guestPhone.trim());
-          needsUpdate = true;
-        }
-        if (guestEmail.trim() && !updatedEmails.includes(guestEmail.trim())) {
-          updatedEmails.push(guestEmail.trim());
-          needsUpdate = true;
-        }
-
-        if (needsUpdate) {
-          await supabase
-            .from("customers")
-            .update({
-              phone: cust.phone || guestPhone.trim() || undefined,
-              email: cust.email || guestEmail.trim() || undefined,
-              phone_numbers: updatedPhones,
-              emails: updatedEmails,
-            })
-            .eq("id", customerId);
-        }
-      }
     }
   };
 
@@ -628,17 +758,20 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
       )}
 
       <div
-        className={`fixed bottom-3 sm:bottom-5 right-3 sm:right-6 left-3 sm:left-auto z-[70] w-auto sm:w-[410px] h-[540px] max-h-[calc(100dvh-7rem)] sm:max-h-[min(560px,calc(100dvh-7.5rem))] bg-white rounded-3xl shadow-[0_20px_60px_-15px_rgba(19,66,110,0.35)] border border-[#d4e6f1]/90 flex flex-col overflow-hidden transition-all duration-300 ease-out origin-bottom-right ${
+        className={`fixed bottom-3 sm:bottom-5 right-3 sm:right-6 left-3 sm:left-auto z-[70] w-auto sm:w-[380px] h-[580px] sm:h-[620px] max-h-[calc(100dvh-7rem)] sm:max-h-[min(650px,calc(100dvh-7.5rem))] bg-white rounded-3xl shadow-2xl shadow-[#13426e]/20 border border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ease-out origin-bottom-right ${
           isOpen
             ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
             : "opacity-0 scale-95 translate-y-6 pointer-events-none"
         }`}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#13426e] via-[#164b7d] to-[#1e5a92] text-white px-3.5 py-3 sm:px-4 sm:py-3.5 flex items-center justify-between shadow-xs select-none">
-          <div className="flex items-center gap-2.5 min-w-0 pr-1">
+        <div className="bg-gradient-to-r from-[#13426e] via-[#164b7d] to-[#1e5a92] text-white px-4 py-4 flex items-center justify-between shadow-md select-none relative overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+          
+          <div className="flex items-center gap-3 min-w-0 pr-1 relative z-10">
             <div className="relative shrink-0">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-white/15 backdrop-blur-xs flex items-center justify-center border border-white/25 font-black text-xs text-[#80bf49] shadow-inner">
+              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-black text-[13px] text-[#13426e] shadow-sm ring-2 ring-white/30">
                 NX
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-[#80bf49] border-2 border-[#13426e] rounded-full">
@@ -712,8 +845,36 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
           </div>
         )}
 
+        {/* Customer Identity Badge on Storefront */}
+        {!isAdmin && customerId && (
+          <div className="bg-emerald-50/90 border-b border-emerald-100/80 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-emerald-800 shrink-0 select-none">
+            <span className="font-semibold flex items-center gap-1.5 truncate pr-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="truncate">Tài khoản: <strong>{customerName}</strong></span>
+            </span>
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[9px] bg-emerald-600 text-white px-2 py-0.5 rounded-md font-bold tracking-wider">
+                {customerTier || "THÀNH VIÊN"}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Guest Identified Badge */}
+        {!isAdmin && !customerId && contactSaved && guestName && (
+          <div className="bg-blue-50/90 border-b border-blue-100/80 px-3.5 py-1.5 flex items-center justify-between text-[11px] text-blue-800 shrink-0 select-none">
+            <span className="font-semibold flex items-center gap-1.5 truncate pr-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shrink-0" />
+              <span className="truncate">Khách hàng: <strong>{guestName}</strong></span>
+            </span>
+            <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-md font-bold tracking-wider">
+              KHÁCH TƯ VẤN
+            </span>
+          </div>
+        )}
+
         {/* Guest Contact Bar (Collapsible) */}
-        {showContactForm && (
+        {showContactForm && !customerId && (
           <div className="bg-gradient-to-b from-[#f0f7fb] to-[#e4f1f9] border-b border-[#d4e6f1] p-3.5 animate-in slide-in-from-top-2 duration-200">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-[#13426e] flex items-center gap-1.5">
@@ -781,22 +942,50 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
             {messages.map((msg, index) => {
               const isCustomer = msg.sender_type === "CUSTOMER";
               const isSystem = msg.sender_type === "SYSTEM";
+              const prevMsg = index > 0 ? messages[index - 1] : null;
+              const isNewDay =
+                !prevMsg ||
+                (msg.created_at &&
+                  prevMsg.created_at &&
+                  new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString());
 
               if (isSystem) {
                 return (
-                  <div key={msg.id || index} className="flex justify-center my-2">
-                    <div className="bg-white border border-[#d4e6f1] text-[#13426e] rounded-xl px-3.5 py-2 text-xs shadow-2xs max-w-[90%] leading-relaxed">
-                      {msg.content}
+                  <React.Fragment key={msg.id || index}>
+                    {isNewDay && msg.created_at && (
+                      <div className="flex items-center justify-center my-2 select-none">
+                        <span className="text-[10px] bg-slate-200/80 text-gray-500 font-medium px-3 py-0.5 rounded-full shadow-2xs">
+                          {formatChatDate(msg.created_at)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-end gap-2 justify-start my-1 animate-in slide-in-from-bottom-2 duration-300">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#13426e] to-[#1e5a92] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm ring-2 ring-white">
+                        NX
+                      </div>
+                      <div className="max-w-[85%] bg-white border border-[#e2e8f0] text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-[12.5px] shadow-sm leading-relaxed relative">
+                        <p className="text-[10px] font-bold text-[#13426e] mb-1.5 opacity-90">
+                          {msg.sender_name || "Nexera Support"}
+                        </p>
+                        {msg.content}
+                      </div>
                     </div>
-                  </div>
+                  </React.Fragment>
                 );
               }
 
               return (
-                <div
-                  key={msg.id || index}
-                  className={`flex items-end gap-2 ${isCustomer ? "justify-end" : "justify-start"}`}
-                >
+                <React.Fragment key={msg.id || index}>
+                  {isNewDay && msg.created_at && (
+                    <div className="flex items-center justify-center my-2 select-none">
+                      <span className="text-[10px] bg-slate-200/80 text-gray-500 font-medium px-3 py-0.5 rounded-full shadow-2xs">
+                        {formatChatDate(msg.created_at)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className={`flex items-end gap-2 ${isCustomer ? "justify-end" : "justify-start"}`}
+                  >
                   {!isCustomer && (
                     <div className="w-7 h-7 rounded-full bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
                       NX
@@ -810,9 +999,19 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
                         : "bg-white text-gray-800 border border-gray-100 rounded-bl-xs"
                     }`}
                   >
-                    {!isCustomer && (
+                    {!isCustomer ? (
                       <p className="text-[10px] font-bold text-[#80bf49] mb-1">
-                        {msg.sender_name || "Tư vấn viên"}
+                        {(!msg.sender_name ||
+                          msg.sender_name === "Khách Hàng Mặc Định" ||
+                          msg.sender_name === "Khách hàng" ||
+                          msg.sender_name === customerName ||
+                          msg.sender_name === guestName)
+                            ? "Tư vấn viên NEXERA"
+                            : msg.sender_name}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] font-bold text-emerald-300 mb-1">
+                        {customerName || guestName || "Bạn"}
                       </p>
                     )}
                     {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
@@ -891,25 +1090,25 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
                     </span>
                   </div>
                 </div>
-              );
-            })}
+              </React.Fragment>
+            );
+          })}
 
             {/* Quick Prompt Suggestions if few messages */}
-            {messages.length <= 2 && (
+            {!isAdmin && messages.length <= 2 && (
               <div className="pt-2">
                 <p className="text-[11px] text-gray-500 font-semibold mb-2 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#80bf49]" />
                   Gợi ý chủ đề hỗ trợ nhanh:
                 </p>
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {QUICK_PROMPTS.map((prompt, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSendMessage(prompt)}
-                      className="text-left text-xs bg-white hover:bg-[#f0f7fb] hover:text-[#13426e] hover:border-[#80bf49] text-gray-700 px-3.5 py-2.5 rounded-2xl border border-gray-200/80 transition-all shadow-2xs flex items-center justify-between group cursor-pointer"
+                      className="text-[11.5px] font-medium bg-white hover:bg-[#80bf49] text-gray-600 hover:text-white px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-[#80bf49] transition-all shadow-sm cursor-pointer whitespace-nowrap"
                     >
-                      <span className="group-hover:translate-x-0.5 transition-transform">{prompt}</span>
-                      <span className="text-gray-300 group-hover:text-[#80bf49] transition-colors text-xs font-bold">→</span>
+                      {prompt}
                     </button>
                   ))}
                 </div>
@@ -1011,46 +1210,86 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
           </div>
         )}
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendMessage();
-          }}
-          className="flex items-center gap-2"
-        >
-          <input
-            type="file"
-            ref={fileInputRef}
-            accept="image/*"
-            className="hidden"
-            onChange={handleFileUpload}
-          />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="w-9 h-9 rounded-xl text-gray-400 hover:text-[#13426e] hover:bg-[#f0f7fb] flex items-center justify-center transition-all shrink-0 cursor-pointer"
-            title="Gửi hình ảnh đính kèm (hoặc dán Ctrl+V)"
+        {isAdmin ? (
+          <div className="flex flex-col items-center justify-center p-2 text-center">
+            <p className="text-[11px] font-semibold text-red-500 mb-2">
+              🚫 Bạn đang đăng nhập dưới quyền Quản trị viên. Bạn không thể tự gửi tin nhắn cho hệ thống.
+            </p>
+            <a 
+              href="/admin/hoi-thoai"
+              className="px-4 py-2 bg-[#13426e] hover:bg-[#1e5a92] text-white text-[11px] font-bold rounded-lg transition-colors shadow-sm"
+            >
+              Chuyển đến Trang Quản trị
+            </a>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="flex items-end gap-2 bg-white relative"
           >
-            <ImageIcon className="w-4 h-4" />
-          </button>
-          <input
-            type="text"
-            placeholder="Nhập tin nhắn (hỗ trợ dán ảnh Ctrl+V)..."
-            value={inputValue}
-            onChange={handleInputChange}
-            onPaste={handlePaste}
-            disabled={isSending || isLoading}
-            className="flex-1 text-xs px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#80bf49]/30 focus:border-[#80bf49] focus:bg-white text-gray-800 placeholder-gray-400 transition-all"
-          />
-          <button
-            type="submit"
-            disabled={!inputValue.trim() || isSending || isLoading}
-            className="w-9 h-9 rounded-xl bg-gradient-to-r from-[#80bf49] to-[#6ea93e] hover:from-[#9ad166] hover:to-[#80bf49] disabled:opacity-40 disabled:hover:from-[#80bf49] disabled:hover:to-[#6ea93e] text-white flex items-center justify-center transition-all shadow-xs shrink-0 cursor-pointer disabled:cursor-not-allowed"
-            title="Gửi tin nhắn"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
+            {/* Quick Prompts Button & Menu */}
+            <div className="relative">
+              {showPromptsMenu && (
+                <div className="absolute bottom-full left-0 mb-3 w-[280px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-[80] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <div className="text-[11px] font-bold text-gray-500 px-2 pb-2 mb-1 border-b border-gray-100 flex items-center justify-between">
+                    <span>Gợi ý câu hỏi:</span>
+                    <button type="button" onClick={() => setShowPromptsMenu(false)} className="hover:text-gray-800">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {QUICK_PROMPTS.map((prompt, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          handleSendMessage(prompt);
+                          setShowPromptsMenu(false);
+                        }}
+                        className="text-left text-[11.5px] px-3 py-2 text-gray-700 hover:bg-[#f0f7fb] hover:text-[#13426e] rounded-xl transition-colors cursor-pointer"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowPromptsMenu(!showPromptsMenu)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                  showPromptsMenu ? "bg-[#13426e] text-white shadow-md" : "text-gray-400 hover:text-[#13426e] hover:bg-slate-100"
+                }`}
+                title="Xem các câu hỏi gợi ý"
+              >
+                <MessageSquarePlus className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Nhập tin nhắn..."
+                value={inputValue}
+                onChange={handleInputChange}
+                onPaste={handlePaste}
+                disabled={isSending || isLoading}
+                className="w-full text-[13px] pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#13426e]/20 focus:border-[#13426e]/40 focus:bg-white text-gray-800 placeholder-gray-400 transition-all shadow-sm"
+              />
+              <button
+                type="submit"
+                disabled={!inputValue.trim() || isSending || isLoading}
+                className="absolute right-1 top-1 bottom-1 w-8 h-8 rounded-full bg-[#13426e] hover:bg-[#1a5b99] disabled:opacity-40 disabled:bg-gray-400 text-white flex items-center justify-center transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                title="Gửi tin nhắn"
+              >
+                <Send className="w-3.5 h-3.5 -ml-0.5" />
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       {/* Image Lightbox Modal */}

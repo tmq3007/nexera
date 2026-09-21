@@ -9,7 +9,7 @@ import Autoplay from "embla-carousel-autoplay";
 import { useCartStore } from "@/store/cartStore";
 import { useToast } from "@/contexts/ToastContext";
 import { createClient } from "@/utils/supabase/client";
-import { ConsultationModal } from "@/components/storefront/ConsultationModal";
+
 
 function getProductImages(product: any): string[] {
   const list: string[] = [];
@@ -350,13 +350,13 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
                         {/* Action Buttons Matching ProductCatalog */}
                         {!isAdmin && (
                           isOutOfStock ? (
-                            <button
-                              onClick={(e) => handleOpenConsult(product, e)}
-                              className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-sm shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                              <MessageSquare className="w-4 h-4" />
-                              Tư vấn ngay
-                            </button>
+                            <button 
+                            onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
+                            className="w-full py-2 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm group"
+                          >
+                            <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+                            Tư vấn ngay
+                          </button>
                           ) : (
                             <div className="flex items-center gap-2">
                               <button
@@ -415,12 +415,7 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
       </div>
 
       {/* Consultation Modal */}
-      <ConsultationModal
-        isOpen={isConsultOpen}
-        onClose={() => setIsConsultOpen(false)}
-        product={consultProduct}
-      />
+
     </section>
   );
 }
-

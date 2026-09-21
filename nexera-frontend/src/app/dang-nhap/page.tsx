@@ -77,19 +77,33 @@ export default function CustomerLoginPage() {
         }
       }
 
-      // 2. Tự động đồng bộ phiên chat vãng lai và gộp SĐT/Email nếu có
-      if (customerId) {
-        const guestSessionId = localStorage.getItem("nexera_chat_guest_session");
-        const guestPhone = localStorage.getItem("nexera_chat_guest_phone");
-        const guestEmail = localStorage.getItem("nexera_chat_guest_email");
+      // 2. Tự động đồng bộ phiên chat vãng lai và gộp toàn bộ lịch sử trò chuyện
+      const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
+      const guestPhone = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_phone") : null;
+      const guestEmail = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_email") : null;
+      const customerFullName = data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Khách hàng";
 
-        if (guestSessionId) {
-          await supabase
-            .from("conversations")
-            .update({ customer_id: customerId })
-            .eq("guest_session_id", guestSessionId);
+      if (guestSessionId) {
+        try {
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+          await fetch(`${backendUrl}/chat/sync-session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              guestSessionId,
+              customerId,
+              authUserId: data.user.id,
+              email: data.user.email,
+              fullName: customerFullName,
+              phone: guestPhone || existingPhone || undefined,
+            }),
+          });
+        } catch (syncErr) {
+          console.error("Lỗi đồng bộ chat khi đăng nhập:", syncErr);
         }
+      }
 
+      if (customerId) {
         let needsUpdate = false;
         if (guestPhone && !existingPhones.includes(guestPhone)) {
           existingPhones.push(guestPhone);

@@ -1,5 +1,5 @@
 -- Xóa dữ liệu cũ (tuân thủ khóa ngoại)
-TRUNCATE TABLE order_items, orders, products, categories, customers, leads, articles, projects RESTART IDENTITY CASCADE;
+TRUNCATE TABLE order_items, orders, products, categories, customer_notes, chat_messages, conversations, customers, articles, projects RESTART IDENTITY CASCADE;
 
 -- 1. CATEGORIES (Danh mục sản phẩm)
 INSERT INTO categories (name, slug, description) VALUES
@@ -64,10 +64,10 @@ INSERT INTO products (name, slug, category_id, type, price, import_price, discou
 ('Phần Mềm Quản Lý Điện Năng N-EMS', 'phan-mem-quan-ly-dien-n-ems', (SELECT id FROM categories WHERE slug = 'phan-mem-quan-ly' LIMIT 1), 'PACKAGE', 25000000, 8000000, 0, 999, 'Hệ thống giám sát điện năng IoT.', 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80', 'SFT-NEMS', 'Nexera Tech', 'Việt Nam', '1 năm', '{"Nền tảng": "Web/App"}'::jsonb, '[{"url": "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80", "is_primary": true}]'::jsonb, false, NULL);
 
 -- 3. CUSTOMERS (Khách hàng)
-INSERT INTO customers (full_name, phone, email, address) VALUES
-('Nguyễn Văn An', '0901234567', 'an.nguyen@example.com', '123 Nguyễn Văn Linh, Quận 7, TP.HCM'),
-('Trần Thị Bình', '0987654321', 'binh.tran@example.com', '45 Lê Duẩn, Quận 1, TP.HCM'),
-('Công ty TNHH ABC', '0283456789', 'contact@abc.vn', 'KCN Sóng Thần, Bình Dương');
+INSERT INTO customers (full_name, phone, email, phone_numbers, emails, address, tier, notes, tags) VALUES
+('Nguyễn Văn An', '0901234567', 'an.nguyen@example.com', '{"0901234567"}', '{"an.nguyen@example.com"}', '123 Nguyễn Văn Linh, Quận 7, TP.HCM', 'STANDARD', 'Khách hàng quan tâm đến năng lượng mặt trời áp mái.', '{"Solar", "Q7"}'),
+('Trần Thị Bình', '0987654321', 'binh.tran@example.com', '{"0987654321"}', '{"binh.tran@example.com"}', '45 Lê Duẩn, Quận 1, TP.HCM', 'PREMIUM', 'Khách VIP, thường xuyên mua lẻ thiết bị.', '{"VIP", "Q1"}'),
+('Công ty TNHH ABC', '0283456789', 'contact@abc.vn', '{"0283456789"}', '{"contact@abc.vn"}', 'KCN Sóng Thần, Bình Dương', 'VIP', 'Công ty cần xuất hóa đơn đỏ.', '{"B2B", "BinhDuong"}');
 
 -- 4. ORDERS (Đơn hàng)
 INSERT INTO orders (customer_id, status, total_amount, note) VALUES
@@ -98,11 +98,23 @@ INSERT INTO order_items (order_id, product_id, quantity, unit_price, total_price
   2, 20000000, 40000000
 );
 
--- 6. LEADS (Yêu cầu tư vấn)
-INSERT INTO leads (name, phone, email, message, status) VALUES
-('Lê Hoàng Khang', '0933112233', 'khang.le@gmail.com', 'Tôi muốn tư vấn hệ thống điện mặt trời 10kW cho nhà xưởng', 'NEW'),
-('Phạm Thị Dung', '0911445566', '', 'Báo giá pin lưu trữ', 'CONTACTED'),
-('Đặng Thái Sơn', '0988776655', 'son.dang@outlook.com', 'Tư vấn phần mềm quản lý kho', 'RESOLVED');
+-- 6. CONVERSATIONS & CHAT (Replaces LEADS)
+INSERT INTO conversations (id, customer_id, guest_name, guest_phone, guest_email, status, last_message_preview) VALUES
+('11111111-1111-1111-1111-111111111111', NULL, 'Lê Hoàng Khang', '0933112233', 'khang.le@gmail.com', 'OPEN', 'Tôi muốn tư vấn hệ thống điện mặt trời 10kW cho nhà xưởng'),
+('22222222-2222-2222-2222-222222222222', NULL, 'Phạm Thị Dung', '0911445566', '', 'PENDING', 'Báo giá pin lưu trữ'),
+('33333333-3333-3333-3333-333333333333', (SELECT id FROM customers WHERE email = 'contact@abc.vn' LIMIT 1), 'Công ty TNHH ABC', '0283456789', 'contact@abc.vn', 'RESOLVED', 'Cảm ơn đã hỗ trợ.');
+
+INSERT INTO chat_messages (conversation_id, sender_type, sender_name, content) VALUES
+('11111111-1111-1111-1111-111111111111', 'CUSTOMER', 'Lê Hoàng Khang', 'Tôi muốn tư vấn hệ thống điện mặt trời 10kW cho nhà xưởng'),
+('22222222-2222-2222-2222-222222222222', 'CUSTOMER', 'Phạm Thị Dung', 'Báo giá pin lưu trữ'),
+('33333333-3333-3333-3333-333333333333', 'CUSTOMER', 'Công ty TNHH ABC', 'Xin chào, tôi cần hỗ trợ về phần mềm kho'),
+('33333333-3333-3333-3333-333333333333', 'ADMIN', 'Admin', 'Chào bạn, bạn cần hỗ trợ gì ạ?'),
+('33333333-3333-3333-3333-333333333333', 'CUSTOMER', 'Công ty TNHH ABC', 'Cảm ơn đã hỗ trợ.');
+
+-- 7. CUSTOMER NOTES
+INSERT INTO customer_notes (customer_id, content) VALUES
+((SELECT id FROM customers WHERE email = 'an.nguyen@example.com' LIMIT 1), 'Đã gọi điện tư vấn hệ thống 5kWp, khách đang cân nhắc.'),
+((SELECT id FROM customers WHERE email = 'contact@abc.vn' LIMIT 1), 'Gửi báo giá phần mềm kho, hẹn tuần sau phản hồi.');
 
 -- 7. ARTICLES (Bài viết)
 INSERT INTO articles (title, slug, content, image_url, published_at) VALUES

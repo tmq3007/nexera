@@ -14,10 +14,12 @@ import {
   Image as ImageIcon,
   Paperclip,
   X,
-  Zap
+  Zap,
+  MessageSquarePlus
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { playNotificationChime, playSendFeedback } from "@/lib/audio-chime";
+import { useToast } from "@/contexts/ToastContext";
 
 interface Conversation {
   id: string;
@@ -36,15 +38,39 @@ interface Conversation {
   updated_at: string;
   customer?: {
     id: string;
-    full_name: string;
-    email?: string | null;
-    phone?: string | null;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
     phone_numbers?: string[] | null;
     emails?: string[] | null;
-    address?: string | null;
-    tier?: string | null;
+    address: string | null;
+    tier: string | null;
   } | null;
 }
+
+const getConversationDisplayName = (conv: Conversation) => {
+  if (conv.customer_id) {
+    if (conv.customer?.full_name) return conv.customer.full_name;
+    if (conv.customer?.email) return conv.customer.email.split("@")[0];
+    if (conv.guest_name && conv.guest_name !== "Khách vãng lai") return conv.guest_name;
+    return `Thành viên #${conv.customer_id.substring(0, 4)}`;
+  }
+  
+  // Nêu có guest_name và khác "Khách vãng lai" (tức là khách đã nhập tên thực)
+  if (conv.guest_name && conv.guest_name !== "Khách vãng lai") {
+    return conv.guest_name;
+  }
+
+  // Nếu là vãng lai ẩn danh, gắn thêm #ID
+  if (conv.guest_session_id) {
+    const sid = conv.guest_session_id;
+    return `Vãng lai #${sid.substring(sid.length - 4).toUpperCase()}`;
+  }
+  if (conv.id) {
+    return `Vãng lai #${conv.id.substring(0, 4).toUpperCase()}`;
+  }
+  return "Khách vãng lai";
+};
 
 interface Message {
   id: string;
@@ -66,7 +92,7 @@ interface CustomerNote {
   created_at: string;
 }
 
-const CANNED_RESPONSES = [
+const DEFAULT_CANNED_RESPONSES = [
   "Dạ chào Quý khách! Nexera có thể hỗ trợ thông tin gì cho bạn ạ?",
   "Hệ thống điện mặt trời hòa lưới có lưu trữ (Hybrid) hiện đang có chính sách bảo hành 5 năm toàn diện.",
   "Dạ kỹ sư tư vấn của Nexera sẽ liên hệ trực tiếp qua số điện thoại của bạn ngay ạ.",
@@ -101,6 +127,11 @@ export function LiveChatManager({
     id: "",
     name: "Admin Nexera",
   });
+  
+  const toast = useToast();
+
+  // Canned Responses
+  const [cannedResponses, setCannedResponses] = useState<string[]>(DEFAULT_CANNED_RESPONSES);
 
   // Customer context states
   const [customerOrdersCount, setCustomerOrdersCount] = useState<number>(0);
@@ -109,6 +140,7 @@ export function LiveChatManager({
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isConvertingGuest, setIsConvertingGuest] = useState(false);
   
+  const [convertName, setConvertName] = useState("");
   const [convertPhone, setConvertPhone] = useState("");
   const [convertEmail, setConvertEmail] = useState("");
 
@@ -128,6 +160,7 @@ export function LiveChatManager({
 
   // Slash commands menu (/)
   const [showSlashMenu, setShowSlashMenu] = useState(false);
+  const [showPromptsMenu, setShowPromptsMenu] = useState(false);
 
   const activeChannelRef = useRef<any>(null);
   const isTypingSentRef = useRef<boolean>(false);
@@ -151,21 +184,92 @@ export function LiveChatManager({
           .eq("auth_user_id", user.id)
           .maybeSingle();
 
+        const adminName = adminAcc?.display_name || (user.email && !user.email.includes("customer") ? user.email.split("@")[0] : "Admin Nexera");
         setAdminUser({
           id: adminAcc?.id || user.id,
-          name: adminAcc?.display_name || user.email?.split("@")[0] || "Admin Nexera",
+          name: adminName || "Admin Nexera",
         });
       }
     }
     loadAdmin();
   }, [supabase]);
 
-  // 2. Fetch or sync conversations
+  // Load custom canned responses from Local Storage
+  useEffect(() => {
+    const saved = localStorage.getItem("nexera_admin_canned_responses");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCannedResponses(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to parse canned responses", e);
+      }
+    }
+  }, []);
+
+  const saveCannedResponse = () => {
+    if (!inputValue.trim()) {
+      toast.info("Vui lòng nhập nội dung vào ô chat để lưu làm mẫu!");
+      return;
+    }
+    if (cannedResponses.includes(inputValue.trim())) {
+      toast.error("Mẫu câu này đã tồn tại!");
+      return;
+    }
+    const newResponses = [inputValue.trim(), ...cannedResponses];
+    setCannedResponses(newResponses);
+    localStorage.setItem("nexera_admin_canned_responses", JSON.stringify(newResponses));
+    toast.success("Đã lưu mẫu câu trả lời!");
+  };
+
+  const deleteCannedResponse = (resToDelete: string) => {
+    const newResponses = cannedResponses.filter(r => r !== resToDelete);
+    setCannedResponses(newResponses.length > 0 ? newResponses : DEFAULT_CANNED_RESPONSES);
+    localStorage.setItem(
+      "nexera_admin_canned_responses", 
+      JSON.stringify(newResponses.length > 0 ? newResponses : DEFAULT_CANNED_RESPONSES)
+    );
+  };
+
   const fetchConversations = async () => {
-    const { data, error } = await supabase
+    // 1. Ưu tiên gọi NestJS Backend để lấy danh sách kèm customer không bị dính lỗi RLS
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+    try {
+      const res = await fetch(`${backendUrl}/chat/admin/conversations`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setConversations(data as Conversation[]);
+          if (!selectedConvId && data.length > 0) {
+            setSelectedConvId(data[0].id);
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Backend /chat/admin/conversations không khả dụng, dùng direct query:", e);
+    }
+
+    // 2. Direct Supabase fallback
+    let { data, error } = await supabase
       .from("conversations")
       .select("*, customer:customers(id, full_name, email, phone, phone_numbers, emails, address, tier)")
+      .neq("status", "MERGED")
       .order("last_message_at", { ascending: false });
+
+    // Fallback an toàn: nếu join quan hệ customers gặp lỗi phân quyền RLS thì load trực tiếp bảng conversations
+    if (error) {
+      console.warn("Lỗi join customers, fallback sang select thuần:", error);
+      const fallbackRes = await supabase
+        .from("conversations")
+        .select("*")
+        .neq("status", "MERGED")
+        .order("last_message_at", { ascending: false });
+      data = fallbackRes.data as any;
+      error = fallbackRes.error;
+    }
 
     if (!error && data) {
       setConversations(data as Conversation[]);
@@ -302,21 +406,41 @@ export function LiveChatManager({
         .eq("customer_id", cId)
         .order("created_at", { ascending: false });
       setCustomerNotes((notes as CustomerNote[]) || []);
+
+      // Nếu activeConversation chưa có đối tượng customer đầy đủ, fetch bổ sung
+      if (!activeConversation?.customer) {
+        const { data: cust } = await supabase
+          .from("customers")
+          .select("id, full_name, email, phone, phone_numbers, emails, address, tier")
+          .eq("id", cId)
+          .maybeSingle();
+        if (cust) {
+          setConversations((prev) =>
+            prev.map((c) => (c.id === activeConversation?.id ? { ...c, customer: cust } : c))
+          );
+        }
+      }
     }
 
     loadContext();
-  }, [activeConversation?.customer_id, supabase]);
+  }, [activeConversation?.customer_id, activeConversation?.customer, supabase]);
 
   // Sync guest convert inputs
   useEffect(() => {
     if (activeConversation && !activeConversation.customer_id) {
+      setConvertName(
+        activeConversation.guest_name && activeConversation.guest_name !== "Khách vãng lai"
+          ? activeConversation.guest_name
+          : ""
+      );
       setConvertPhone(activeConversation.guest_phone || "");
       setConvertEmail(activeConversation.guest_email || "");
     } else {
+      setConvertName("");
       setConvertPhone("");
       setConvertEmail("");
     }
-  }, [selectedConvId, activeConversation?.customer_id, activeConversation?.guest_phone, activeConversation?.guest_email]);
+  }, [selectedConvId, activeConversation?.customer_id, activeConversation?.guest_name, activeConversation?.guest_phone, activeConversation?.guest_email]);
 
   // Auto scroll messages to bottom
   useEffect(() => {
@@ -383,12 +507,20 @@ export function LiveChatManager({
     const finalContent = text || (attachmentsToSend?.[0]?.type === "image" ? "[Hình ảnh]" : "[Đính kèm]");
 
     const tempId = "temp_" + Date.now();
+    const adminDisplayName = (adminUser.name &&
+      adminUser.name !== "Khách Hàng Mặc Định" &&
+      adminUser.name !== "Khách hàng" &&
+      adminUser.name !== activeConversation?.guest_name &&
+      adminUser.name !== activeConversation?.customer?.full_name)
+        ? adminUser.name
+        : "Admin Nexera";
+
     const optimisticMsg: Message = {
       id: tempId,
       conversation_id: selectedConvId,
       sender_type: "ADMIN",
       sender_id: adminUser.id || null,
-      sender_name: adminUser.name,
+      sender_name: adminDisplayName,
       content: finalContent,
       attachments: attachmentsToSend || [],
       is_read: true,
@@ -403,7 +535,7 @@ export function LiveChatManager({
           conversation_id: selectedConvId,
           sender_type: "ADMIN",
           sender_id: adminUser.id || null,
-          sender_name: adminUser.name,
+          sender_name: adminDisplayName,
           content: finalContent,
           attachments: attachmentsToSend || [],
           is_read: true,
@@ -440,7 +572,7 @@ export function LiveChatManager({
       setIsLoadingProducts(true);
       const { data } = await supabase
         .from("products")
-        .select("id, name, price, sale_price, images, thumbnail, slug, stock, is_active")
+        .select("id, name, price, discount_rate, image_url, slug, stock, is_active")
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       if (data) {
@@ -451,13 +583,17 @@ export function LiveChatManager({
   };
 
   const handleSendProduct = (product: any) => {
+    const calculatedSalePrice = product.discount_rate > 0 
+      ? product.price * (1 - product.discount_rate / 100) 
+      : null;
+
     const productAttachment = {
       type: "product",
       id: product.id,
       name: product.name,
       price: product.price,
-      sale_price: product.sale_price,
-      image: product.images?.[0] || product.thumbnail,
+      sale_price: calculatedSalePrice,
+      image: product.image_url,
       slug: product.slug,
     };
     handleSendMessage(`[Sản phẩm] ${product.name}`, [productAttachment]);
@@ -467,11 +603,11 @@ export function LiveChatManager({
   // Image upload & paste handlers for Admin
   const handleImageFile = (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Vui lòng chỉ chọn tệp hình ảnh (PNG, JPG, WebP)!");
+      toast.error("Vui lòng chỉ chọn tệp hình ảnh (PNG, JPG, WebP)!");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("Dung lượng ảnh tối đa là 5MB!");
+      toast.error("Dung lượng ảnh tối đa là 5MB!");
       return;
     }
 
@@ -557,151 +693,55 @@ export function LiveChatManager({
     setIsSavingNote(false);
   };
 
-  // Convert Guest to Customer
+  // Convert Guest to Customer / Link Existing Customer via NestJS Backend
   const handleConvertGuest = async () => {
     if (!activeConversation || activeConversation.customer_id) return;
     
     const phone = convertPhone.trim();
     const email = convertEmail.trim();
+    const fullName = convertName.trim() || activeConversation.guest_name || "Khách hàng tư vấn";
 
-    if (!phone) {
-      alert("Vui lòng nhập số điện thoại để chuyển thành khách hàng!");
+    if (!phone && !email) {
+      toast.info("Vui lòng nhập số điện thoại hoặc email để chuyển thành khách hàng!");
       return;
     }
 
     setIsConvertingGuest(true);
 
-    const fullName = activeConversation.guest_name || "Khách hàng tư vấn";
-
     try {
-      // 1. Kiểm tra xem SĐT hoặc Email đã tồn tại chưa
-      let existingCustomer = null;
-      
-      let query = supabase.from("customers").select("id, phone_numbers, emails").limit(1);
-      
-      if (phone && email) {
-        query = query.or(`phone.eq.${phone},email.eq.${email}`);
-      } else if (phone) {
-        query = query.eq("phone", phone);
-      } else if (email) {
-        query = query.eq("email", email);
-      }
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+      const res = await fetch(`${backendUrl}/chat/admin-convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConversation.id,
+          phone: phone || undefined,
+          email: email || undefined,
+          fullName: fullName || undefined,
+        }),
+      });
 
-      const { data: custData, error: searchError } = await query;
-      if (!searchError && custData && custData.length > 0) {
-        existingCustomer = custData[0];
-      }
-
-      let mergedIntoOldConvId = null;
-      let customerIdToLink = null;
-
-      if (existingCustomer) {
-        // Khách đã tồn tại -> Cập nhật thông tin nếu thiếu và link
-        customerIdToLink = existingCustomer.id;
-        
-        const updates: any = {};
-        const phoneNumbers = existingCustomer.phone_numbers || [];
-        const emails = existingCustomer.emails || [];
-
-        if (phone && !phoneNumbers.includes(phone)) {
-          updates.phone_numbers = [...phoneNumbers, phone];
-        }
-        if (email && !emails.includes(email)) {
-          updates.emails = [...emails, email];
-        }
-
-        if (Object.keys(updates).length > 0) {
-          await supabase.from("customers").update(updates).eq("id", customerIdToLink);
-        }
-
-        // Kiểm tra xem khách này đã có hội thoại cũ chưa
-        const { data: oldConvs } = await supabase
-          .from("conversations")
-          .select("id, last_message_at")
-          .eq("customer_id", customerIdToLink)
-          .order("last_message_at", { ascending: false })
-          .limit(1);
-
-        if (oldConvs && oldConvs.length > 0) {
-          mergedIntoOldConvId = oldConvs[0].id;
-        }
-      } else {
-        // Tạo khách hàng mới
-        const { data: newCustomer, error: custError } = await supabase
-          .from("customers")
-          .insert({
-            full_name: fullName,
-            phone: phone,
-            email: email || null,
-            phone_numbers: phone ? [phone] : [],
-            emails: email ? [email] : [],
-            tier: "POTENTIAL",
-            notes: `Tạo tự động từ cuộc hội thoại trực tiếp #${activeConversation.id.substring(0, 8)}`,
-          })
-          .select()
-          .single();
-
-        if (custError || !newCustomer) {
-          throw custError || new Error("Failed to create customer");
-        }
-        customerIdToLink = newCustomer.id;
-      }
-
-      if (mergedIntoOldConvId) {
-        // Chuyển toàn bộ tin nhắn từ hội thoại mới sang hội thoại cũ
-        const { error: moveMsgError } = await supabase
-          .from("chat_messages")
-          .update({ conversation_id: mergedIntoOldConvId })
-          .eq("conversation_id", activeConversation.id);
-          
-        if (moveMsgError) console.error("Lỗi khi chuyển tin nhắn:", moveMsgError);
-
-        // Cập nhật last_message_at và guest_session_id cho hội thoại cũ
-        await supabase
-          .from("conversations")
-          .update({ 
-            last_message_at: activeConversation.last_message_at,
-            last_message_preview: activeConversation.last_message_preview,
-            guest_session_id: activeConversation.guest_session_id, // Link session cũ của khách vào hội thoại này
-            unread_admin_count: 1, // Đánh dấu chưa đọc để admin chú ý
-            status: "OPEN" // Mở lại hội thoại cũ nếu đang đóng
-          })
-          .eq("id", mergedIntoOldConvId);
-
-        // Phát Broadcast báo cho Storefront widget biết để chuyển sang hội thoại cũ
-        const channel = supabase.channel(`chat_messages_${activeConversation.id}`);
-        channel.subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await channel.send({
-              type: "broadcast",
-              event: "CONVERSATION_MERGED",
-              payload: { newConversationId: mergedIntoOldConvId }
-            });
-            supabase.removeChannel(channel);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.action === "LINKED_AND_MERGED") {
+          toast.success(data.message || `Đã nhận diện khách cũ (${data.customer?.full_name}) và gộp hội thoại!`);
+          if (data.activeConversationId) {
+            setSelectedConvId(data.activeConversationId);
           }
-        });
-
-
-        // Ẩn hội thoại rác mới tạo bằng cách đổi status thành MERGED (do RLS không cho phép DELETE)
-        await supabase
-          .from("conversations")
-          .update({ status: "MERGED" })
-          .eq("id", activeConversation.id);
-
-        // Đổi view sang hội thoại cũ
-        setSelectedConvId(mergedIntoOldConvId);
-      } else {
-        // Link conversation hiện tại với customer
-        await supabase
-          .from("conversations")
-          .update({ customer_id: customerIdToLink })
-          .eq("id", activeConversation.id);
+        } else if (data.action === "LINKED") {
+          toast.success(data.message || `Đã liên kết với khách hàng: ${data.customer?.full_name}!`);
+        } else {
+          toast.success(data.message || `Đã tạo mới hồ sơ khách hàng: ${data.customer?.full_name}!`);
+        }
+        await fetchConversations();
+        return;
       }
 
-      await fetchConversations();
-    } catch (err) {
-      console.error("Lỗi chuyển đổi khách hàng:", err);
-      alert("Có lỗi xảy ra khi chuyển đổi khách hàng!");
+      const errData = await res.json().catch(() => null);
+      throw new Error(errData?.message || "Lỗi xử lý từ máy chủ backend");
+    } catch (err: any) {
+      console.error("Lỗi chuyển đổi khách hàng qua backend:", err);
+      toast.error(err.message || "Có lỗi xảy ra khi chuyển đổi khách hàng!");
     } finally {
       setIsConvertingGuest(false);
     }
@@ -743,7 +783,7 @@ export function LiveChatManager({
     if (conv.last_message_preview === "Bắt đầu cuộc trò chuyện mới") return false;
     if (conv.status === "MERGED") return false;
 
-    const name = conv.customer?.full_name || conv.guest_name || "Khách vãng lai";
+    const name = getConversationDisplayName(conv);
     const phone = conv.customer?.phone || conv.guest_phone || "";
     const email = conv.customer?.email || conv.guest_email || "";
     const preview = conv.last_message_preview || "";
@@ -827,7 +867,7 @@ export function LiveChatManager({
           ) : (
             filteredConversations.map((conv) => {
               const isSelected = conv.id === selectedConvId;
-              const displayName = conv.customer?.full_name || conv.guest_name || "Khách vãng lai";
+              const displayName = getConversationDisplayName(conv);
               const isRegistered = !!conv.customer_id;
               const hasUnread = conv.unread_admin_count > 0;
 
@@ -899,9 +939,7 @@ export function LiveChatManager({
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h3 className="font-bold text-gray-900 text-sm">
-                    {activeConversation.customer?.full_name ||
-                      activeConversation.guest_name ||
-                      "Khách vãng lai"}
+                    {getConversationDisplayName(activeConversation)}
                   </h3>
                   {activeConversation.customer &&
                     activeConversation.guest_name &&
@@ -998,10 +1036,21 @@ export function LiveChatManager({
                         <div className="flex items-center justify-between gap-3 mb-0.5">
                           <span
                             className={`text-[10px] font-semibold ${
-                              isAdmin ? "text-emerald-300" : "text-gray-500"
+                              isAdmin ? "text-emerald-300" : "text-[#13426e]"
                             }`}
                           >
-                            {msg.sender_name}
+                            {isAdmin
+                              ? (msg.sender_name &&
+                                 msg.sender_name !== "Khách Hàng Mặc Định" &&
+                                 msg.sender_name !== "Khách hàng" &&
+                                 msg.sender_name !== "Khách vãng lai" &&
+                                 msg.sender_name !== activeConversation?.guest_name &&
+                                 msg.sender_name !== activeConversation?.customer?.full_name
+                                  ? msg.sender_name
+                                  : (adminUser.name || "Admin Nexera"))
+                              : (activeConversation?.customer?.full_name ||
+                                 activeConversation?.guest_name ||
+                                 (msg.sender_name && !msg.sender_name.includes("Admin") ? msg.sender_name : "Khách hàng"))}
                           </span>
                           <span
                             className={`text-[9px] ${
@@ -1092,21 +1141,6 @@ export function LiveChatManager({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Canned Responses / Quick Replies */}
-            <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/70 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
-              <span className="text-gray-400 font-medium shrink-0">
-                Mẫu trả lời:
-              </span>
-              {CANNED_RESPONSES.map((res, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSendMessage(res)}
-                  className="whitespace-nowrap px-2.5 py-1 bg-white hover:bg-gray-100 text-gray-700 border border-gray-200 rounded-md transition-colors shrink-0"
-                >
-                  {res.length > 32 ? res.substring(0, 30) + "..." : res}
-                </button>
-              ))}
-            </div>
 
             {/* Slash Command Quick Templates Popup */}
             {showSlashMenu && (
@@ -1154,21 +1188,63 @@ export function LiveChatManager({
               }}
               className="p-3 border-t border-gray-200 bg-white flex items-center gap-2 shrink-0"
             >
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileUpload}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-8 h-8 rounded-lg text-gray-400 hover:text-[#13426e] hover:bg-gray-100 flex items-center justify-center transition-colors shrink-0"
-                title="Gửi hình ảnh đính kèm (hoặc dán Ctrl+V)"
-              >
-                <ImageIcon className="w-4 h-4" />
-              </button>
+              {/* Quick Prompts Menu Button */}
+              <div className="relative">
+                {showPromptsMenu && (
+                  <div className="absolute bottom-full left-0 mb-2 w-72 bg-white rounded-xl shadow-2xl border border-gray-200 p-2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="flex items-center justify-between px-2 pb-2 mb-2 border-b border-gray-100">
+                      <span className="text-xs font-bold text-gray-600">Câu trả lời mẫu</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={saveCannedResponse}
+                          className="flex items-center gap-1 text-[10px] bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-semibold transition-colors"
+                          title="Lưu nội dung đang nhập vào mẫu"
+                        >
+                          <span className="font-bold text-sm leading-none">+</span> Lưu mẫu
+                        </button>
+                        <button onClick={() => setShowPromptsMenu(false)} className="text-gray-400 hover:text-gray-600">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1">
+                      {cannedResponses.map((res, i) => (
+                        <div key={i} className="flex items-start gap-1 group hover:bg-gray-50 rounded-lg p-1 transition-colors">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleSendMessage(res);
+                              setShowPromptsMenu(false);
+                            }}
+                            className="flex-1 text-left text-xs text-gray-700 p-1.5 rounded hover:text-[#13426e] transition-colors leading-relaxed"
+                          >
+                            {res}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteCannedResponse(res)}
+                            className="p-1.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                            title="Xóa mẫu này"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowPromptsMenu(!showPromptsMenu)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shrink-0 ${
+                    showPromptsMenu ? "bg-[#13426e] text-white" : "text-gray-400 hover:text-[#13426e] hover:bg-gray-100"
+                  }`}
+                  title="Câu trả lời mẫu"
+                >
+                  <MessageSquarePlus className="w-4 h-4" />
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={handleOpenProductModal}
@@ -1237,7 +1313,7 @@ export function LiveChatManager({
                 )}
 
               <p className="text-xs mt-1">
-                {activeConversation.customer ? (
+                {activeConversation.customer_id || activeConversation.customer ? (
                   <span className="font-medium text-emerald-600">Thành viên chính thức</span>
                 ) : (
                   <span className="text-amber-600">Khách vãng lai từ website</span>
@@ -1245,9 +1321,9 @@ export function LiveChatManager({
               </p>
 
               {/* Phân hạng */}
-              {activeConversation.customer && (
+              {(activeConversation.customer_id || activeConversation.customer) && (
                 <p className="text-xs text-gray-600">
-                  Phân hạng: <strong className="text-gray-900">{activeConversation.customer.tier || "TIÊU CHUẨN"}</strong>
+                  Phân hạng: <strong className="text-gray-900">{activeConversation.customer?.tier || "TIÊU CHUẨN"}</strong>
                 </p>
               )}
             </div>
@@ -1370,12 +1446,19 @@ export function LiveChatManager({
             </div>
 
             {/* Convert to Customer Form for Guest */}
-            {!activeConversation.customer && (
+            {!(activeConversation.customer_id || activeConversation.customer) && (
               <div className="mt-4 bg-gray-50 p-3 rounded border border-gray-100">
                 <h4 className="text-[11px] font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   Tạo mới / Liên kết Khách hàng
                 </h4>
                 <div className="space-y-2 mb-3">
+                  <input
+                    type="text"
+                    value={convertName}
+                    onChange={(e) => setConvertName(e.target.value)}
+                    placeholder="Họ và tên khách hàng"
+                    className="w-full px-3 py-1.5 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-[#13426e] focus:border-[#13426e] outline-none"
+                  />
                   <input
                     type="text"
                     value={convertPhone}
@@ -1394,7 +1477,7 @@ export function LiveChatManager({
                 <button
                   onClick={handleConvertGuest}
                   disabled={isConvertingGuest}
-                  className="w-full py-1.5 px-3 bg-[#13426e] hover:bg-[#1e5a92] disabled:bg-gray-400 text-white rounded text-xs font-semibold transition-colors"
+                  className="w-full py-1.5 px-3 bg-[#13426e] hover:bg-[#1e5a92] disabled:bg-gray-400 text-white rounded text-xs font-semibold transition-colors cursor-pointer"
                 >
                   {isConvertingGuest ? "Đang xử lý..." : "Chuyển thành Khách hàng"}
                 </button>
@@ -1403,7 +1486,7 @@ export function LiveChatManager({
           </div>
 
           {/* Orders summary */}
-          {activeConversation.customer && (
+          {(activeConversation.customer_id || activeConversation.customer) && (
             <div className="p-4 border-b border-gray-100">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold text-gray-700">Đơn hàng đã đặt</span>
@@ -1531,7 +1614,11 @@ export function LiveChatManager({
                 catalogProducts
                   .filter((p) => p.name.toLowerCase().includes(productSearchTerm.toLowerCase()))
                   .map((product) => {
-                    const img = product.images?.[0] || product.thumbnail;
+                    const img = product.image_url;
+                    const calculatedSalePrice = product.discount_rate > 0 
+                      ? product.price * (1 - product.discount_rate / 100) 
+                      : null;
+
                     return (
                       <div
                         key={product.id}
@@ -1550,9 +1637,9 @@ export function LiveChatManager({
                           </h4>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="font-bold text-xs text-[#e11d48]">
-                              {new Intl.NumberFormat("vi-VN").format(product.sale_price || product.price)} đ
+                              {new Intl.NumberFormat("vi-VN").format(calculatedSalePrice || product.price)} đ
                             </span>
-                            {product.sale_price && product.sale_price < product.price && (
+                            {calculatedSalePrice && (
                               <span className="text-[10px] text-gray-400 line-through">
                                 {new Intl.NumberFormat("vi-VN").format(product.price)} đ
                               </span>
