@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Loader2, Lock, Mail, ShieldCheck, ArrowRight } from "lucide-react";
+import { Loader2, Lock, Mail, ShieldCheck, ArrowRight, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -116,13 +117,21 @@ export default function AdminLoginPage() {
                     <Lock className="h-5 w-5 text-white/40" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border-b-2 border-white/10 focus:border-[#80BF49] text-white placeholder-white/30 transition-all outline-none"
+                    className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border-b-2 border-white/10 focus:border-[#80BF49] text-white placeholder-white/30 transition-all outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/40 hover:text-white transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
               </div>
 

@@ -760,47 +760,53 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
       {/* ================= BOTTOM DOCK: COMPARE ================= */}
       {compareList.length > 0 && (
-        <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none transition-transform duration-300 ease-in-out ${isCompareDockHidden ? 'translate-y-[calc(100%-40px)]' : 'translate-y-0'}`}>
-          <div className="bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.2)] border border-gray-200 rounded-t-xl pointer-events-auto flex flex-col overflow-hidden max-w-4xl w-full mx-4 transition-colors">
+        <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none transition-transform duration-300 ease-in-out ${isCompareDockHidden ? 'translate-y-[calc(100%-38px)]' : 'translate-y-0'}`}>
+          <div className="bg-white shadow-[0_-5px_25px_rgba(0,0,0,0.15)] border border-gray-200 rounded-t-2xl pointer-events-auto flex flex-col overflow-hidden max-w-4xl w-full mx-2 sm:mx-4 transition-colors">
             
             {/* Dock Header (Click to toggle) */}
             <div 
-              className="bg-[#13426E] text-white px-5 py-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1a5b99] transition-colors"
+              className="bg-[#13426E] text-white px-4 py-2 sm:px-5 sm:py-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1a5b99] transition-colors select-none"
               onClick={() => setIsCompareDockHidden(!isCompareDockHidden)}
             >
-              <span className="font-medium text-sm flex items-center gap-2">
-                <Scale className="w-4 h-4" />
-                So sánh sản phẩm ({compareList.length}/3)
+              <span className="font-medium text-xs sm:text-sm flex items-center gap-2">
+                <Scale className="w-4 h-4 text-[#80BF49]" />
+                <span>So sánh sản phẩm ({compareList.length}/3)</span>
               </span>
-              <button className="p-0.5 hover:bg-white/20 rounded-md transition-colors">
+              <button 
+                type="button"
+                className="p-1 hover:bg-white/20 rounded-md transition-colors"
+                aria-label="Thu gọn hoặc mở rộng bảng so sánh"
+              >
                 {isCompareDockHidden ? <Plus className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
               </button>
             </div>
 
             {/* Dock Body */}
-            <div className="p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
               
               {/* Product Slots */}
-              <div className="flex gap-3 flex-1 w-full justify-center md:justify-start overflow-x-auto pb-2 md:pb-0">
+              <div className="flex gap-2 sm:gap-3 flex-1 w-full justify-center sm:justify-start overflow-x-auto pb-1 sm:pb-0">
                 {[0, 1, 2].map(index => {
                   const p = compareList[index];
                   return (
-                    <div key={index} className="w-[100px] md:w-[130px] shrink-0">
+                    <div key={index} className="w-[85px] sm:w-[110px] md:w-[130px] shrink-0">
                       {p ? (
-                        <div className="relative bg-white rounded-lg border border-gray-200 p-2 flex flex-col items-center group shadow-sm">
+                        <div className="relative bg-white rounded-lg border border-gray-200 p-1.5 sm:p-2 flex flex-col items-center group shadow-sm">
                           <button 
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); toggleCompare(p); }}
-                            className="absolute -top-2 -right-2 w-5 h-5 bg-white border border-gray-200 text-gray-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors z-10"
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-300 text-gray-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-300 transition-colors z-10 shadow-sm"
+                            title="Xoá khỏi so sánh"
                           >
                             <X className="w-3 h-3" />
                           </button>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={p.image_url || "/doi.png"} alt={p.name} className="w-12 h-12 md:w-16 md:h-16 object-contain mb-2" />
-                          <p className="text-[10px] md:text-xs text-center font-medium text-gray-700 line-clamp-2" title={p.name}>{p.name}</p>
+                          <img src={p.image_url || "/doi.png"} alt={p.name} className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 object-contain mb-1" />
+                          <p className="text-[10px] sm:text-xs text-center font-medium text-gray-700 line-clamp-2 leading-tight" title={p.name}>{p.name}</p>
                         </div>
                       ) : (
-                        <div className="h-full min-h-[80px] md:min-h-[100px] border border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 gap-1 bg-gray-50">
-                          <Plus className="w-5 h-5 opacity-50" />
+                        <div className="h-full min-h-[70px] sm:min-h-[85px] md:min-h-[95px] border border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-400 gap-1 bg-gray-50/70">
+                          <Plus className="w-4 h-4 opacity-50" />
                           <span className="text-[10px] font-medium opacity-70">Thêm SP</span>
                         </div>
                       )}
@@ -810,18 +816,20 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
               </div>
 
               {/* Action Buttons */}
-              <div className="flex md:flex-col gap-2 shrink-0 w-full md:w-auto">
+              <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
                 <button 
+                  type="button"
                   onClick={() => setShowCompareModal(true)}
                   disabled={compareList.length < 2}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-[#13426E] text-white rounded-lg text-sm font-medium shadow-sm hover:bg-[#1a5b99] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  className="flex-1 sm:flex-none px-4 py-2 sm:px-6 sm:py-2.5 bg-[#13426E] text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm hover:bg-[#1a5b99] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <ArrowLeftRight className="w-4 h-4" />
-                  So sánh ngay
+                  <ArrowLeftRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span>So sánh ngay {compareList.length >= 2 ? `(${compareList.length})` : ''}</span>
                 </button>
                 <button 
+                  type="button"
                   onClick={clearCompare}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-white border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50 hover:text-gray-800 transition-colors text-sm font-medium"
+                  className="px-3 py-2 sm:px-6 sm:py-2 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors text-xs sm:text-sm font-medium"
                 >
                   Xoá tất cả
                 </button>
@@ -834,188 +842,260 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
       {/* ================= MODAL: COMPARE DETAILS ================= */}
       {showCompareModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6 bg-[#13426E]/50 backdrop-blur-sm transition-opacity" onClick={() => setShowCompareModal(false)}>
-          <div className="bg-white w-full max-w-7xl max-h-[95vh] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden border border-gray-200" onClick={e => e.stopPropagation()}>
-          {/* Header */}
-          <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4 flex items-center justify-between shadow-sm shrink-0">
-            <h2 className="text-xl md:text-2xl font-bold text-[#13426E] flex items-center gap-2 md:gap-3">
-              <Scale className="w-6 h-6 text-[#13426E]" />
-              So sánh chi tiết
-            </h2>
-            <button 
-              onClick={() => setShowCompareModal(false)}
-              className="p-2 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-full transition-colors text-gray-500 hover:text-gray-800"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm transition-opacity" 
+          onClick={() => setShowCompareModal(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-6xl max-h-[94vh] sm:max-h-[90vh] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden border border-gray-200" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between shadow-sm shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#13426E]/10 flex items-center justify-center text-[#13426E]">
+                  <Scale className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base sm:text-xl font-bold text-[#13426E] leading-tight">
+                    So sánh chi tiết sản phẩm
+                  </h2>
+                  <p className="text-[11px] sm:text-xs text-gray-500">
+                    Đối chiếu thông số kỹ thuật ({compareList.length} sản phẩm)
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowCompareModal(false)}
+                className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors text-gray-600 flex items-center justify-center shrink-0"
+                aria-label="Đóng bảng so sánh"
+              >
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            </div>
 
-          {/* Table Container */}
-          <div className="flex-1 overflow-auto p-4 md:p-8">
-            <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto custom-scrollbar">
-              <table className="w-full text-left border-collapse min-w-[600px] md:min-w-[800px] table-fixed">
-                <tbody>
-                  {/* Images & Delete */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 w-1/4 font-medium text-gray-600 text-sm md:text-base border-r border-gray-100">Sản phẩm</th>
-                    {compareList.map((p) => (
-                      <td key={`img-${p.id}`} className="p-4 md:p-6 text-center border-r border-gray-100 last:border-0 relative group w-1/4">
-                        <button 
-                          onClick={() => {
-                            const newList = compareList.filter(item => item.id !== p.id);
-                            setCompareList(newList);
-                            if (newList.length < 2) setShowCompareModal(false);
-                            toast.info(`Đã xoá ${p.name}`);
-                          }}
-                          className="absolute top-2 right-2 md:top-4 md:right-4 w-6 h-6 md:w-8 md:h-8 bg-white border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 rounded-full flex items-center justify-center md:opacity-0 group-hover:opacity-100 transition-all shadow-sm"
-                          title="Xoá khỏi so sánh"
-                        >
-                          <X className="w-3 h-3 md:w-4 md:h-4" />
-                        </button>
-                        <button onClick={() => setZoomedImage(p.image_url)} className="cursor-zoom-in block mx-auto hover:scale-105 transition-transform">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={p.image_url || "/doi.png"} alt={p.name} className="w-24 h-24 md:w-32 md:h-32 mx-auto object-contain mb-3 md:mb-4" />
-                        </button>
-                        <h3 className="font-semibold text-[#13426E] text-sm md:text-base">{p.name}</h3>
-                      </td>
-                    ))}
-                    {/* Fill empty columns if < 3 items */}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => (
-                       <td key={`empty-${i}`} className="p-4 md:p-6 text-center border-r border-gray-100 bg-gray-50/50 w-1/4"></td>
-                    ))}
-                  </tr>
+            {/* Mobile Swipe Indicator Banner */}
+            <div className="md:hidden bg-blue-50 border-b border-blue-100 px-3.5 py-1.5 text-xs text-blue-700 flex items-center justify-between shrink-0">
+              <span className="flex items-center gap-1 font-medium text-[11px]">
+                <span>👉</span> Vuốt ngang để xem chi tiết
+              </span>
+              <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-semibold">
+                {compareList.length} sản phẩm
+              </span>
+            </div>
 
-                  {/* Price */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100">Giá tham khảo</th>
-                    {compareList.map(p => {
-                      const { originalPrice, discountedPrice, hasDiscount } = getProductPriceInfo(p);
-                      return (
-                        <td key={`price-${p.id}`} className="p-4 md:p-6 text-base md:text-lg border-r border-gray-100 last:border-0">
-                          <div className="font-bold text-[#E30019]">
-                            {formatCurrency(discountedPrice)}
-                          </div>
-                          {hasDiscount && (
-                            <div className="text-xs text-gray-400 line-through">
-                              {formatCurrency(originalPrice)}
+            {/* Table Scrollable Container */}
+            <div className="flex-1 overflow-auto p-2 sm:p-4 md:p-6 custom-scrollbar">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto shadow-sm">
+                <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-[650px] md:min-w-[750px]">
+                  <tbody>
+                    {/* 1. Images, Name & Remove */}
+                    <tr className="border-b border-gray-200">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 w-[110px] sm:w-[150px] md:w-[180px] min-w-[110px] sm:min-w-[150px] md:min-w-[180px] font-bold text-gray-800 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)] align-top">
+                        Sản phẩm
+                      </th>
+                      {compareList.map((p) => (
+                        <td key={`img-${p.id}`} className="p-3 sm:p-5 text-center border-r border-gray-200 last:border-0 relative group min-w-[180px] sm:min-w-[220px] md:min-w-[260px] align-top">
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newList = compareList.filter(item => item.id !== p.id);
+                              setCompareList(newList);
+                              if (newList.length < 2) setShowCompareModal(false);
+                              toast.info(`Đã xoá ${p.name}`);
+                            }}
+                            className="absolute top-2 right-2 w-6 h-6 sm:w-7 sm:h-7 bg-white border border-gray-200 text-gray-500 hover:text-red-500 hover:border-red-300 rounded-full flex items-center justify-center opacity-100 md:opacity-0 group-hover:opacity-100 transition-all shadow-sm z-10"
+                            title="Xoá khỏi so sánh"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setZoomedImage(p.image_url)} 
+                            className="cursor-zoom-in block mx-auto hover:scale-105 transition-transform"
+                            title="Phóng to ảnh"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={p.image_url || "/doi.png"} alt={p.name} className="w-20 h-20 sm:w-28 sm:h-28 mx-auto object-contain mb-2 sm:mb-3" />
+                          </button>
+                          <h3 className="font-bold text-[#13426E] text-xs sm:text-sm md:text-base line-clamp-2 leading-snug">{p.name}</h3>
+                        </td>
+                      ))}
+                      {/* Cột trống trên Desktop nếu < 3 item để giữ bố cục */}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-col-${i}`} className="hidden lg:table-cell p-4 text-center border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
+
+                    {/* 2. Price */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
+                        Giá tham khảo
+                      </th>
+                      {compareList.map(p => {
+                        const { originalPrice, discountedPrice, hasDiscount } = getProductPriceInfo(p);
+                        return (
+                          <td key={`price-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0">
+                            <div className="font-bold text-[#E30019] text-sm sm:text-base md:text-lg">
+                              {formatCurrency(discountedPrice)}
                             </div>
+                            {hasDiscount && (
+                              <div className="text-[11px] sm:text-xs text-gray-400 line-through">
+                                {formatCurrency(originalPrice)}
+                              </div>
+                            )}
+                          </td>
+                        );
+                      })}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-price-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
+
+                    {/* 3. Type */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
+                        Loại hình
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`type-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0">
+                          <span className="inline-flex px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-gray-100 text-gray-700 border border-gray-200">
+                            {p.type === "EQUIPMENT" ? "Thiết bị lẻ" : "Trọn gói"}
+                          </span>
+                        </td>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-type-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
+
+                    {/* 4. Stock */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
+                        Tình trạng
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`stock-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0 font-medium text-xs sm:text-sm">
+                          {p.stock > 0 ? (
+                            <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              Còn hàng
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              Liên hệ đặt trước
+                            </span>
                           )}
                         </td>
-                      );
-                    })}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-stock-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
 
-                  {/* Type */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100">Loại hình</th>
-                    {compareList.map(p => (
-                      <td key={`type-${p.id}`} className="p-4 md:p-6 border-r border-gray-100 last:border-0">
-                        <span className="inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
-                          {p.type === "EQUIPMENT" ? "Thiết bị lẻ" : "Trọn gói"}
-                        </span>
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
+                    {/* 5. Brand */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
+                        Thương hiệu
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`brand-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0 text-xs sm:text-sm font-semibold text-gray-800">
+                          {p.brand || "Đang cập nhật"}
+                        </td>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-brand-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
 
-                  {/* Stock */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100">Tình trạng</th>
-                    {compareList.map(p => (
-                      <td key={`stock-${p.id}`} className="p-4 md:p-6 border-r border-gray-100 last:border-0 font-medium text-sm">
-                        {p.stock > 0 ? <span className="text-green-600">Còn hàng</span> : <span className="text-red-500">Liên hệ</span>}
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
+                    {/* 6. Origin */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
+                        Nơi sản xuất
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`origin-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0 text-xs sm:text-sm text-gray-700">
+                          {p.origin || "Đang cập nhật"}
+                        </td>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-origin-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
 
-                  {/* Brand */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100">Thương hiệu</th>
-                    {compareList.map(p => (
-                      <td key={`brand-${p.id}`} className="p-4 md:p-6 border-r border-gray-100 last:border-0 text-sm font-medium text-gray-800">
-                        {p.brand || "Đang cập nhật"}
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
+                    {/* 7. Warranty */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
+                        Bảo hành
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`warranty-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0 text-xs sm:text-sm font-medium text-[#13426E]">
+                          {p.warranty_info || "Đang cập nhật"}
+                        </td>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-warranty-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
 
-                  {/* Origin */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100">Nơi sản xuất</th>
-                    {compareList.map(p => (
-                      <td key={`origin-${p.id}`} className="p-4 md:p-6 border-r border-gray-100 last:border-0 text-sm font-medium text-gray-800">
-                        {p.origin || "Đang cập nhật"}
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
+                    {/* 8. Description */}
+                    <tr className="border-b border-gray-100">
+                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)] align-top">
+                        Thông tin chung
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`desc-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0 text-xs sm:text-sm text-gray-600 leading-relaxed align-top">
+                          <div className="space-y-1 [&_p]:m-0 max-h-40 overflow-y-auto custom-scrollbar pr-1" dangerouslySetInnerHTML={{ __html: (p.description || "Chưa có mô tả").replace(/&nbsp;/g, " ") }} />
+                        </td>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-desc-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
 
-                  {/* Warranty */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100">Bảo hành</th>
-                    {compareList.map(p => (
-                      <td key={`warranty-${p.id}`} className="p-4 md:p-6 border-r border-gray-100 last:border-0 text-sm font-medium text-gray-800">
-                        {p.warranty_info || "Đang cập nhật"}
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
-
-                  {/* Description */}
-                  <tr className="border-b border-gray-100">
-                    <th className="p-4 md:p-6 bg-gray-50 font-medium text-gray-600 text-sm border-r border-gray-100 align-top">Thông tin chung</th>
-                    {compareList.map(p => (
-                      <td key={`desc-${p.id}`} className="p-4 md:p-6 border-r border-gray-100 last:border-0 text-xs md:text-sm text-gray-500 leading-relaxed align-top">
-                        <div className="space-y-1 [&_p]:m-0" dangerouslySetInnerHTML={{ __html: (p.description || "").replace(/&nbsp;/g, " ") }} />
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={i} className="border-r border-gray-100 bg-gray-50/50"></td>)}
-                  </tr>
-
-                  {/* Cấu hình sản phẩm */}
-                  <tr>
-                    <th className="p-4 md:p-6 bg-[#13426E]/5 font-bold text-[#13426E] text-sm border-r border-gray-200 align-top">
-                      Cấu hình sản phẩm
-                    </th>
-                    {compareList.map(p => (
-                      <td key={`specs-cell-${p.id}`} className="p-3 md:p-5 border-r border-gray-200 last:border-0 align-top">
-                        {p.specifications && Object.keys(p.specifications).length > 0 ? (
-                          <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                            <table className="w-full text-sm text-left">
-                              <tbody>
-                                {Object.entries(p.specifications).map(([k, v], idx) => (
-                                  <tr key={k} className={idx % 2 === 0 ? "bg-[#f8fafc]" : "bg-white"}>
-                                    <td className="px-4 py-3 font-semibold text-gray-800 border-b border-gray-200 w-2/5 whitespace-nowrap">{k}</td>
-                                    <td className="px-4 py-3 text-gray-700 font-medium border-b border-gray-200">{String(v)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400 italic text-sm">Không có thông số kỹ thuật</span>
-                        )}
-                      </td>
-                    ))}
-                    {Array.from({ length: 3 - compareList.length }).map((_, i) => <td key={`empty-specs-${i}`} className="border-r border-gray-200 bg-gray-50/50"></td>)}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-6 md:mt-8 flex justify-center">
-              <button 
-                onClick={() => setShowCompareModal(false)}
-                className="px-6 py-2.5 md:px-8 md:py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium shadow-sm transition-colors text-sm md:text-base"
-              >
-                Đóng bảng so sánh
-              </button>
+                    {/* 9. Specifications */}
+                    <tr>
+                      <th className="p-3 sm:p-5 bg-[#13426E]/10 sticky left-0 z-20 border-r border-gray-200 font-bold text-[#13426E] text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)] align-top">
+                        Cấu hình sản phẩm
+                      </th>
+                      {compareList.map(p => (
+                        <td key={`specs-cell-${p.id}`} className="p-2 sm:p-4 border-r border-gray-200 last:border-0 align-top">
+                          {p.specifications && Object.keys(p.specifications).length > 0 ? (
+                            <div className="space-y-1.5 text-xs text-left">
+                              {Object.entries(p.specifications).map(([k, v]) => (
+                                <div key={k} className="p-2 rounded-lg bg-gray-50 border border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2">
+                                  <span className="font-semibold text-gray-800 text-[11px] sm:text-xs shrink-0">{k}</span>
+                                  <span className="text-gray-600 font-medium text-[11px] sm:text-xs sm:text-right break-words">{String(v)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs sm:text-sm block text-center py-4">Không có thông số kỹ thuật</span>
+                          )}
+                        </td>
+                      ))}
+                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
+                        <td key={`empty-specs-${i}`} className="hidden lg:table-cell border-r border-gray-200 bg-gray-50/40"></td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="mt-4 sm:mt-6 flex justify-center pb-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowCompareModal(false)}
+                  className="px-6 py-2.5 sm:px-8 sm:py-3 bg-[#13426E] hover:bg-[#1a5b99] text-white rounded-xl font-bold shadow-md transition-colors text-xs sm:text-sm"
+                >
+                  Đóng bảng so sánh
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
 
       {/* ================= LIGHTBOX / IMAGE ZOOM MODAL ================= */}

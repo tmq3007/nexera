@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Loader2, Lock, Mail, UserCircle2, ArrowRight, Home } from "lucide-react";
+import { Loader2, Lock, Mail, UserCircle2, ArrowRight, Home, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { customersApi } from "@/lib/api/customers.api";
 
 export default function CustomerLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -174,13 +175,25 @@ export default function CustomerLoginPage() {
                     <Lock className="h-5 w-5 text-white/50 group-focus-within:text-[#80BF49] transition-colors" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="block w-full pl-12 pr-4 py-3.5 bg-white/5 border border-white/10 rounded-xl focus:border-[#80BF49] focus:bg-white/10 focus:ring-1 focus:ring-[#80BF49] text-white placeholder-white/30 transition-all outline-none"
+                    className="block w-full pl-12 pr-12 py-3.5 bg-white/5 border border-white/10 rounded-xl focus:border-[#80BF49] focus:bg-white/10 focus:ring-1 focus:ring-[#80BF49] text-white placeholder-white/30 transition-all outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-white/50 hover:text-white transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 

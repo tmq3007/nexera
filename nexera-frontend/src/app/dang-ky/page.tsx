@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
-import { Loader2, Lock, Mail, User, Phone, UserCircle2, ArrowRight, Home } from "lucide-react";
+import { Loader2, Lock, Mail, User, Phone, UserCircle2, ArrowRight, Home, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { customersApi } from "@/lib/api/customers.api";
 
@@ -13,6 +13,8 @@ export default function CustomerRegisterPage() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -234,13 +236,21 @@ export default function CustomerRegisterPage() {
                     <Lock className="h-4 w-4 text-white/50 group-focus-within:text-[#80BF49] transition-colors" />
                   </div>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Tối thiểu 6 ký tự"
-                    className="block w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-[#80BF49] focus:bg-white/10 text-sm text-white placeholder-white/30 transition-all outline-none"
+                    className="block w-full pl-10 pr-10 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-[#80BF49] focus:bg-white/10 text-sm text-white placeholder-white/30 transition-all outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-white/50 hover:text-white transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -251,13 +261,21 @@ export default function CustomerRegisterPage() {
                     <Lock className="h-4 w-4 text-white/50 group-focus-within:text-[#80BF49] transition-colors" />
                   </div>
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Nhập lại mật khẩu"
-                    className="block w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-[#80BF49] focus:bg-white/10 text-sm text-white placeholder-white/30 transition-all outline-none"
+                    className="block w-full pl-10 pr-10 py-3 bg-white/5 border border-white/10 rounded-xl focus:border-[#80BF49] focus:bg-white/10 text-sm text-white placeholder-white/30 transition-all outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-white/50 hover:text-white transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
                 </div>
               </div>
 
