@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { productsApi } from "@/lib/api/products.api";
 import { logActivity } from "@/lib/logger";
 
 interface CategoryFormProps {
@@ -12,7 +12,6 @@ interface CategoryFormProps {
 }
 
 export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormProps) {
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -52,13 +51,11 @@ export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormP
       description: form.description || null,
     };
 
-    let error;
-    let createdItem;
+    let result;
 
     if (initialData?.id) {
-      const result = await supabase.from("categories").update(dataToSave).eq("id", initialData.id);
-      error = result.error;
-      if (!error) {
+      result = await productsApi.updateCategory(initialData.id, dataToSave);
+      if (result) {
         logActivity({
           action: "UPDATE_CATEGORY",
           entity_type: "products",
@@ -67,14 +64,12 @@ export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormP
         });
       }
     } else {
-      const result = await supabase.from("categories").insert(dataToSave).select("id").single();
-      error = result.error;
-      createdItem = result.data;
-      if (!error) {
+      result = await productsApi.createCategory(dataToSave);
+      if (result) {
         logActivity({
           action: "CREATE_CATEGORY",
           entity_type: "products",
-          entity_id: createdItem?.id,
+          entity_id: result.id,
           details: { category_name: form.name, data: dataToSave },
         });
       }
@@ -82,8 +77,8 @@ export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormP
 
     setLoading(false);
 
-    if (error) {
-      alert("Lỗi: " + error.message);
+    if (!result) {
+      alert("Lỗi khi lưu danh mục.");
     } else {
       onSuccess();
     }

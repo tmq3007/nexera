@@ -1,6 +1,15 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
-import { SyncSessionDto, IdentifyContactDto, AdminConvertDto } from './chat.dto';
+import { 
+  SyncSessionDto, 
+  IdentifyContactDto, 
+  AdminConvertDto, 
+  GetConversationDto, 
+  SendMessageDto, 
+  AssignAdminDto,
+  UpdateConversationStatusDto,
+  AddCustomerNoteDto
+} from './chat.dto';
 
 @Injectable()
 export class ChatService {
@@ -726,5 +735,317 @@ export class ChatService {
     }
 
     return data;
+  }
+
+  /**
+   * 5. Lấy hoặc nạp cuộc hội thoại hợp lệ duy nhất của khách (Continuous Messaging)
+   */
+  async getConversation(dto: GetConversationDto) {
+    const { guestSessionId, authUserId, email, customerId } = dto;
+    this.logger.log(`Get conversation for session=${guestSessionId}, authUser=${authUserId}, email=${email}, custId=${customerId}`);
+
+    let primaryConv: any = null;
+    let customer: any = null;
+
+    // 1. Nếu có thông tin người dùng đã đăng nhập
+    if (authUserId || email || customerId) {
+      // Tìm customer
+      if (customerId) {
+        const { data: c } = await this.client.from('customers').select('*').eq('id', customerId).maybeSingle();
+        if (c) customer = c;
+      }
+      if (!customer && authUserId) {
+        const { data: c } = await this.client.from('customers').select('*').eq('auth_user_id', authUserId).maybeSingle();
+        if (c) customer = c;
+      }
+      if (!customer && email) {
+        const { data: c } = await this.client.from('customers').select('*').eq('email', email).maybeSingle();
+        if (c) customer = c;
+      }
+
+      const targetCustId = customer?.id || customerId;
+
+      // Tìm cuộc hội thoại chính theo customer_id
+      if (targetCustId) {
+        const { data: convs } = await this.client
+          .from('conversations')
+          .select('*')
+          .eq('customer_id', targetCustId)
+          .neq('status', 'MERGED')
+          .order('created_at', { ascending: true })
+          .limit(1);
+        if (convs && convs.length > 0) primaryConv = convs[0];
+      }
+
+      // Nếu chưa thấy, tìm theo guest_email
+      if (!primaryConv && email) {
+        const { data: convs } = await this.client
+          .from('conversations')
+          .select('*')
+          .eq('guest_email', email)
+          .neq('status', 'MERGED')
+          .order('created_at', { ascending: true })
+          .limit(1);
+        if (convs && convs.length > 0) primaryConv = convs[0];
+      }
+
+      // Tự động gộp phiên vãng lai nếu có tin nhắn mới trước khi đăng nhập
+      if (guestSessionId) {
+        const { data: guestConvs } = await this.client
+          .from('conversations')
+          .select('*')
+          .eq('guest_session_id', guestSessionId)
+          .neq('status', 'MERGED')
+          .limit(1);
+        const guestConv = guestConvs && guestConvs.length > 0 ? guestConvs[0] : null;
+
+        if (guestConv) {
+          if (primaryConv && primaryConv.id !== guestConv.id) {
+            await this.client.from('chat_messages').update({ conversation_id: primaryConv.id }).eq('conversation_id', guestConv.id);
+            await this.client.from('conversations').update({ status: 'MERGED' }).eq('id', guestConv.id);
+            await this.client.from('conversations').update({
+              last_message_at: new Date().toISOString(),
+              last_message_preview: guestConv.last_message_preview || primaryConv.last_message_preview,
+              status: 'OPEN'
+            }).eq('id', primaryConv.id);
+          } else if (!primaryConv) {
+            primaryConv = guestConv;
+            if (targetCustId) {
+              await this.client.from('conversations').update({ customer_id: targetCustId, guest_email: email }).eq('id', primaryConv.id);
+              primaryConv.customer_id = targetCustId;
+            }
+          }
+        }
+      }
+    } else {
+      // 2. Nếu là khách vãng lai
+      if (guestSessionId) {
+        const { data: convs } = await this.client
+          .from('conversations')
+          .select('*')
+          .eq('guest_session_id', guestSessionId)
+          .neq('status', 'MERGED')
+          .order('last_message_at', { ascending: false })
+          .limit(1);
+        if (convs && convs.length > 0) primaryConv = convs[0];
+      }
+    }
+
+    // Nếu có hội thoại, lấy toàn bộ tin nhắn
+    let messages: any[] = [];
+    if (primaryConv) {
+      const { data: msgList } = await this.client
+        .from('chat_messages')
+        .select('*')
+        .eq('conversation_id', primaryConv.id)
+        .order('created_at', { ascending: true });
+      messages = msgList || [];
+    }
+
+    return {
+      conversation: primaryConv,
+      messages,
+      customer: customer || (primaryConv ? {
+        id: primaryConv.customer_id,
+        full_name: primaryConv.guest_name,
+        email: primaryConv.guest_email,
+        phone: primaryConv.guest_phone,
+      } : null)
+    };
+  }
+
+  /**
+   * 6. Lấy danh sách tin nhắn theo conversationId
+   */
+  async getMessages(conversationId: string) {
+    const { data, error } = await this.client
+      .from('chat_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      this.logger.error(`Error fetching messages for conv=${conversationId}`, error);
+      throw new BadRequestException('Không thể lấy danh sách tin nhắn');
+    }
+    return data || [];
+  }
+
+  /**
+   * 7. Gửi tin nhắn mới (Tự động khởi tạo hội thoại nếu chưa có)
+   */
+  async sendMessage(dto: SendMessageDto) {
+    const { conversationId, guestSessionId, content, attachments, senderType, senderName, senderId } = dto;
+    let targetConvId = conversationId;
+
+    // Nếu chưa có conversationId, tạo hội thoại mới an toàn trên Backend
+    if (!targetConvId) {
+      const { data: newConv, error: convErr } = await this.client
+        .from('conversations')
+        .insert({
+          guest_session_id: guestSessionId,
+          guest_name: senderName || 'Khách vãng lai',
+          status: 'OPEN',
+          last_message_preview: content.length > 80 ? content.substring(0, 77) + '...' : content,
+          last_message_at: new Date().toISOString(),
+          unread_admin_count: senderType === 'CUSTOMER' ? 1 : 0,
+          unread_customer_count: senderType === 'ADMIN' ? 1 : 0,
+          customer_id: senderType === 'CUSTOMER' ? senderId : null,
+        })
+        .select('*')
+        .single();
+
+      if (convErr || !newConv) {
+        this.logger.error('Error creating new conversation for message', convErr);
+        throw new BadRequestException('Không thể khởi tạo cuộc hội thoại mới');
+      }
+      targetConvId = newConv.id;
+    }
+
+    // Insert tin nhắn
+    const { data: savedMsg, error: msgErr } = await this.client
+      .from('chat_messages')
+      .insert({
+        conversation_id: targetConvId,
+        sender_type: senderType,
+        sender_name: senderName,
+        sender_id: senderId || null,
+        content: content,
+        attachments: attachments || [],
+        is_read: false,
+      })
+      .select('*')
+      .single();
+
+    if (msgErr || !savedMsg) {
+      this.logger.error('Error inserting chat message', msgErr);
+      throw new BadRequestException('Không thể gửi tin nhắn');
+    }
+
+    // Cập nhật conversation
+    const updatePayload: any = {
+      last_message_preview: content.length > 80 ? content.substring(0, 77) + '...' : content,
+      last_message_at: new Date().toISOString(),
+      status: 'OPEN',
+    };
+    if (senderType === 'CUSTOMER') {
+      const { data: currentConv } = await this.client.from('conversations').select('unread_admin_count').eq('id', targetConvId).single();
+      updatePayload.unread_admin_count = (currentConv?.unread_admin_count || 0) + 1;
+    } else if (senderType === 'ADMIN') {
+      const { data: currentConv } = await this.client.from('conversations').select('unread_customer_count').eq('id', targetConvId).single();
+      updatePayload.unread_customer_count = (currentConv?.unread_customer_count || 0) + 1;
+    }
+
+    await this.client.from('conversations').update(updatePayload).eq('id', targetConvId);
+
+    return {
+      success: true,
+      conversationId: targetConvId,
+      message: savedMsg,
+    };
+  }
+
+  /**
+   * 8. Phân công tư vấn viên
+   */
+  async assignAdmin(dto: AssignAdminDto) {
+    const { conversationId, adminId } = dto;
+    const { data, error } = await this.client
+      .from('conversations')
+      .update({ assigned_admin_id: adminId })
+      .eq('id', conversationId)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new BadRequestException('Không thể phân công tư vấn viên');
+    }
+    return { success: true, conversation: data };
+  }
+
+  /**
+   * 9. Cập nhật trạng thái hội thoại (Admin)
+   */
+  async updateConversationStatus(dto: UpdateConversationStatusDto) {
+    const { conversationId, status } = dto;
+    const { data, error } = await this.client
+      .from('conversations')
+      .update({ status })
+      .eq('id', conversationId)
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new BadRequestException('Không thể cập nhật trạng thái cuộc hội thoại');
+    }
+    return { success: true, conversation: data };
+  }
+
+  /**
+   * 10. Thêm ghi chú chăm sóc khách hàng (Admin)
+   */
+  async addCustomerNote(dto: AddCustomerNoteDto) {
+    const { customerId, content, authorName } = dto;
+    const { data, error } = await this.client
+      .from('customer_notes')
+      .insert({
+        customer_id: customerId,
+        content,
+        author_name: authorName || 'Tư vấn viên',
+      })
+      .select('*')
+      .single();
+
+    if (error) {
+      throw new BadRequestException('Không thể lưu ghi chú khách hàng');
+    }
+    return { success: true, note: data };
+  }
+
+  /**
+   * 11. Lấy thông tin 360 độ của khách hàng (Orders & Notes)
+   */
+  async getCustomerDetails(customerId: string) {
+    const [custRes, ordersRes, notesRes] = await Promise.all([
+      this.client.from('customers').select('*').eq('id', customerId).maybeSingle(),
+      this.client.from('orders').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }).limit(10),
+      this.client.from('customer_notes').select('*').eq('customer_id', customerId).order('created_at', { ascending: false }),
+    ]);
+
+    return {
+      customer: custRes.data || null,
+      orders: ordersRes.data || [],
+      notes: notesRes.data || [],
+    };
+  }
+
+  /**
+   * 12. Lấy thông tin tài khoản Admin
+   */
+  async getAdminInfo(authUserId: string) {
+    const { data } = await this.client
+      .from('admin_accounts')
+      .select('id, display_name')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
+
+    return data || null;
+  }
+
+  /**
+   * 13. Lấy sản phẩm active để đính kèm nhanh trong chat
+   */
+  async getQuickProducts() {
+    const { data, error } = await this.client
+      .from('products')
+      .select('id, name, price, discount_rate, image_url, slug, stock, is_active')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      this.logger.error('Error fetching quick products for chat', error);
+      return [];
+    }
+    return data || [];
   }
 }

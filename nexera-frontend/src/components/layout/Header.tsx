@@ -9,6 +9,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useCartStore } from "@/store/cartStore";
 import { MiniCart } from "@/components/storefront/MiniCart";
 import { ConfirmLogoutModal } from "@/components/ui/ConfirmLogoutModal";
+import { customersApi } from "@/lib/api/customers.api";
+import { productsApi } from "@/lib/api/products.api";
 
 const AUTH_STORAGE_KEY = "nexera_auth_session";
 
@@ -50,19 +52,16 @@ export function Header() {
     async function fetchData() {
       try {
         // Lấy danh mục sản phẩm
-        const { data: catData } = await supabase.from("categories").select("name, slug");
-        if (catData) setCategories(catData);
+        const catData = await productsApi.getCategories();
+        if (catData && catData.length > 0) setCategories(catData);
 
-        // Kiểm tra phiên đăng nhập từ Supabase
+        // Kiểm tra phiên đăng nhập
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setIsAuth(true);
-          const [adminRes, customerRes] = await Promise.all([
-            supabase.from("admin_accounts").select("id, display_name").eq("auth_user_id", user.id).maybeSingle(),
-            supabase.from("customers").select("id, full_name").eq("auth_user_id", user.id).maybeSingle()
-          ]);
+          const profileRes = await customersApi.getMe(user.id, user.email);
           
-          if (adminRes.data) {
+          if (profileRes.isAdmin) {
             setIsAdmin(true);
             setIsCustomer(false);
             localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
@@ -74,7 +73,7 @@ export function Header() {
           } else {
             setIsAdmin(false);
             setIsCustomer(true);
-            const name = customerRes.data?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
+            const name = profileRes.customer?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
             setCustomerName(name);
 
             localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
@@ -84,19 +83,15 @@ export function Header() {
               customerName: name,
             }));
 
-            // Tự động đảm bảo tạo hồ sơ customer nếu chưa có trong DB
-            if (!customerRes.data) {
-              await supabase.from("customers").insert({
-                auth_user_id: user.id,
-                email: user.email,
-                full_name: name,
-              });
-            }
-
-            // Tự động đồng bộ phiên chat vãng lai vào tài khoản ngay khi vào website
+            // Tự động đảm bảo tạo/đồng bộ hồ sơ customer và phiên chat vãng lai qua Backend API
             const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
-            if (guestSessionId) {
-              Promise.resolve(supabase.rpc("sync_customer_chat_session", { p_guest_session_id: guestSessionId })).catch(() => {});
+            if (!profileRes.customer || guestSessionId) {
+              customersApi.syncProfile({
+                authUserId: user.id,
+                email: user.email,
+                fullName: name,
+                guestSessionId: guestSessionId || undefined,
+              }).catch(() => {});
             }
           }
         } else {

@@ -20,6 +20,7 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { playNotificationChime, playSendFeedback } from "@/lib/audio-chime";
 import { useToast } from "@/contexts/ToastContext";
+import { chatApi } from "@/lib/api/chat.api";
 
 interface Conversation {
   id: string;
@@ -171,18 +172,19 @@ export function LiveChatManager({
 
   const activeConversation = conversations.find((c) => c.id === selectedConvId) || null;
 
-  // 1. Get current Admin user info
+  // 1. Get current Admin user info (Backend-First API)
   useEffect(() => {
     async function loadAdmin() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (user) {
-        const { data: adminAcc } = await supabase
-          .from("admin_accounts")
-          .select("id, display_name")
-          .eq("auth_user_id", user.id)
-          .maybeSingle();
+        let adminAcc: any = null;
+        try {
+          adminAcc = await chatApi.getAdminInfo(user.id);
+        } catch (e) {
+          console.warn("Lỗi lấy thông tin admin qua API:", e);
+        }
 
         const adminName = adminAcc?.display_name || (user.email && !user.email.includes("customer") ? user.email.split("@")[0] : "Admin Nexera");
         setAdminUser({
@@ -192,7 +194,7 @@ export function LiveChatManager({
       }
     }
     loadAdmin();
-  }, [supabase]);
+  }, []);
 
   // Load custom canned responses from Local Storage
   useEffect(() => {
@@ -234,48 +236,16 @@ export function LiveChatManager({
   };
 
   const fetchConversations = async () => {
-    // 1. Ưu tiên gọi NestJS Backend để lấy danh sách kèm customer không bị dính lỗi RLS
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
     try {
-      const res = await fetch(`${backendUrl}/chat/admin/conversations`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setConversations(data as Conversation[]);
-          if (!selectedConvId && data.length > 0) {
-            setSelectedConvId(data[0].id);
-          }
-          return;
+      const data = await chatApi.getAdminConversations();
+      if (Array.isArray(data)) {
+        setConversations(data as Conversation[]);
+        if (!selectedConvId && data.length > 0) {
+          setSelectedConvId(data[0].id);
         }
       }
     } catch (e) {
-      console.warn("Backend /chat/admin/conversations không khả dụng, dùng direct query:", e);
-    }
-
-    // 2. Direct Supabase fallback
-    let { data, error } = await supabase
-      .from("conversations")
-      .select("*, customer:customers(id, full_name, email, phone, phone_numbers, emails, address, tier)")
-      .neq("status", "MERGED")
-      .order("last_message_at", { ascending: false });
-
-    // Fallback an toàn: nếu join quan hệ customers gặp lỗi phân quyền RLS thì load trực tiếp bảng conversations
-    if (error) {
-      console.warn("Lỗi join customers, fallback sang select thuần:", error);
-      const fallbackRes = await supabase
-        .from("conversations")
-        .select("*")
-        .neq("status", "MERGED")
-        .order("last_message_at", { ascending: false });
-      data = fallbackRes.data as any;
-      error = fallbackRes.error;
-    }
-
-    if (!error && data) {
-      setConversations(data as Conversation[]);
-      if (!selectedConvId && data.length > 0) {
-        setSelectedConvId(data[0].id);
-      }
+      console.error("Lỗi lấy danh sách hội thoại qua Backend API:", e);
     }
   };
 
@@ -317,23 +287,16 @@ export function LiveChatManager({
 
     async function loadMessages() {
       setIsLoadingMessages(true);
-      const { data, error } = await supabase
-        .from("chat_messages")
-        .select("*")
-        .eq("conversation_id", selectedConvId)
-        .order("created_at", { ascending: true });
-
-      if (isMounted) {
-        if (!error && data) {
+      try {
+        const data = await chatApi.getMessages(selectedConvId!);
+        if (isMounted && data) {
           setMessages(data as Message[]);
         }
-        setIsLoadingMessages(false);
+      } catch (err) {
+        console.error("Lỗi lấy tin nhắn hội thoại:", err);
+      } finally {
+        if (isMounted) setIsLoadingMessages(false);
       }
-
-      await supabase
-        .from("conversations")
-        .update({ unread_admin_count: 0 })
-        .eq("id", selectedConvId);
     }
 
     loadMessages();
@@ -393,32 +356,19 @@ export function LiveChatManager({
 
     async function loadContext() {
       const cId = activeConversation!.customer_id!;
-
-      const { count } = await supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("customer_id", cId);
-      setCustomerOrdersCount(count || 0);
-
-      const { data: notes } = await supabase
-        .from("customer_notes")
-        .select("*")
-        .eq("customer_id", cId)
-        .order("created_at", { ascending: false });
-      setCustomerNotes((notes as CustomerNote[]) || []);
-
-      // Nếu activeConversation chưa có đối tượng customer đầy đủ, fetch bổ sung
-      if (!activeConversation?.customer) {
-        const { data: cust } = await supabase
-          .from("customers")
-          .select("id, full_name, email, phone, phone_numbers, emails, address, tier")
-          .eq("id", cId)
-          .maybeSingle();
-        if (cust) {
-          setConversations((prev) =>
-            prev.map((c) => (c.id === activeConversation?.id ? { ...c, customer: cust } : c))
-          );
+      try {
+        const details = await chatApi.getCustomerDetails(cId);
+        if (details) {
+          setCustomerOrdersCount(details.orders?.length || 0);
+          setCustomerNotes(details.notes || []);
+          if (details.customer && !activeConversation?.customer) {
+            setConversations((prev) =>
+              prev.map((c) => (c.id === activeConversation?.id ? { ...c, customer: details.customer } : c))
+            );
+          }
         }
+      } catch (err) {
+        console.error("Lỗi lấy thông tin 360 khách hàng:", err);
       }
     }
 
@@ -529,33 +479,17 @@ export function LiveChatManager({
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      const { data, error } = await supabase
-        .from("chat_messages")
-        .insert({
-          conversation_id: selectedConvId,
-          sender_type: "ADMIN",
-          sender_id: adminUser.id || null,
-          sender_name: adminDisplayName,
-          content: finalContent,
-          attachments: attachmentsToSend || [],
-          is_read: true,
-        })
-        .select()
-        .single();
+      const res = await chatApi.sendMessage({
+        conversationId: selectedConvId,
+        content: finalContent,
+        attachments: attachmentsToSend || [],
+        senderType: "ADMIN",
+        senderName: adminDisplayName,
+        senderId: adminUser.id || undefined,
+      });
 
-      if (!error && data) {
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? (data as Message) : m)));
-
-        await supabase
-          .from("conversations")
-          .update({
-            last_message_preview: finalContent.length > 80 ? finalContent.substring(0, 77) + "..." : finalContent,
-            last_message_at: new Date().toISOString(),
-            unread_customer_count: (activeConversation?.unread_customer_count || 0) + 1,
-            status: "OPEN",
-          })
-          .eq("id", selectedConvId);
-
+      if (res.success && res.message) {
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? (res.message as Message) : m)));
         fetchConversations();
       }
     } catch (err) {
@@ -565,20 +499,21 @@ export function LiveChatManager({
     }
   };
 
-  // Product selector modal handlers
+  // Product selector modal handlers (Backend-First API)
   const handleOpenProductModal = async () => {
     setIsProductModalOpen(true);
     if (catalogProducts.length === 0) {
       setIsLoadingProducts(true);
-      const { data } = await supabase
-        .from("products")
-        .select("id, name, price, discount_rate, image_url, slug, stock, is_active")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      if (data) {
-        setCatalogProducts(data);
+      try {
+        const data = await chatApi.getQuickProducts();
+        if (data) {
+          setCatalogProducts(data);
+        }
+      } catch (err) {
+        console.error("Lỗi tải sản phẩm chat:", err);
+      } finally {
+        setIsLoadingProducts(false);
       }
-      setIsLoadingProducts(false);
     }
   };
 
@@ -657,18 +592,22 @@ export function LiveChatManager({
   };
 
   // Toggle conversation status
+  // Toggle conversation status (Backend-First API)
   const handleToggleStatus = async () => {
     if (!activeConversation) return;
     const newStatus = activeConversation.status === "RESOLVED" ? "OPEN" : "RESOLVED";
 
-    await supabase.from("conversations").update({ status: newStatus }).eq("id", activeConversation.id);
-
-    setConversations((prev) =>
-      prev.map((c) => (c.id === activeConversation.id ? { ...c, status: newStatus } : c))
-    );
+    try {
+      await chatApi.updateStatus(activeConversation.id, newStatus);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === activeConversation.id ? { ...c, status: newStatus } : c))
+      );
+    } catch (err) {
+      console.error("Lỗi cập nhật trạng thái hội thoại:", err);
+    }
   };
 
-  // Add customer note
+  // Add customer note (Backend-First API)
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteContent.trim() || !activeConversation?.customer_id) return;
@@ -676,21 +615,17 @@ export function LiveChatManager({
     setIsSavingNote(true);
     const cId = activeConversation.customer_id;
 
-    const { data, error } = await supabase
-      .from("customer_notes")
-      .insert({
-        customer_id: cId,
-        admin_id: adminUser.id || null,
-        content: newNoteContent.trim(),
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      setCustomerNotes((prev) => [data as CustomerNote, ...prev]);
-      setNewNoteContent("");
+    try {
+      const res = await chatApi.addCustomerNote(cId, newNoteContent.trim(), adminUser.name);
+      if (res.success && res.note) {
+        setCustomerNotes((prev) => [res.note as CustomerNote, ...prev]);
+        setNewNoteContent("");
+      }
+    } catch (err) {
+      console.error("Lỗi lưu ghi chú khách hàng:", err);
+    } finally {
+      setIsSavingNote(false);
     }
-    setIsSavingNote(false);
   };
 
   // Convert Guest to Customer / Link Existing Customer via NestJS Backend
@@ -747,34 +682,46 @@ export function LiveChatManager({
     }
   };
 
-  // Đặt làm số chính từ khung chat
+  // Đặt làm số chính từ khung chat (Backend-First API)
   const handleSetPrimaryPhone = async (newPhone: string) => {
-    if (!activeConversation?.customer_id) return;
-    await supabase
-      .from("customers")
-      .update({ phone: newPhone })
-      .eq("id", activeConversation.customer_id);
-    fetchConversations();
+    if (!activeConversation) return;
+    try {
+      await chatApi.adminConvert({
+        conversationId: activeConversation.id,
+        phone: newPhone,
+      });
+      fetchConversations();
+    } catch (e) {
+      console.error("Lỗi cập nhật số điện thoại chính:", e);
+    }
   };
 
-  // Đặt làm email chính từ khung chat
+  // Đặt làm email chính từ khung chat (Backend-First API)
   const handleSetPrimaryEmail = async (newEmail: string) => {
-    if (!activeConversation?.customer_id) return;
-    await supabase
-      .from("customers")
-      .update({ email: newEmail })
-      .eq("id", activeConversation.customer_id);
-    fetchConversations();
+    if (!activeConversation) return;
+    try {
+      await chatApi.adminConvert({
+        conversationId: activeConversation.id,
+        email: newEmail,
+      });
+      fetchConversations();
+    } catch (e) {
+      console.error("Lỗi cập nhật email chính:", e);
+    }
   };
 
-  // Cập nhật tên tài khoản chính theo tên người đang chat
+  // Cập nhật tên tài khoản chính theo tên người đang chat (Backend-First API)
   const handleUpdateAccountName = async (newName: string) => {
-    if (!activeConversation?.customer_id || !newName.trim()) return;
-    await supabase
-      .from("customers")
-      .update({ full_name: newName.trim() })
-      .eq("id", activeConversation.customer_id);
-    fetchConversations();
+    if (!activeConversation || !newName.trim()) return;
+    try {
+      await chatApi.adminConvert({
+        conversationId: activeConversation.id,
+        fullName: newName.trim(),
+      });
+      fetchConversations();
+    } catch (e) {
+      console.error("Lỗi cập nhật tên tài khoản:", e);
+    }
   };
 
   // Filter conversations

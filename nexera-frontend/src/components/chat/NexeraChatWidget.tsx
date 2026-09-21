@@ -21,6 +21,7 @@ import {
 import { siteConfig } from "@/config/site";
 import { createClient } from "@/utils/supabase/client";
 import { playNotificationChime, playSendFeedback } from "@/lib/audio-chime";
+import { chatApi } from "@/lib/api/chat.api";
 
 export interface ChatMessage {
   id: string;
@@ -129,14 +130,14 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
     }
   }, [isOpen, messages, onUnreadChange]);
 
-  // Initialize or fetch session & existing conversation on mount
+  // Initialize or fetch session & existing conversation on mount (Backend-First)
   useEffect(() => {
     let isMounted = true;
 
     async function initChat() {
       setIsLoading(true);
 
-      // 1. Check local guest session
+      // 1. Kiểm tra mã phiên vãng lai từ localStorage
       let sId = localStorage.getItem("nexera_chat_guest_session");
       if (!sId) {
         sId = "guest_" + Math.random().toString(36).substring(2, 11) + "_" + Date.now();
@@ -154,253 +155,64 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
         if (savedName || savedPhone || savedEmail) setContactSaved(true);
       }
 
-      // 2. Check if logged-in customer OR admin account
-      let currentCustomerId: string | null = null;
-      let currentCustomerName: string = "";
-      let isAdminLocal = false;
-
+      // 2. Lấy thông tin user đăng nhập (nếu có)
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const [custRes, adminRes] = await Promise.all([
-          supabase
-            .from("customers")
-            .select("id, full_name, phone, email, phone_numbers, emails, auth_user_id, tier")
-            .or(`auth_user_id.eq.${user.id},email.eq.${user.email}`)
-            .limit(1),
-          supabase
-            .from("admin_accounts")
-            .select("id, display_name, role_id")
-            .eq("auth_user_id", user.id)
-            .maybeSingle()
-        ]);
 
-        const adminAcc = adminRes.data;
-        let cust = Array.isArray(custRes.data)
-          ? (custRes.data.length > 0 ? custRes.data[0] : null)
-          : (custRes.data || null);
+      const welcomeMsg: ChatMessage = {
+        id: "welcome_init",
+        conversation_id: "local_welcome",
+        sender_type: "SYSTEM",
+        sender_name: "Nexera Support",
+        content: "Xin chào! Rất vui được đón tiếp Quý khách đến với NEXERA. Bạn đang quan tâm đến giải pháp Năng lượng xanh, Thiết bị thông minh hay cần hỗ trợ đơn hàng ạ?",
+        is_read: true,
+        created_at: new Date().toISOString()
+      };
 
-        if (adminAcc) {
-          const adminTitle = adminAcc.display_name || user.email?.split("@")[0] || "Quản trị viên";
-          const fullAdminName = `${adminTitle} (Quản trị viên)`;
-          currentCustomerName = fullAdminName;
-          
-          if (isMounted) {
-            setIsAdmin(true);
-            setCustomerName(fullAdminName);
-            setGuestName(fullAdminName);
-            setGuestEmail(user.email || ""); // Admin account table ko có cột email, lấy từ user auth
-            setContactSaved(true); // Admin không bao giờ cần hiển thị form hỏi lại SĐT
-          }
-          isAdminLocal = true;
-          // Chặn Admin: Không update guest_name và KHÔNG gộp hội thoại để tránh rác DB
-        } else {
-          // Xử lý danh tính khách hàng đã đăng nhập
-          currentCustomerId = cust?.id || null;
-          currentCustomerName = cust?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
-          
-          if (isMounted) {
-            if (cust?.id) setCustomerId(cust.id);
-            setCustomerTier(cust?.tier || "TIÊU CHUẨN");
-            setCustomerName(currentCustomerName);
-            setGuestName(currentCustomerName);
-            setGuestEmail(cust?.email || user.email || "");
-            if (cust?.phone) setGuestPhone(cust.phone);
+      try {
+        // 3. Gọi Backend API duy nhất: Lấy đúng hội thoại và toàn bộ tin nhắn xuyên suốt
+        const res = await chatApi.getConversation({
+          guestSessionId: sId,
+          authUserId: user?.id,
+          email: user?.email,
+        });
+
+        if (isMounted) {
+          if (res.customer) {
+            setCustomerId(res.customer.id || null);
+            setCustomerTier(res.customer.tier || "TIÊU CHUẨN");
+            setCustomerName(res.customer.full_name || "Khách hàng");
+            setGuestName(res.customer.full_name || "Khách hàng");
+            if (res.customer.email) setGuestEmail(res.customer.email);
+            if (res.customer.phone) setGuestPhone(res.customer.phone);
             setContactSaved(true);
           }
 
-          // Luôn luôn gọi Backend API để đồng bộ và gộp phiên (Phương án A - Lịch sử xuyên suốt)
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-          try {
-            const syncRes = await fetch(`${backendUrl}/chat/sync-session`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                guestSessionId: sId,
-                customerId: cust?.id || undefined,
-                authUserId: user.id,
-                email: user.email,
-                fullName: currentCustomerName,
-                phone: cust?.phone || savedPhone || undefined,
-              }),
-            });
-            if (syncRes.ok) {
-              const syncData = await syncRes.json();
-              if (syncData.customer && isMounted) {
-                currentCustomerId = syncData.customer.id;
-                currentCustomerName = syncData.customer.full_name || currentCustomerName;
-                setCustomerId(syncData.customer.id);
-                setCustomerTier(syncData.customer.tier || "TIÊU CHUẨN");
-                setCustomerName(currentCustomerName);
-                setGuestName(currentCustomerName);
-                if (syncData.customer.phone) setGuestPhone(syncData.customer.phone);
-                if (syncData.customer.email) setGuestEmail(syncData.customer.email);
-                setContactSaved(true);
-              }
-
-              if (syncData.conversationId && isMounted) {
-                const targetConvId = syncData.conversationId;
-                setConversationId(targetConvId);
-
-                // Tải ngay toàn bộ tin nhắn của hội thoại đã gộp (lịch sử xuyên suốt)
-                const { data: msgData } = await supabase
-                  .from("chat_messages")
-                  .select("*")
-                  .eq("conversation_id", targetConvId)
-                  .order("created_at", { ascending: true });
-
-                if (isMounted) {
-                  setMessages((msgData as ChatMessage[]) || []);
-                  setIsLoading(false);
-                  scrollToBottom();
-                }
-                return; // Hoàn tất đồng bộ ngay lập tức!
-              }
+          if (res.conversation) {
+            setConversationId(res.conversation.id);
+            if (res.messages && res.messages.length > 0) {
+              setMessages(res.messages as ChatMessage[]);
+            } else {
+              setMessages([welcomeMsg]);
             }
-          } catch (syncErr) {
-            console.warn("Backend /chat/sync-session không khả dụng, dùng direct fallback:", syncErr);
-            try {
-              // Fallback trực tiếp: tìm cuộc hội thoại chính theo customer_id hoặc email
-              let existingConvQuery = supabase
-                .from("conversations")
-                .select("id")
-                .neq("status", "MERGED")
-                .order("created_at", { ascending: true })
-                .limit(1);
-
-              if (cust?.id) {
-                existingConvQuery = existingConvQuery.eq("customer_id", cust.id);
-              } else if (user.email) {
-                existingConvQuery = existingConvQuery.eq("guest_email", user.email);
-              }
-
-              const { data: existingConvs } = await existingConvQuery;
-              const primaryConv = existingConvs && existingConvs.length > 0 ? existingConvs[0] : null;
-
-              const { data: currentGuestConv } = await supabase
-                .from("conversations")
-                .select("id")
-                .eq("guest_session_id", sId)
-                .neq("status", "MERGED")
-                .maybeSingle();
-
-              if (primaryConv && currentGuestConv && primaryConv.id !== currentGuestConv.id) {
-                await supabase
-                  .from("chat_messages")
-                  .update({ conversation_id: primaryConv.id })
-                  .eq("conversation_id", currentGuestConv.id);
-
-                await supabase
-                  .from("conversations")
-                  .update({ status: "MERGED", guest_name: currentCustomerName })
-                  .eq("id", currentGuestConv.id);
-
-                setConversationId(primaryConv.id);
-              } else if (primaryConv) {
-                setConversationId(primaryConv.id);
-              } else if (currentGuestConv) {
-                setConversationId(currentGuestConv.id);
-              }
-            } catch (updateErr) {
-              console.error("Lỗi cập nhật fallback conversation:", updateErr);
-            }
+          } else {
+            setConversationId(null);
+            setMessages([welcomeMsg]);
           }
+          setIsLoading(false);
+          scrollToBottom();
         }
-      }
-
-      // 3. Find existing conversation (tìm theo cả customer_id hoặc guest_session_id)
-      if (isAdminLocal) {
-        // Admin không được chat, nên không load tin nhắn cũ.
-        const welcomeMsg: ChatMessage = {
-          id: "welcome_init",
-          conversation_id: "local_welcome",
-          sender_type: "SYSTEM",
-          sender_name: "Nexera Support",
-          content: "Xin chào! Rất vui được đón tiếp Quý khách đến với NEXERA. Bạn đang quan tâm đến giải pháp Năng lượng xanh, Thiết bị thông minh hay cần hỗ trợ đơn hàng ạ?",
-          is_read: true,
-          created_at: new Date().toISOString()
-        };
+      } catch (err) {
+        console.error("Lỗi lấy hội thoại từ Backend API:", err);
         if (isMounted) {
           setMessages([welcomeMsg]);
           setIsLoading(false);
         }
-        return;
       }
-
-      let query = supabase
-        .from("conversations")
-        .select("*")
-        .neq("status", "MERGED") // Bỏ qua các hội thoại rác đã bị gộp
-        .order("last_message_at", { ascending: false }) // Ưu tiên hội thoại mới có tin nhắn nhất (hội thoại cũ sau khi gộp sẽ nảy lên đây)
-        .limit(1);
-
-      if (currentCustomerId) {
-        query = query.eq("customer_id", currentCustomerId);
-      } else {
-        query = query.eq("guest_session_id", sId);
-      }
-
-      const { data: convData } = await query;
-
-      let conv = convData && convData.length > 0 ? convData[0] : null;
-
-      if (!conv) {
-        // DO NOT create initial conversation yet, wait until first message is sent
-        const welcomeMsg: ChatMessage = {
-          id: "welcome_init",
-          conversation_id: "local_welcome",
-          sender_type: "SYSTEM",
-          sender_name: "Nexera Support",
-          content: "Xin chào! Rất vui được đón tiếp Quý khách đến với NEXERA. Bạn đang quan tâm đến giải pháp Năng lượng xanh, Thiết bị thông minh hay cần hỗ trợ đơn hàng ạ?",
-          is_read: true,
-          created_at: new Date().toISOString()
-        };
-        if (isMounted) {
-          setMessages([welcomeMsg]);
-        }
-      }
-
-      if (conv && isMounted) {
-        setConversationId(conv.id);
-
-        // Đảm bảo hội thoại đã được gắn customer_id nếu đã đăng nhập
-        if (currentCustomerId && conv.customer_id !== currentCustomerId) {
-          await supabase
-            .from("conversations")
-            .update({ customer_id: currentCustomerId })
-            .eq("id", conv.id);
-          conv.customer_id = currentCustomerId;
-        }
-
-        // Fetch messages for this conversation
-        const { data: msgData } = await supabase
-          .from("chat_messages")
-          .select("*")
-          .eq("conversation_id", conv.id)
-          .order("created_at", { ascending: true });
-
-        if (msgData && msgData.length > 0) {
-          setMessages(msgData as ChatMessage[]);
-        } else {
-          // If no messages yet, show welcome system message
-          const welcomeMsg: ChatMessage = {
-            id: "welcome_init",
-            conversation_id: conv.id,
-            sender_type: "SYSTEM",
-            sender_name: "Nexera Support",
-            content: "Xin chào! Rất vui được đón tiếp Quý khách đến với NEXERA. Bạn đang quan tâm đến giải pháp Năng lượng xanh, Thiết bị thông minh hay cần hỗ trợ đơn hàng ạ?",
-            is_read: true,
-            created_at: new Date().toISOString()
-          };
-          setMessages([welcomeMsg]);
-        }
-      }
-
-      if (isMounted) setIsLoading(false);
     }
 
     initChat();
 
-    // Lắng nghe sự kiện auth để tự động đồng bộ & gộp chat ngay khi khách đăng nhập
+    // Lắng nghe sự kiện auth để tự động đồng bộ & nạp lại chat ngay khi khách đăng nhập/đăng xuất
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN" || event === "USER_UPDATED" || event === "SIGNED_OUT") {
         initChat();
@@ -411,7 +223,7 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
       isMounted = false;
       subscription?.unsubscribe();
     };
-  }, [supabase]);
+  }, []);
 
   // Realtime subscription for new messages and typing events
   useEffect(() => {
@@ -483,15 +295,14 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
           if (newConvId) {
             setConversationId(newConvId);
             
-            // Tự động fetch lại tin nhắn của cuộc hội thoại cũ vừa được gộp
-            const { data: msgData } = await supabase
-              .from("chat_messages")
-              .select("*")
-              .eq("conversation_id", newConvId)
-              .order("created_at", { ascending: true });
-              
-            if (msgData) {
-              setMessages(msgData as ChatMessage[]);
+            // Tự động nạp lại tin nhắn của cuộc hội thoại vừa được gộp qua Backend API
+            try {
+              const msgs = await chatApi.getMessages(newConvId);
+              if (msgs) {
+                setMessages(msgs as ChatMessage[]);
+              }
+            } catch (err) {
+              console.error("Lỗi lấy tin nhắn sau khi gộp:", err);
             }
           }
         }
@@ -586,6 +397,7 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
   };
 
   // Send message handler (supports text and attachments)
+  // Send message handler (Backend-First API)
   const handleSendMessage = async (textToSend?: string, attachmentsToSend?: any[]) => {
     const text = (textToSend !== undefined ? textToSend : inputValue).trim();
     if ((!text && (!attachmentsToSend || attachmentsToSend.length === 0)) || isSending) return;
@@ -609,86 +421,48 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
     const senderName = customerName || guestName || (isAdmin ? "Quản trị viên" : "Khách hàng");
     const finalContent = text || (attachmentsToSend?.[0]?.type === "image" ? "[Hình ảnh]" : "[Đính kèm]");
 
+    // Optimistic UI
+    const tempId = "temp_" + Date.now();
+    const optimisticMsg: ChatMessage = {
+      id: tempId,
+      conversation_id: conversationId || "temp_conv",
+      sender_type: "CUSTOMER",
+      sender_id: customerId,
+      sender_name: senderName,
+      content: finalContent,
+      attachments: attachmentsToSend || [],
+      is_read: false,
+      created_at: new Date().toISOString()
+    };
+    setMessages((prev) => [...prev.filter(m => m.id !== "welcome_init"), optimisticMsg]);
+
     try {
-      let currentConvId = conversationId;
-
-      // CREATE CONVERSATION ON FIRST MESSAGE IF IT DOESN'T EXIST
-      if (!currentConvId) {
-        const { data: newConv, error: convError } = await supabase
-          .from("conversations")
-          .insert({
-            customer_id: customerId,
-            guest_session_id: guestSessionId,
-            guest_name: customerName || guestName || (isAdmin ? "Quản trị viên" : "Khách vãng lai"),
-            guest_phone: guestPhone || null,
-            guest_email: guestEmail || null,
-            status: "OPEN",
-            last_message_preview: finalContent.length > 80 ? finalContent.substring(0, 77) + "..." : finalContent,
-            last_message_at: new Date().toISOString(),
-            unread_admin_count: 1,
-            unread_customer_count: 0
-          })
-          .select()
-          .single();
-          
-        if (convError || !newConv) {
-          throw convError;
-        }
-        currentConvId = newConv.id;
-        setConversationId(currentConvId);
-      }
-
-      // Optimistic message
-      const tempId = "temp_" + Date.now();
-      const optimisticMsg: ChatMessage = {
-        id: tempId,
-        conversation_id: currentConvId as string,
-        sender_type: "CUSTOMER",
-        sender_id: customerId,
-        sender_name: senderName,
+      // Gửi tin nhắn qua NestJS Backend API
+      const res = await chatApi.sendMessage({
+        conversationId: conversationId || undefined,
+        guestSessionId: guestSessionId,
         content: finalContent,
         attachments: attachmentsToSend || [],
-        is_read: false,
-        created_at: new Date().toISOString()
-      };
-      setMessages((prev) => [...prev.filter(m => m.id !== "welcome_init"), optimisticMsg]);
+        senderType: "CUSTOMER",
+        senderName: senderName,
+        senderId: customerId || undefined,
+      });
 
-      const { data, error } = await supabase
-        .from("chat_messages")
-        .insert({
-          conversation_id: currentConvId as string,
-          sender_type: "CUSTOMER",
-          sender_id: customerId,
-          sender_name: senderName,
-          content: finalContent,
-          attachments: attachmentsToSend || [],
-          is_read: false
-        })
-        .select()
-        .single();
-
-      if (!error && data) {
-        // Replace optimistic message
-        setMessages((prev) => prev.map((m) => (m.id === tempId ? (data as ChatMessage) : m)));
-
-        // Update conversation summary
-        await supabase
-          .from("conversations")
-          .update({
-            last_message_preview: finalContent.length > 80 ? finalContent.substring(0, 77) + "..." : finalContent,
-            last_message_at: new Date().toISOString(),
-            status: "OPEN"
-          })
-          .eq("id", currentConvId);
+      if (res.success) {
+        if (!conversationId && res.conversationId) {
+          setConversationId(res.conversationId);
+        }
+        // Thay thế optimistic message bằng tin nhắn chính thức từ DB
+        setMessages((prev) => prev.map((m) => (m.id === tempId ? (res.message as ChatMessage) : m)));
       }
     } catch (err) {
-      console.error("Lỗi khi gửi tin nhắn:", err);
+      console.error("Lỗi khi gửi tin nhắn qua Backend API:", err);
     } finally {
       setIsSending(false);
     }
   };
 
-  // Save guest contact info
+  // Save guest contact info (Backend-First API)
   const handleSaveContact = async (e: React.FormEvent) => {
     e.preventDefault();
     const name = guestName.trim();
@@ -702,47 +476,27 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
     setContactSaved(true);
     setShowContactForm(false);
 
-    // Gọi Backend API để nhận diện / liên kết khách hàng thông minh mà không bị vướng RLS
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
     try {
-      const idRes = await fetch(`${backendUrl}/chat/identify-contact`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestSessionId,
-          phone: phone || undefined,
-          email: email || undefined,
-          fullName: name || undefined,
-        }),
+      const res = await chatApi.identifyContact({
+        guestSessionId,
+        conversationId: conversationId || undefined,
+        fullName: name || undefined,
+        phone: phone || undefined,
+        email: email || undefined,
       });
 
-      if (idRes.ok) {
-        const idData = await idRes.json();
-        if (idData.customer) {
-          setCustomerId(idData.customer.id);
-          if (idData.customer.full_name) {
-            setCustomerName(idData.customer.full_name);
-            setGuestName(idData.customer.full_name);
-          }
+      if (res.customer) {
+        setCustomerId(res.customer.id);
+        if (res.customer.full_name) {
+          setCustomerName(res.customer.full_name);
+          setGuestName(res.customer.full_name);
         }
-        if (idData.conversationId) {
-          setConversationId(idData.conversationId);
-        }
-        return;
+      }
+      if (res.conversationId) {
+        setConversationId(res.conversationId);
       }
     } catch (err) {
-      console.warn("Backend /chat/identify-contact call failed, using direct save:", err);
-    }
-
-    if (conversationId) {
-      await supabase
-        .from("conversations")
-        .update({
-          guest_name: name || undefined,
-          guest_phone: phone || undefined,
-          guest_email: email || undefined,
-        })
-        .eq("id", conversationId);
+      console.error("Lỗi lưu thông tin liên hệ qua Backend API:", err);
     }
   };
 

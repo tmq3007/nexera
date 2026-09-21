@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { contentApi } from "@/lib/api/content.api";
 import { useToast } from "@/contexts/ToastContext";
 import { Building2, Save, RefreshCw, MapPin, Phone, Mail, FileText, Globe } from "lucide-react";
 
@@ -35,7 +35,6 @@ export default function BusinessInfoAdminPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const supabase = createClient();
   const toast = useToast();
 
   useEffect(() => {
@@ -45,13 +44,7 @@ export default function BusinessInfoAdminPage() {
   const fetchBusinessInfo = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("business_information")
-        .select("*")
-        .limit(1)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await contentApi.getBusinessInfo();
 
       if (data) {
         setFormData({
@@ -70,7 +63,7 @@ export default function BusinessInfoAdminPage() {
       }
     } catch (err: any) {
       console.error("Lỗi khi tải thông tin doanh nghiệp:", err);
-      toast.error("Không thể tải thông tin doanh nghiệp từ CSDL.");
+      toast.error("Không thể tải thông tin doanh nghiệp.");
     } finally {
       setLoading(false);
     }
@@ -81,51 +74,10 @@ export default function BusinessInfoAdminPage() {
     setSaving(true);
 
     try {
-      if (formData.id) {
-        const { error } = await supabase
-          .from("business_information")
-          .update({
-            business_name: formData.business_name,
-            tax_code: formData.tax_code,
-            address: formData.address,
-            phone: formData.phone,
-            email: formData.email,
-            website: formData.website,
-            representative: formData.representative,
-            license_issued_date: formData.license_issued_date,
-            license_issued_by: formData.license_issued_by,
-            map_url: formData.map_url,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", formData.id);
-
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase
-          .from("business_information")
-          .insert([
-            {
-              business_name: formData.business_name,
-              tax_code: formData.tax_code,
-              address: formData.address,
-              phone: formData.phone,
-              email: formData.email,
-              website: formData.website,
-              representative: formData.representative,
-              license_issued_date: formData.license_issued_date,
-              license_issued_by: formData.license_issued_by,
-              map_url: formData.map_url,
-            },
-          ])
-          .select()
-          .single();
-
-        if (error) throw error;
-        if (data) {
-          setFormData((prev) => ({ ...prev, id: data.id }));
-        }
+      const res = await contentApi.saveBusinessInfo(formData);
+      if (res && res.id) {
+        setFormData((prev) => ({ ...prev, id: res.id }));
       }
-
       toast.success("Cập nhật thông tin doanh nghiệp thành công! Footer website đã đồng bộ.");
     } catch (err: any) {
       console.error("Lỗi cập nhật:", err);

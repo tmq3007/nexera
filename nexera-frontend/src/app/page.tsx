@@ -4,26 +4,16 @@ import { BestSellersSection } from "@/components/home/BestSellersSection";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, ShieldCheck, Zap, PiggyBank, RefreshCcw, Banknote, House, FileCheck2, Cpu } from "lucide-react";
-import { createClient } from "@/utils/supabase/server";
+import { productsApi } from "@/lib/api/products.api";
+import { contentApi } from "@/lib/api/content.api";
 
 export default async function Home() {
-  const supabase = await createClient();
-  
-  // Fetch latest 4 articles
-  const { data: articles } = await supabase
-    .from("articles")
-    .select("*")
-    .order("published_at", { ascending: false })
-    .limit(4);
+  const [articlesRes, bestSellerProducts] = await Promise.all([
+    contentApi.getArticles({ limit: 4 }),
+    productsApi.getBestsellers(8),
+  ]);
 
-  // Fetch Bestseller products (or top products)
-  const { data: bestSellerProducts } = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_active", true)
-    .order("is_bestseller", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(8);
+  const articles = articlesRes.data;
 
   return (
     <>

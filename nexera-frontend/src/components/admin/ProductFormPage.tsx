@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { productsApi } from "@/lib/api/products.api";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { MultiImageUpload } from "@/components/ui/MultiImageUpload";
 import { SpecificationsEditor } from "@/components/ui/SpecificationsEditor";
@@ -23,7 +23,6 @@ interface ProductFormPageProps {
 
 export function ProductFormPage({ mode, initialData, categories }: ProductFormPageProps) {
   const router = useRouter();
-  const supabase = createClient();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
 
@@ -116,13 +115,11 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
       supplier: form.supplier || null,
     };
 
-    let error;
-    let createdItem;
+    let result;
 
     if (mode === "edit" && initialData?.id) {
-      const result = await supabase.from("products").update(dataToSave).eq("id", initialData.id);
-      error = result.error;
-      if (!error) {
+      result = await productsApi.updateProduct(initialData.id, dataToSave);
+      if (result) {
         logActivity({
           action: "UPDATE_PRODUCT",
           entity_type: "products",
@@ -131,14 +128,12 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
         });
       }
     } else {
-      const result = await supabase.from("products").insert(dataToSave).select();
-      error = result.error;
-      createdItem = result.data?.[0];
-      if (!error) {
+      result = await productsApi.createProduct(dataToSave);
+      if (result) {
         logActivity({
           action: "CREATE_PRODUCT",
           entity_type: "products",
-          entity_id: createdItem?.id,
+          entity_id: result.id,
           details: { product_name: form.name },
         });
       }
@@ -146,13 +141,13 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
 
     setLoading(false);
 
-    if (error) {
-      toast.error(formatErrorMessage(error, "Lỗi không xác định khi lưu sản phẩm"));
+    if (!result) {
+      toast.error("Lỗi không xác định khi lưu sản phẩm");
     } else {
       toast.success("Lưu sản phẩm thành công!");
       // Sau khi tạo mới, chuyển sang trang edit để có thể tiếp tục chỉnh sửa
-      if (mode === "create" && createdItem?.id) {
-        router.replace(`/admin/san-pham/${createdItem.id}`);
+      if (mode === "create" && result?.id) {
+        router.replace(`/admin/san-pham/${result.id}`);
       } else {
         router.refresh();
       }

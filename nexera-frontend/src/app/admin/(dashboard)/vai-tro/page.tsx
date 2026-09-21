@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { rbacApi, Role, Permission } from "@/lib/api/rbac.api";
 import {
   Lock,
   Plus,
@@ -17,33 +18,6 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import Link from "next/link";
-
-interface Role {
-  id: string;
-  name: string;
-  display_name: string;
-  description: string | null;
-  is_system: boolean;
-}
-
-interface Permission {
-  id: string;
-  name: string;
-  display_name: string;
-  module: string;
-  description: string | null;
-}
-
-const slugify = (str: string) => {
-  return str
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u066f]/g, "")
-    .replace(/[đĐ]/g, "d")
-    .replace(/[^a-z0-9\s_-]/g, "")
-    .trim()
-    .replace(/[\s-]+/g, "_");
-};
 
 export default function RolesAndPermissionsPage() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -62,12 +36,11 @@ export default function RolesAndPermissionsPage() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const supabase = createClient();
-
   const checkPermissionAndFetchData = async () => {
     setLoading(true);
     try {
-      // 1. Kiểm tra quyền admin.manage_roles
+      // 1. Kiểm tra session hiện tại
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setHasPermission(false);
@@ -75,53 +48,31 @@ export default function RolesAndPermissionsPage() {
         return;
       }
 
-      const { data: currentAdmin } = await supabase
-        .from("admin_accounts")
-        .select("id, role_id, is_active, roles(name)")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
+      // Kiểm tra quyền qua backend API
+      const permCheck = await rbacApi.checkPermission(user.id, "admin.manage_roles");
+      setHasPermission(permCheck.hasPermission);
 
-      if (!currentAdmin || !currentAdmin.is_active) {
-        setHasPermission(false);
+      if (!permCheck.hasPermission) {
         setLoading(false);
         return;
       }
 
-      const isSuperAdmin = (currentAdmin.roles as any)?.name === "super_admin";
+      // 2. Fetch Roles & Permissions
+      const [rolesData, permData] = await Promise.all([
+        rbacApi.getRoles(),
+        rbacApi.getPermissions(),
+      ]);
 
-      if (isSuperAdmin) {
-        setHasPermission(true);
-      } else {
-        const { data: rpData } = await supabase
-          .from("role_permissions")
-          .select("permissions(name)")
-          .eq("role_id", currentAdmin.role_id);
+      setRoles(rolesData);
+      setPermissions(permData);
 
-        const perms = rpData?.map((item: any) => item.permissions?.name) || [];
-        setHasPermission(perms.includes("admin.manage_roles"));
+      if (rolesData.length > 0) {
+        const activeRole = selectedRole
+          ? rolesData.find(r => r.id === selectedRole.id) || rolesData[0]
+          : rolesData[0];
+        setSelectedRole(activeRole);
+        await fetchPermissionsForRole(activeRole.id);
       }
-
-      // 2. Fetch Roles
-      const { data: rolesData } = await supabase
-        .from("roles")
-        .select("*")
-        .order("is_system", { ascending: false });
-
-      // 3. Fetch Permissions
-      const { data: permData } = await supabase
-        .from("permissions")
-        .select("*")
-        .order("module", { ascending: true });
-
-      if (rolesData) {
-        setRoles(rolesData);
-        if (rolesData.length > 0 && !selectedRole) {
-          setSelectedRole(rolesData[0]);
-          await fetchPermissionsForRole(rolesData[0].id);
-        }
-      }
-
-      if (permData) setPermissions(permData);
     } catch (err: any) {
       console.error("Lỗi khi tải Roles/Permissions:", err);
       setHasPermission(false);
@@ -131,13 +82,11 @@ export default function RolesAndPermissionsPage() {
   };
 
   const fetchPermissionsForRole = async (roleId: string) => {
-    const { data: rpData } = await supabase
-      .from("role_permissions")
-      .select("permission_id")
-      .eq("role_id", roleId);
-
-    if (rpData) {
-      setRolePermissions(rpData.map(item => item.permission_id));
+    try {
+      const perms = await rbacApi.getRolePermissions(roleId);
+      setRolePermissions(perms);
+    } catch (err) {
+      console.error("Lỗi fetchPermissionsForRole:", err);
     }
   };
 
@@ -174,17 +123,7 @@ export default function RolesAndPermissionsPage() {
     setSaveSuccess(false);
 
     try {
-      await supabase.from("role_permissions").delete().eq("role_id", selectedRole.id);
-
-      if (rolePermissions.length > 0) {
-        const rowsToInsert = rolePermissions.map(permId => ({
-          role_id: selectedRole.id,
-          permission_id: permId
-        }));
-
-        const { error } = await supabase.from("role_permissions").insert(rowsToInsert);
-        if (error) throw error;
-      }
+      await rbacApi.updateRolePermissions(selectedRole.id, rolePermissions);
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -200,21 +139,11 @@ export default function RolesAndPermissionsPage() {
     setModalSubmitting(true);
     setModalError(null);
 
-    const autoGeneratedSlug = slugify(newRoleDisplayName) || `role_${Date.now()}`;
-
     try {
-      const { data: newRole, error } = await supabase
-        .from("roles")
-        .insert({
-          name: autoGeneratedSlug,
-          display_name: newRoleDisplayName,
-          description: newRoleDescription,
-          is_system: false
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
+      const newRole = await rbacApi.createRole({
+        displayName: newRoleDisplayName,
+        description: newRoleDescription,
+      });
 
       await checkPermissionAndFetchData();
       if (newRole) {
@@ -241,8 +170,7 @@ export default function RolesAndPermissionsPage() {
     if (!confirm(`Bạn có chắc muốn xóa vai trò "${role.display_name}"?`)) return;
 
     try {
-      const { error } = await supabase.from("roles").delete().eq("id", role.id);
-      if (error) throw error;
+      await rbacApi.deleteRole(role.id);
 
       await checkPermissionAndFetchData();
       setSelectedRole(null);

@@ -18,13 +18,17 @@ export function DeleteItemButton({
   const handleDelete = async () => {
     if (!confirm(`Bạn có chắc muốn xoá "${itemName}"?`)) return;
 
-    const supabase = createClient();
-    const { error } = await supabase.from(table).delete().eq("id", itemId);
-
-    if (error) {
-      alert("Lỗi khi xoá: " + error.message);
-    } else {
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+    try {
+      const res = await fetch(`${BACKEND_URL}/${table}/admin/${itemId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error("Không thể xoá mục này");
+      }
       router.refresh();
+    } catch (err: any) {
+      alert("Lỗi khi xoá: " + err.message);
     }
   };
 

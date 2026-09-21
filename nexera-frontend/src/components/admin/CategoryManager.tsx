@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Edit, Trash2, Tags } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { createClient } from "@/utils/supabase/client";
+import { productsApi } from "@/lib/api/products.api";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CategoryForm } from "./CategoryForm";
 import { AdminPagination } from "./AdminPagination";
@@ -25,7 +25,6 @@ export function CategoryManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
@@ -68,24 +67,12 @@ export function CategoryManager({
   const handleDelete = async () => {
     if (!deletingCategory) return;
     setIsDeleting(true);
-    
-    // Check if there are products in this category
-    const { count } = await supabase
-      .from("products")
-      .select("*", { count: "exact", head: true })
-      .eq("category_id", deletingCategory.id);
-      
-    if (count && count > 0) {
-      alert(`Không thể xóa danh mục này vì đang có ${count} sản phẩm thuộc danh mục!`);
-      setIsDeleting(false);
-      return;
-    }
 
-    const { error } = await supabase.from("categories").delete().eq("id", deletingCategory.id);
+    const success = await productsApi.deleteCategory(deletingCategory.id);
     
     setIsDeleting(false);
-    if (error) {
-      alert("Lỗi khi xóa: " + error.message);
+    if (!success) {
+      alert("Lỗi khi xóa danh mục hoặc danh mục đang có sản phẩm liên kết!");
     } else {
       logActivity({
         action: "DELETE_CATEGORY",

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Star, Eye, Package } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { createClient } from "@/utils/supabase/client";
+import { productsApi } from "@/lib/api/products.api";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductDetailView } from "./ProductDetailView";
 import { ProductForm } from "./ProductForm";
@@ -33,7 +33,6 @@ export function ProductManager({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const supabase = createClient();
   const toast = useToast();
 
   const [density, setDensity] = useState<"compact" | "normal">("compact");
@@ -45,26 +44,24 @@ export function ProductManager({
     setLocalProducts(products);
   }, [products]);
 
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [viewingProduct, setViewingProduct] = useState<any | null>(null);
-
+  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [viewingProduct, setViewingProduct] = useState<any>(null);
+  const [deletingProduct, setDeletingProduct] = useState<any>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
-
+  const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deletingProduct, setDeletingProduct] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Bulk Actions State
+  // Bulk state
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkMoveCategoryOpen, setIsBulkMoveCategoryOpen] = useState(false);
   const [bulkCategoryTarget, setBulkCategoryTarget] = useState("");
 
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedIds(localProducts.map(p => p.id));
-    } else {
+  const handleSelectAll = () => {
+    if (selectedIds.length === localProducts.length) {
       setSelectedIds([]);
+    } else {
+      setSelectedIds(localProducts.map(p => p.id));
     }
   };
 
@@ -77,9 +74,9 @@ export function ProductManager({
   const handleBulkDelete = async () => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sản phẩm đã chọn?`)) return;
     setIsDeleting(true);
-    const { error } = await supabase.from("products").delete().in("id", selectedIds);
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, action: "delete" });
     setIsDeleting(false);
-    if (!error) {
+    if (success) {
       logActivity({
         action: "DELETE_PRODUCTS_BULK",
         entity_type: "products",
@@ -90,13 +87,13 @@ export function ProductManager({
       setSelectedIds([]);
       router.refresh();
     } else {
-      toast.error(formatErrorMessage(error, "Lỗi khi xóa sản phẩm"));
+      toast.error("Lỗi khi xóa sản phẩm");
     }
   };
 
   const handleBulkToggleActive = async (targetState: boolean) => {
-    const { error } = await supabase.from("products").update({ is_active: targetState }).in("id", selectedIds);
-    if (!error) {
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, isActive: targetState });
+    if (success) {
       logActivity({
         action: "TOGGLE_PRODUCTS_ACTIVE_BULK",
         entity_type: "products",
@@ -106,14 +103,14 @@ export function ProductManager({
       setSelectedIds([]);
       router.refresh();
     } else {
-      toast.error(formatErrorMessage(error, "Lỗi khi cập nhật trạng thái sản phẩm"));
+      toast.error("Lỗi khi cập nhật trạng thái sản phẩm");
     }
   };
 
   const handleBulkMoveCategory = async () => {
     if (!bulkCategoryTarget) return;
-    const { error } = await supabase.from("products").update({ category_id: bulkCategoryTarget }).in("id", selectedIds);
-    if (!error) {
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, categoryId: bulkCategoryTarget });
+    if (success) {
       logActivity({
         action: "MOVE_PRODUCTS_CATEGORY_BULK",
         entity_type: "products",
@@ -125,15 +122,15 @@ export function ProductManager({
       setBulkCategoryTarget("");
       router.refresh();
     } else {
-      toast.error(formatErrorMessage(error, "Lỗi khi chuyển danh mục"));
+      toast.error("Lỗi khi chuyển danh mục");
     }
   };
 
   const handleToggleBestseller = async (product: any) => {
     const newStatus = !product.is_bestseller;
     setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_bestseller: newStatus } : p));
-    const { error } = await supabase.from("products").update({ is_bestseller: newStatus }).eq("id", product.id);
-    if (!error) {
+    const success = await productsApi.bulkUpdate({ ids: [product.id], isBestseller: newStatus });
+    if (success) {
       logActivity({
         action: "TOGGLE_PRODUCT_BESTSELLER",
         entity_type: "products",
@@ -144,13 +141,13 @@ export function ProductManager({
       toast.success(newStatus ? "Đã ghim Sản phẩm Bán Chạy!" : "Đã bỏ ghim Bán Chạy");
     } else {
       setLocalProducts(products);
-      toast.error(formatErrorMessage(error, "Lỗi khi cập nhật cờ Bán Chạy"));
+      toast.error("Lỗi khi cập nhật cờ Bán Chạy");
     }
   };
 
   const handleBulkToggleBestseller = async (targetState: boolean) => {
-    const { error } = await supabase.from("products").update({ is_bestseller: targetState }).in("id", selectedIds);
-    if (!error) {
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, isBestseller: targetState });
+    if (success) {
       logActivity({
         action: "TOGGLE_PRODUCTS_BESTSELLER_BULK",
         entity_type: "products",
@@ -160,15 +157,15 @@ export function ProductManager({
       setSelectedIds([]);
       router.refresh();
     } else {
-      toast.error(formatErrorMessage(error, "Lỗi khi cập nhật cờ Bán Chạy hàng loạt"));
+      toast.error("Lỗi khi cập nhật cờ Bán Chạy hàng loạt");
     }
   };
 
   const handleToggleActive = async (product: any) => {
     const newStatus = !product.is_active;
     setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: newStatus } : p));
-    const { error } = await supabase.from("products").update({ is_active: newStatus }).eq("id", product.id);
-    if (!error) {
+    const success = await productsApi.bulkUpdate({ ids: [product.id], isActive: newStatus });
+    if (success) {
       logActivity({
         action: "TOGGLE_PRODUCT_ACTIVE",
         entity_type: "products",
@@ -179,7 +176,7 @@ export function ProductManager({
       toast.success(newStatus ? "Đã hiển thị sản phẩm" : "Đã ẩn sản phẩm");
     } else {
       setLocalProducts(products);
-      toast.error(formatErrorMessage(error, "Lỗi khi cập nhật trạng thái"));
+      toast.error("Lỗi khi cập nhật trạng thái");
     }
   };
 
@@ -222,11 +219,11 @@ export function ProductManager({
     if (!deletingProduct) return;
     setIsDeleting(true);
 
-    const { error } = await supabase.from("products").delete().eq("id", deletingProduct.id);
+    const success = await productsApi.deleteProduct(deletingProduct.id);
 
     setIsDeleting(false);
-    if (error) {
-      toast.error(formatErrorMessage(error, "Lỗi không xác định khi xóa sản phẩm"));
+    if (!success) {
+      toast.error("Lỗi không xác định khi xóa sản phẩm");
     } else {
       logActivity({
         action: "DELETE_PRODUCT",

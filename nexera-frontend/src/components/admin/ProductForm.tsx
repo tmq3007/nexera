@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { productsApi } from "@/lib/api/products.api";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { MultiImageUpload } from "@/components/ui/MultiImageUpload";
 import { SpecificationsEditor } from "@/components/ui/SpecificationsEditor";
@@ -22,7 +22,6 @@ interface ProductFormProps {
 }
 
 export function ProductForm({ initialData, categories, onSuccess, onCancel }: ProductFormProps) {
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
@@ -115,14 +114,12 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
       supplier: form.supplier || null,
     };
 
-    let error;
-    let createdItem;
+    let result;
 
     if (initialData?.id) {
       // Update
-      const result = await supabase.from("products").update(dataToSave).eq("id", initialData.id);
-      error = result.error;
-      if (!error) {
+      result = await productsApi.updateProduct(initialData.id, dataToSave);
+      if (result) {
         logActivity({
           action: "UPDATE_PRODUCT",
           entity_type: "products",
@@ -132,14 +129,12 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
       }
     } else {
       // Insert
-      const result = await supabase.from("products").insert(dataToSave).select();
-      error = result.error;
-      createdItem = result.data?.[0];
-      if (!error) {
+      result = await productsApi.createProduct(dataToSave);
+      if (result) {
         logActivity({
           action: "CREATE_PRODUCT",
           entity_type: "products",
-          entity_id: createdItem?.id,
+          entity_id: result?.id,
           details: { product_name: form.name, data: dataToSave },
         });
       }
@@ -147,8 +142,8 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
 
     setLoading(false);
 
-    if (error) {
-      toast.error(formatErrorMessage(error, "Lỗi không xác định khi lưu sản phẩm"));
+    if (!result) {
+      toast.error("Lỗi không xác định khi lưu sản phẩm");
     } else {
       toast.success("Lưu sản phẩm thành công!");
       onSuccess();

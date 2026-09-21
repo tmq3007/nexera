@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { analyticsApi } from "@/lib/api/analytics.api";
 
 export interface LogParams {
   action: string;
@@ -20,48 +21,30 @@ export async function logActivity({
   user_email,
 }: LogParams) {
   try {
-    const supabase = createClient();
-
     let finalAdminId = admin_id;
     let finalUserEmail = user_email;
 
     if (!finalAdminId || !finalUserEmail) {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         if (!finalUserEmail) finalUserEmail = user.email || user.user_metadata?.full_name || "Admin";
-        
-        if (!finalAdminId) {
-          const { data: adminAccount } = await supabase
-            .from("admin_accounts")
-            .select("id, display_name")
-            .eq("auth_user_id", user.id)
-            .maybeSingle();
-
-          if (adminAccount) {
-            finalAdminId = adminAccount.id;
-            if (!user_email && adminAccount.display_name) {
-              finalUserEmail = `${adminAccount.display_name} (${user.email || ""})`;
-            }
-          }
-        }
       }
     }
 
-    const { error } = await supabase.from("activity_logs").insert({
-      admin_id: finalAdminId || null,
-      user_email: finalUserEmail || "Hệ thống",
-      action,
-      entity_type,
-      entity_id: entity_id || null,
-      details,
-      severity,
-      created_at: new Date().toISOString(),
-    });
+    const sev = severity === "ERROR" ? "CRITICAL" : severity;
 
-    if (error) {
-      console.warn("Lỗi khi lưu log hoạt động:", error.message);
-    }
+    await analyticsApi.logActivity({
+      userId: finalAdminId,
+      userEmail: finalUserEmail || "Hệ thống",
+      action,
+      entityType: entity_type,
+      entityId: entity_id,
+      details,
+      severity: sev as "INFO" | "WARNING" | "CRITICAL",
+    });
   } catch (err) {
     console.error("Logger error:", err);
   }
 }
+

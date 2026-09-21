@@ -41,6 +41,7 @@ const navSections = [
       { label: "Đơn hàng", href: "/admin/don-hang", icon: ShoppingCart },
       { label: "Sản phẩm", href: "/admin/san-pham", icon: Package },
       { label: "Danh mục", href: "/admin/danh-muc", icon: Tags },
+      { label: "Yêu cầu tư vấn", href: "/admin/leads", icon: MessageSquare },
       { label: "Hội thoại tư vấn", href: "/admin/hoi-thoai", icon: MessageCircle },
       { label: "Khách hàng", href: "/admin/khach-hang", icon: Users },
     ],
@@ -121,20 +122,20 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
       <div className="h-16 flex items-center px-3 border-b border-white/10 shrink-0">
         <Link href="/" className="flex items-center justify-center w-full" title="Về trang chủ">
           {!collapsed ? (
-            <Image 
-              src="/Logo.png" 
-              alt="Nexera" 
-              width={120} 
-              height={40} 
-              className="h-8 w-auto object-contain brightness-0 invert" 
+            <Image
+              src="/Logo.png"
+              alt="Nexera"
+              width={120}
+              height={40}
+              className="h-8 w-auto object-contain brightness-0 invert"
             />
           ) : (
-            <Image 
-              src="/Symbol.png" 
-              alt="N" 
-              width={32} 
-              height={32} 
-              className="h-8 w-8 object-contain mx-auto brightness-0 invert" 
+            <Image
+              src="/Symbol.png"
+              alt="N"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain mx-auto brightness-0 invert"
             />
           )}
         </Link>
@@ -183,11 +184,10 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
                   key={item.href}
                   href={item.href}
                   title={collapsed ? item.label : undefined}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    isActive
-                      ? "bg-[var(--primary)] text-white shadow-md"
-                      : "text-white/70 hover:bg-white/10 hover:text-white"
-                  }`}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${isActive
+                    ? "bg-[var(--primary)] text-white shadow-md"
+                    : "text-white/70 hover:bg-white/10 hover:text-white"
+                    }`}
                 >
                   <item.icon className="w-4 h-4 flex-shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}
@@ -238,9 +238,8 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
     <>
       {/* Desktop Sidebar — hidden on mobile */}
       <aside
-        className={`hidden md:flex ${
-          collapsed ? "w-[72px]" : "w-64"
-        } bg-[var(--accent)] text-white flex-col transition-all duration-300 ease-in-out relative shrink-0`}
+        className={`hidden md:flex ${collapsed ? "w-[72px]" : "w-64"
+          } bg-[var(--accent)] text-white flex-col transition-all duration-300 ease-in-out relative shrink-0`}
       >
         {sidebarContent}
       </aside>
@@ -261,7 +260,7 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
       )}
 
       {/* Modal xác nhận đăng xuất */}
-      <ConfirmLogoutModal 
+      <ConfirmLogoutModal
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={handleConfirmLogout}

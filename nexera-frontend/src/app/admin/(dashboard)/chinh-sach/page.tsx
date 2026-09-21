@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { contentApi } from "@/lib/api/content.api";
 import { useToast } from "@/contexts/ToastContext";
 import {
   Plus,
@@ -46,8 +46,6 @@ export default function PoliciesAdminPage() {
   const [versionName, setVersionName] = useState("v1.1");
   const [versionContent, setVersionContent] = useState("");
   const [saving, setSaving] = useState(false);
-
-  const supabase = createClient();
   const toast = useToast();
 
   useEffect(() => {
@@ -57,12 +55,7 @@ export default function PoliciesAdminPage() {
   const fetchPolicies = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("policies")
-        .select("*")
-        .order("created_at", { ascending: true });
-
-      if (error) throw error;
+      const data = await contentApi.getAllPoliciesAdmin();
       setPolicies(data || []);
 
       if (data && data.length > 0 && !selectedPolicy) {
@@ -82,16 +75,10 @@ export default function PoliciesAdminPage() {
     setLoadingVersions(true);
 
     try {
-      const { data, error } = await supabase
-        .from("policy_versions")
-        .select("*")
-        .eq("policy_id", policy.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const data = await contentApi.getPolicyVersions(policy.id);
       setVersions(data || []);
 
-      const activeVer = data?.find((v) => v.id === policy.current_version_id) || data?.[0];
+      const activeVer = data?.find((v: any) => v.id === policy.current_version_id) || data?.[0];
       if (activeVer) {
         setVersionContent(activeVer.content);
         const currentVerNum = parseFloat(activeVer.version.replace("v", "")) || 1.0;
@@ -110,12 +97,8 @@ export default function PoliciesAdminPage() {
   const togglePolicyStatus = async (policy: Policy) => {
     const newStatus = !policy.is_active;
     try {
-      const { error } = await supabase
-        .from("policies")
-        .update({ is_active: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", policy.id);
-
-      if (error) throw error;
+      const success = await contentApi.togglePolicyStatus(policy.id, newStatus);
+      if (!success) throw new Error("Cập nhật thất bại");
 
       setPolicies((prev) =>
         prev.map((p) => (p.id === policy.id ? { ...p, is_active: newStatus } : p))
@@ -142,37 +125,20 @@ export default function PoliciesAdminPage() {
     setSaving(true);
 
     try {
-      const { data: newVer, error: verError } = await supabase
-        .from("policy_versions")
-        .insert([
-          {
-            policy_id: selectedPolicy.id,
-            version: versionName.trim(),
-            content: versionContent,
-            effective_from: new Date().toISOString(),
-          },
-        ])
-        .select()
-        .single();
+      const res = await contentApi.publishNewVersion(
+        selectedPolicy.id,
+        versionName.trim(),
+        versionContent
+      );
 
-      if (verError) throw verError;
-
-      const { error: policyUpdateError } = await supabase
-        .from("policies")
-        .update({
-          current_version_id: newVer.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", selectedPolicy.id);
-
-      if (policyUpdateError) throw policyUpdateError;
+      if (!res) throw new Error("Không thể xuất bản phiên bản mới");
 
       toast.success(`Xuất bản phiên bản ${versionName} cho "${selectedPolicy.title}" thành công!`);
 
       await fetchPolicies();
       await handleSelectPolicy({
         ...selectedPolicy,
-        current_version_id: newVer.id,
+        current_version_id: res.version.id,
       });
       setShowEditor(false);
     } catch (err: any) {
@@ -186,15 +152,8 @@ export default function PoliciesAdminPage() {
   const handleActivateVersion = async (version: PolicyVersion) => {
     if (!selectedPolicy) return;
     try {
-      const { error } = await supabase
-        .from("policies")
-        .update({
-          current_version_id: version.id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", selectedPolicy.id);
-
-      if (error) throw error;
+      const success = await contentApi.activateVersion(selectedPolicy.id, version.id);
+      if (!success) throw new Error("Kích hoạt thất bại");
 
       toast.success(`Đã chuyển phiên bản hoạt động sang ${version.version}!`);
 

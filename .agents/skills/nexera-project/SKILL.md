@@ -20,7 +20,7 @@ Always adhere to the following technology stack when writing code or planning fe
 
 ## Project Guidelines
 
-1. **Architecture Rule:** The Next.js frontend should fetch product and content data directly from Supabase to maximize speed. The NestJS backend should ONLY be used as a secure microservice to handle payment gateways (PayOS) and sensitive webhooks.
+1. **Architecture Rule (Backend-First Architecture - BẮT BUỘC):** Toàn bộ các chức năng (CRUD sản phẩm, giỏ hàng, đơn hàng, khách hàng, CRM, Live Chat,...) PHẢI thông qua REST API của NestJS backend (`nexera-backend`), TUYỆT ĐỐI KHÔNG truy vấn trực tiếp từ frontend vào Supabase (`supabase.from(...)`). Điều này đảm bảo tính độc lập với cơ sở dữ liệu, cho phép hệ thống dễ dàng thay đổi hoặc di chuyển database trong tương lai mà không ảnh hưởng tới frontend. Chi tiết xem tại rule [backend-api-architecture.md](file:///d:/Document/_Projects/Nexera/.agents/rules/backend-api-architecture.md).
 2. **Business Context:** Nexera positions itself as an "Integrated Solutions Ecosystem" focusing on Smart Technology and Green Energy. The UI/UX should reflect a premium, modern, and tech-forward aesthetic.
 3. **Monolith Frontend:** The CRM and Admin dashboard are NOT a separate project. They share the Next.js codebase to reuse UI components and speed up development.
 4. **Language Rule (BẮT BUỘC):** Toàn bộ giao diện website (Storefront & Admin) phải sử dụng **Tiếng Việt**. Bao gồm: nội dung trang, label, placeholder, button text, thông báo lỗi, metadata SEO (title, description). Chỉ dùng tiếng Anh cho: tên biến trong code, tên file, và các thuật ngữ kỹ thuật không có bản dịch phù hợp.

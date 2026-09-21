@@ -1,7 +1,7 @@
-import { createClient } from "@/utils/supabase/server";
 import { ProductFormPage } from "@/components/admin/ProductFormPage";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { productsApi } from "@/lib/api/products.api";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -9,12 +9,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  const { data: product } = await supabase
-    .from("products")
-    .select("name")
-    .eq("id", id)
-    .single();
+  const product = await productsApi.getProductDetail(id);
 
   return {
     title: product ? `Sửa: ${product.name} | Nexera Admin` : "Chỉnh sửa sản phẩm | Nexera Admin",
@@ -23,11 +18,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductEditPage({ params }: Props) {
   const { id } = await params;
-  const supabase = await createClient();
 
-  const [{ data: product }, { data: categories }] = await Promise.all([
-    supabase.from("products").select("*").eq("id", id).single(),
-    supabase.from("categories").select("id, name").order("name"),
+  const [product, categories] = await Promise.all([
+    productsApi.getProductDetail(id),
+    productsApi.getCategories(),
   ]);
 
   if (!product) notFound();

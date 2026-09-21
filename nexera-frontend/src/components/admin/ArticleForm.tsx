@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { contentApi } from "@/lib/api/content.api";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { logActivity } from "@/lib/logger";
 
@@ -13,7 +13,6 @@ interface ArticleFormProps {
 }
 
 export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormProps) {
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -55,13 +54,11 @@ export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormPro
       image_url: form.image_url || null,
     };
 
-    let error;
-    let createdItem;
+    let result;
 
     if (initialData?.id) {
-      const result = await supabase.from("articles").update(dataToSave).eq("id", initialData.id);
-      error = result.error;
-      if (!error) {
+      result = await contentApi.updateArticle(initialData.id, dataToSave);
+      if (result) {
         logActivity({
           action: "UPDATE_ARTICLE",
           entity_type: "articles",
@@ -70,14 +67,12 @@ export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormPro
         });
       }
     } else {
-      const result = await supabase.from("articles").insert(dataToSave).select("id").single();
-      error = result.error;
-      createdItem = result.data;
-      if (!error) {
+      result = await contentApi.createArticle(dataToSave);
+      if (result) {
         logActivity({
           action: "CREATE_ARTICLE",
           entity_type: "articles",
-          entity_id: createdItem?.id,
+          entity_id: result.id,
           details: { title: form.title, data: dataToSave },
         });
       }
@@ -85,8 +80,8 @@ export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormPro
 
     setLoading(false);
 
-    if (error) {
-      alert("Lỗi: " + error.message);
+    if (!result) {
+      alert("Lỗi khi lưu bài viết!");
     } else {
       onSuccess();
     }

@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
+import { analyticsApi } from "@/lib/api/analytics.api";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import {
   Package,
@@ -39,51 +39,29 @@ const leadStatusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  const overview = await analyticsApi.getDashboardOverview();
 
-  // Truy vấn dữ liệu thực tế từ Supabase
-  const [
-    { count: productCount },
-    { count: orderCount },
-    { count: pendingOrderCount },
-    { count: leadCount },
-    { count: newLeadCount },
-    { count: articleCount },
-    { count: projectCount },
-    { count: customerCount },
-    { count: lowStockCount },
-    { data: recentOrders },
-    { data: recentLeads },
-    { data: paidOrders },
-    { data: recentProducts },
-  ] = await Promise.all([
-    supabase.from("products").select("*", { count: "exact", head: true }),
-    supabase.from("orders").select("*", { count: "exact", head: true }),
-    supabase.from("orders").select("*", { count: "exact", head: true }).eq("status", "PENDING"),
-    supabase.from("leads").select("*", { count: "exact", head: true }),
-    supabase.from("leads").select("*", { count: "exact", head: true }).eq("status", "NEW"),
-    supabase.from("articles").select("*", { count: "exact", head: true }),
-    supabase.from("projects").select("*", { count: "exact", head: true }),
-    supabase.from("customers").select("*", { count: "exact", head: true }),
-    supabase.from("products").select("*", { count: "exact", head: true }).lte("stock", 5),
-    supabase.from("orders").select("id, status, total_amount, created_at, customers(full_name, phone)").order("created_at", { ascending: false }).limit(5),
-    supabase.from("leads").select("id, name, phone, email, status, message, created_at").order("created_at", { ascending: false }).limit(5),
-    supabase.from("orders").select("total_amount").in("status", ["PAID", "COMPLETED"]),
-    supabase.from("products").select("id, name, price, stock, images").order("created_at", { ascending: false }).limit(5),
-  ]);
-
-  // Tính tổng doanh thu
-  const totalRevenue = paidOrders?.reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0) ?? 0;
-
-  // Giả lập dữ liệu đồ thị doanh thu 7 ngày gần đây
-  const chartDays = [
-    { day: "T2", amount: totalRevenue * 0.08 },
-    { day: "T3", amount: totalRevenue * 0.12 },
-    { day: "T4", amount: totalRevenue * 0.15 },
-    { day: "T5", amount: totalRevenue * 0.10 },
-    { day: "T6", amount: totalRevenue * 0.22 },
-    { day: "T7", amount: totalRevenue * 0.18 },
-    { day: "CN", amount: totalRevenue * 0.15 },
+  const productCount = overview?.productCount ?? 0;
+  const orderCount = overview?.orderCount ?? 0;
+  const pendingOrderCount = overview?.pendingOrderCount ?? 0;
+  const leadCount = overview?.leadCount ?? 0;
+  const newLeadCount = overview?.newLeadCount ?? 0;
+  const articleCount = overview?.articleCount ?? 0;
+  const projectCount = overview?.projectCount ?? 0;
+  const customerCount = overview?.customerCount ?? 0;
+  const lowStockCount = overview?.lowStockCount ?? 0;
+  const totalRevenue = overview?.totalRevenue ?? 0;
+  const recentOrders = overview?.recentOrders ?? [];
+  const recentLeads = overview?.recentLeads ?? [];
+  const recentProducts = overview?.recentProducts ?? [];
+  const chartDays = overview?.chartDays ?? [
+    { day: "T2", amount: 0 },
+    { day: "T3", amount: 0 },
+    { day: "T4", amount: 0 },
+    { day: "T5", amount: 0 },
+    { day: "T6", amount: 0 },
+    { day: "T7", amount: 0 },
+    { day: "CN", amount: 0 },
   ];
   const maxChartAmount = Math.max(...chartDays.map(d => d.amount), 1);
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { rbacApi, Role, AdminAccount } from "@/lib/api/rbac.api";
 import { 
   Search, 
   Loader2, 
@@ -16,22 +17,6 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import Link from "next/link";
-
-interface Role {
-  id: string;
-  name: string;
-  display_name: string;
-}
-
-interface AdminAccount {
-  id: string;
-  auth_user_id: string;
-  display_name: string;
-  role_id: string;
-  is_active: boolean;
-  created_at: string;
-  roles?: Role;
-}
 
 export default function AdminAccountsPage() {
   const [admins, setAdmins] = useState<AdminAccount[]>([]);
@@ -54,12 +39,11 @@ export default function AdminAccountsPage() {
   const [editRoleId, setEditRoleId] = useState("");
   const [updatingRole, setUpdatingRole] = useState(false);
 
-  const supabase = createClient();
-
   const checkPermissionAndFetchData = async () => {
     setLoading(true);
     try {
-      // 1. Kiểm tra quyền của người dùng hiện tại
+      // 1. Kiểm tra session hiện tại
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setHasPermission(false);
@@ -67,52 +51,24 @@ export default function AdminAccountsPage() {
         return;
       }
 
-      // Query tài khoản admin hiện tại cùng vai trò
-      const { data: currentAdmin } = await supabase
-        .from("admin_accounts")
-        .select("id, role_id, is_active, roles(name)")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
+      // Kiểm tra quyền qua backend API
+      const permCheck = await rbacApi.checkPermission(user.id, "admin.manage_users");
+      setHasPermission(permCheck.hasPermission);
 
-      if (!currentAdmin || !currentAdmin.is_active) {
-        setHasPermission(false);
+      if (!permCheck.hasPermission) {
         setLoading(false);
         return;
       }
 
-      const isSuperAdmin = (currentAdmin.roles as any)?.name === "super_admin";
-
-      if (isSuperAdmin) {
-        setHasPermission(true);
-      } else {
-        // Query kiểm tra quyền admin.manage_users trong role_permissions
-        const { data: rpData } = await supabase
-          .from("role_permissions")
-          .select("permissions(name)")
-          .eq("role_id", currentAdmin.role_id);
-
-        const perms = rpData?.map((item: any) => item.permissions?.name) || [];
-        setHasPermission(perms.includes("admin.manage_users"));
-      }
-
       // 2. Tải danh sách Roles & Admin accounts nếu có quyền
-      const { data: rolesData } = await supabase
-        .from("roles")
-        .select("id, name, display_name");
+      const [rolesData, adminData] = await Promise.all([
+        rbacApi.getRoles(),
+        rbacApi.getAdminAccounts(),
+      ]);
 
-      if (rolesData) {
-        setRoles(rolesData);
-        if (rolesData.length > 0) setNewRoleId(rolesData[0].id);
-      }
-
-      const { data: adminData } = await supabase
-        .from("admin_accounts")
-        .select("*, roles(id, name, display_name)")
-        .order("created_at", { ascending: false });
-
-      if (adminData) {
-        setAdmins(adminData);
-      }
+      setRoles(rolesData);
+      if (rolesData.length > 0) setNewRoleId(rolesData[0].id);
+      setAdmins(adminData);
     } catch (err: any) {
       console.error("Lỗi khi kiểm tra quyền và tải dữ liệu admin:", err);
       setHasPermission(false);
@@ -134,14 +90,10 @@ export default function AdminAccountsPage() {
     if (!confirm(confirmMsg)) return;
 
     try {
-      const { error } = await supabase
-        .from("admin_accounts")
-        .update({ is_active: !admin.is_active })
-        .eq("id", admin.id);
-
-      if (error) throw error;
-      
-      setAdmins(admins.map(a => a.id === admin.id ? { ...a, is_active: !a.is_active } : a));
+      const updated = await rbacApi.toggleAdminActive(admin.id);
+      if (updated) {
+        setAdmins(admins.map(a => a.id === admin.id ? { ...a, is_active: updated.is_active } : a));
+      }
     } catch (err: any) {
       alert("Không thể cập nhật trạng thái: " + err.message);
     }
@@ -154,32 +106,12 @@ export default function AdminAccountsPage() {
     setModalError(null);
 
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      await rbacApi.createAdminAccount({
         email: newEmail,
         password: newPassword,
-        options: {
-          data: {
-            full_name: newDisplayName
-          }
-        }
+        displayName: newDisplayName,
+        roleId: newRoleId,
       });
-
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error("Không thể tạo User Auth");
-      }
-
-      const { error: adminInsertError } = await supabase
-        .from("admin_accounts")
-        .insert({
-          auth_user_id: authData.user.id,
-          display_name: newDisplayName,
-          role_id: newRoleId,
-          is_active: true
-        });
-
-      if (adminInsertError) throw adminInsertError;
 
       setNewEmail("");
       setNewPassword("");
@@ -198,12 +130,7 @@ export default function AdminAccountsPage() {
     if (!editAdmin) return;
     setUpdatingRole(true);
     try {
-      const { error } = await supabase
-        .from("admin_accounts")
-        .update({ role_id: editRoleId })
-        .eq("id", editAdmin.id);
-
-      if (error) throw error;
+      await rbacApi.updateAdminRole(editAdmin.id, editRoleId);
 
       await checkPermissionAndFetchData();
       setEditAdmin(null);

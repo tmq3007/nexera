@@ -5,6 +5,12 @@ import { AppService } from './app.service';
 import { SupabaseModule } from './supabase/supabase.module';
 import { PaymentModule } from './payment/payment.module';
 import { ChatModule } from './chat/chat.module';
+import { CustomersModule } from './customers/customers.module';
+import { ProductsModule } from './products/products.module';
+import { OrdersModule } from './orders/orders.module';
+import { ContentModule } from './content/content.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { RbacModule } from './rbac/rbac.module';
 
 @Module({
   imports: [
@@ -15,6 +21,12 @@ import { ChatModule } from './chat/chat.module';
     SupabaseModule,
     PaymentModule,
     ChatModule,
+    CustomersModule,
+    ProductsModule,
+    OrdersModule,
+    ContentModule,
+    AnalyticsModule,
+    RbacModule,
   ],
   controllers: [AppController],
   providers: [AppService],

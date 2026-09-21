@@ -12,11 +12,11 @@ You are working on the Backend Microservice of the Nexera platform.
 ## Core Technologies
 - **Framework:** NestJS (built on Node.js).
 - **Language:** TypeScript.
-- **Primary Function:** Acts as a secure intermediary for Payments and Webhooks.
+- **Primary Function:** Là Core Backend API Server cung cấp toàn bộ RESTful APIs cho hệ sinh thái Nexera (CRUD Sản phẩm, Đơn hàng, Khách hàng & CRM, Live Chat, Quản lý phiên hội thoại, Cổng thanh toán PayOS và Webhook). Đóng vai trò là lớp trừu tượng hóa cơ sở dữ liệu (Database Agnostic Layer), đảm bảo frontend hoàn toàn độc lập với DB.
 
 ## Architecture Rules
-1. **Separation of Concerns:** The NestJS backend does NOT serve frontend pages. It strictly provides RESTful APIs (or GraphQL if configured) for the Next.js frontend.
-2. **Database Access:** The backend will connect to Supabase (PostgreSQL) using Prisma ORM or the Supabase Service Role Key to bypass RLS when performing admin-level updates (e.g., updating an order status to "PAID" after a successful webhook).
+1. **Backend-First API Service:** NestJS backend chịu trách nhiệm toàn bộ về logic nghiệp vụ, xác thực, phân quyền và thao tác dữ liệu. Mọi tương tác dữ liệu từ Next.js frontend PHẢI đi qua các API endpoint của Backend thay vì truy vấn trực tiếp DB. Chi tiết xem tại rule [backend-api-architecture.md](file:///d:/Document/_Projects/Nexera/.agents/rules/backend-api-architecture.md).
+2. **Database Access & Abstraction:** Backend kết nối cơ sở dữ liệu (PostgreSQL/Supabase hiện tại, hoặc các DB khác trong tương lai) thông qua Service layer tập trung. Backend có toàn quyền thực thi các giao tác nghiệp vụ an toàn.
 3. **Payment Security:**
    - Always verify the signature of incoming webhooks from PayOS using HMAC SHA256 (or their provided library).
    - Never trust pricing data sent from the frontend. Always re-calculate the order total by querying the database before creating a payment session.

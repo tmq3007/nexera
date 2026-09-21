@@ -1,14 +1,13 @@
 import { PageHeader } from "@/components/layout/PageHeader";
-import { createClient } from "@/utils/supabase/server";
 import { ProductCatalog } from "@/components/storefront/ProductCatalog";
 import { Suspense } from "react";
+import { productsApi } from "@/lib/api/products.api";
 
 export default async function ProductsPage() {
-  const supabase = await createClient();
-
-  // Lấy toàn bộ danh mục và sản phẩm
-  const { data: categories } = await supabase.from("categories").select("*");
-  const { data: products } = await supabase.from("products").select("*").eq("is_active", true).order("created_at", { ascending: false });
+  const [categories, productsRes] = await Promise.all([
+    productsApi.getCategories(),
+    productsApi.getProducts({ limit: 100 }),
+  ]);
 
   return (
     <>
@@ -18,7 +17,7 @@ export default async function ProductsPage() {
         <div className="container mx-auto px-4">
            {/* Bọc trong Suspense vì dùng useSearchParams bên trong ProductCatalog */}
            <Suspense fallback={<div className="text-center py-20 text-[#13426E]">Đang tải sản phẩm...</div>}>
-             <ProductCatalog initialProducts={products || []} categories={categories || []} />
+             <ProductCatalog initialProducts={productsRes.data || []} categories={categories || []} />
            </Suspense>
         </div>
       </section>

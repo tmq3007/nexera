@@ -6,7 +6,7 @@ import { Modal } from "@/components/ui/Modal";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPagination } from "./AdminPagination";
 import { AdminTableToolbar, StatusTabItem } from "./AdminTableToolbar";
-import { createClient } from "@/utils/supabase/client";
+import { customersApi } from "@/lib/api/customers.api";
 
 interface Customer {
   id: string;
@@ -63,7 +63,6 @@ export function CustomerManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const supabase = createClient();
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<"info" | "orders" | "chat" | "notes">("info");
@@ -126,12 +125,9 @@ export function CustomerManager({
     setIsUpdatingTier(true);
     setEditingTier(newTier);
 
-    const { error } = await supabase
-      .from("customers")
-      .update({ tier: newTier })
-      .eq("id", selectedCustomer.id);
+    const success = await customersApi.updateTier(selectedCustomer.id, newTier);
 
-    if (!error) {
+    if (success) {
       setSelectedCustomer((prev) => (prev ? { ...prev, tier: newTier } : null));
       router.refresh();
     }
@@ -145,16 +141,9 @@ export function CustomerManager({
 
     setIsAddingNote(true);
 
-    const { data, error } = await supabase
-      .from("customer_notes")
-      .insert({
-        customer_id: selectedCustomer.id,
-        content: newNote.trim(),
-      })
-      .select()
-      .single();
+    const data = await customersApi.addNote(selectedCustomer.id, newNote.trim());
 
-    if (!error && data) {
+    if (data) {
       setSelectedCustomer((prev) => {
         if (!prev) return null;
         return {
@@ -176,11 +165,8 @@ export function CustomerManager({
   const handleSetPrimaryPhone = async (phone: string) => {
     if (!selectedCustomer) return;
     setIsUpdatingContact(true);
-    const { error } = await supabase
-      .from("customers")
-      .update({ phone })
-      .eq("id", selectedCustomer.id);
-    if (!error) {
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, { phone });
+    if (updated) {
       setSelectedCustomer((prev) => (prev ? { ...prev, phone } : null));
       router.refresh();
     }
@@ -191,11 +177,8 @@ export function CustomerManager({
   const handleSetPrimaryEmail = async (email: string) => {
     if (!selectedCustomer) return;
     setIsUpdatingContact(true);
-    const { error } = await supabase
-      .from("customers")
-      .update({ email })
-      .eq("id", selectedCustomer.id);
-    if (!error) {
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, { email });
+    if (updated) {
       setSelectedCustomer((prev) => (prev ? { ...prev, email } : null));
       router.refresh();
     }
@@ -214,15 +197,12 @@ export function CustomerManager({
     const newPrimary = selectedCustomer.phone || cleanPhone;
 
     setIsUpdatingContact(true);
-    const { error } = await supabase
-      .from("customers")
-      .update({
-        phone: newPrimary,
-        phone_numbers: currentList,
-      })
-      .eq("id", selectedCustomer.id);
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, {
+      phone: newPrimary,
+      phoneNumbers: currentList,
+    });
 
-    if (!error) {
+    if (updated) {
       setSelectedCustomer((prev) =>
         prev ? { ...prev, phone: newPrimary, phone_numbers: currentList } : null
       );
@@ -244,15 +224,12 @@ export function CustomerManager({
     const newPrimary = selectedCustomer.email || cleanEmail;
 
     setIsUpdatingContact(true);
-    const { error } = await supabase
-      .from("customers")
-      .update({
-        email: newPrimary,
-        emails: currentList,
-      })
-      .eq("id", selectedCustomer.id);
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, {
+      email: newPrimary,
+      emails: currentList,
+    });
 
-    if (!error) {
+    if (updated) {
       setSelectedCustomer((prev) =>
         prev ? { ...prev, email: newPrimary, emails: currentList } : null
       );
@@ -269,15 +246,12 @@ export function CustomerManager({
     const newPrimary = selectedCustomer.phone === phoneToRemove ? currentList[0] || null : selectedCustomer.phone;
 
     setIsUpdatingContact(true);
-    const { error } = await supabase
-      .from("customers")
-      .update({
-        phone: newPrimary,
-        phone_numbers: currentList,
-      })
-      .eq("id", selectedCustomer.id);
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, {
+      phone: newPrimary || undefined,
+      phoneNumbers: currentList,
+    });
 
-    if (!error) {
+    if (updated) {
       setSelectedCustomer((prev) =>
         prev ? { ...prev, phone: newPrimary, phone_numbers: currentList } : null
       );
@@ -293,15 +267,12 @@ export function CustomerManager({
     const newPrimary = selectedCustomer.email === emailToRemove ? currentList[0] || null : selectedCustomer.email;
 
     setIsUpdatingContact(true);
-    const { error } = await supabase
-      .from("customers")
-      .update({
-        email: newPrimary,
-        emails: currentList,
-      })
-      .eq("id", selectedCustomer.id);
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, {
+      email: newPrimary || undefined,
+      emails: currentList,
+    });
 
-    if (!error) {
+    if (updated) {
       setSelectedCustomer((prev) =>
         prev ? { ...prev, email: newPrimary, emails: currentList } : null
       );

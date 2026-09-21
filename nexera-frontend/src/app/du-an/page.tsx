@@ -2,15 +2,11 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { createClient } from "@/utils/supabase/server";
+import { contentApi } from "@/lib/api/content.api";
 
 export default async function ProjectsPage() {
-  const supabase = await createClient();
-  
-  const { data: projectsData } = await supabase
-    .from("projects")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const projectsRes = await contentApi.getProjects({ limit: 100 });
+  const projectsData = projectsRes.data;
 
   const categoryMap: Record<string, any> = {
     INDUSTRIAL: {

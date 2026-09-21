@@ -2,33 +2,24 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Calendar, User } from "lucide-react";
-import { createClient } from "@/utils/supabase/server";
+import { contentApi } from "@/lib/api/content.api";
 
 export default async function NewsPage(props: { searchParams: Promise<{ page?: string, type?: string }> }) {
-  const supabase = await createClient();
   const searchParams = await props.searchParams;
   
   // Setup params
   const page = parseInt(searchParams.page || "1", 10);
-  const typeFilter = searchParams.type || null;
+  const typeFilter = searchParams.type || undefined;
   const limit = 6;
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
 
-  // Build query
-  let query = supabase
-    .from("articles")
-    .select("*", { count: "exact" })
-    .order("published_at", { ascending: false });
+  const res = await contentApi.getArticles({
+    type: typeFilter,
+    page,
+    limit,
+  });
 
-  if (typeFilter) {
-    query = query.eq("type", typeFilter);
-  }
-
-  // Fetch paginated data and total count
-  const { data: news, count } = await query.range(from, to);
-    
-  const totalPages = Math.ceil((count || 0) / limit);
+  const news = res.data;
+  const totalPages = res.totalPages;
 
   return (
     <>

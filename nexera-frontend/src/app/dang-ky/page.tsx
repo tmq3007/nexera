@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, Mail, User, Phone, UserCircle2, ArrowRight, Home } from "lucide-react";
 import Link from "next/link";
+import { customersApi } from "@/lib/api/customers.api";
 
 export default function CustomerRegisterPage() {
   const [fullName, setFullName] = useState("");
@@ -54,13 +55,19 @@ export default function CustomerRegisterPage() {
     }
 
     if (data.user) {
-      // Đảm bảo insert profile khách hàng
-      await supabase.from("customers").insert({
-        auth_user_id: data.user.id,
-        full_name: fullName,
-        email: email,
-        phone: phone || null,
-      });
+      // Đảm bảo insert/sync profile khách hàng qua Backend API
+      try {
+        const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
+        await customersApi.syncProfile({
+          authUserId: data.user.id,
+          fullName: fullName,
+          email: email,
+          phone: phone || undefined,
+          guestSessionId: guestSessionId || undefined,
+        });
+      } catch (err) {
+        console.error("Lỗi tạo hồ sơ khách hàng:", err);
+      }
 
       setSuccess(true);
       setTimeout(() => {

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus, Edit, Trash2, FolderKanban, Calendar } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { createClient } from "@/utils/supabase/client";
+import { contentApi } from "@/lib/api/content.api";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProjectForm } from "./ProjectForm";
 import { AdminPagination } from "./AdminPagination";
@@ -32,7 +32,6 @@ export function ProjectManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any | null>(null);
@@ -76,11 +75,11 @@ export function ProjectManager({
     if (!deletingProject) return;
     setIsDeleting(true);
     
-    const { error } = await supabase.from("projects").delete().eq("id", deletingProject.id);
+    const success = await contentApi.deleteProject(deletingProject.id);
     
     setIsDeleting(false);
-    if (error) {
-      alert("Lỗi khi xoá: " + error.message);
+    if (!success) {
+      alert("Lỗi khi xoá dự án!");
     } else {
       logActivity({
         action: "DELETE_PROJECT",

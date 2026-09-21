@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Edit, Trash2, Newspaper, Calendar } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
-import { createClient } from "@/utils/supabase/client";
+import { contentApi } from "@/lib/api/content.api";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArticleForm } from "./ArticleForm";
 import { AdminPagination } from "./AdminPagination";
@@ -26,7 +26,6 @@ export function ArticleManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<any | null>(null);
@@ -87,11 +86,11 @@ export function ArticleManager({
     if (!deletingArticle) return;
     setIsDeleting(true);
     
-    const { error } = await supabase.from("articles").delete().eq("id", deletingArticle.id);
+    const success = await contentApi.deleteArticle(deletingArticle.id);
     
     setIsDeleting(false);
-    if (error) {
-      alert("Lỗi khi xoá: " + error.message);
+    if (!success) {
+      alert("Lỗi khi xoá bài viết!");
     } else {
       logActivity({
         action: "DELETE_ARTICLE",

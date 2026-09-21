@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Eye, Clock, CheckCircle, Truck, Trash2, Edit } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { createClient } from "@/utils/supabase/client";
+import { ordersApi } from "@/lib/api/orders.api";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/contexts/ToastContext";
 import { AdminPagination } from "./AdminPagination";
@@ -34,7 +34,6 @@ export function OrderManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const toast = useToast();
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
@@ -59,9 +58,9 @@ export function OrderManager({
   const handleBulkDelete = async () => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} đơn hàng đã chọn?`)) return;
     setIsDeleting(true);
-    const { error } = await supabase.from("orders").delete().in("id", selectedIds);
+    const success = await ordersApi.bulkUpdate({ ids: selectedIds, action: "delete" });
     setIsDeleting(false);
-    if (!error) {
+    if (success) {
       logActivity({
         action: "DELETE_ORDERS_BULK",
         entity_type: "orders",
@@ -72,13 +71,13 @@ export function OrderManager({
       setSelectedIds([]);
       router.refresh();
     } else {
-      toast.error(formatErrorMessage(error, "Lỗi khi xóa đơn hàng"));
+      toast.error("Lỗi khi xóa đơn hàng");
     }
   };
 
   const handleBulkStatusUpdate = async (newStatus: string) => {
-    const { error } = await supabase.from("orders").update({ status: newStatus }).in("id", selectedIds);
-    if (!error) {
+    const success = await ordersApi.bulkUpdate({ ids: selectedIds, status: newStatus });
+    if (success) {
       logActivity({
         action: "UPDATE_ORDERS_STATUS_BULK",
         entity_type: "orders",
@@ -88,7 +87,7 @@ export function OrderManager({
       setSelectedIds([]);
       router.refresh();
     } else {
-      toast.error(formatErrorMessage(error, "Lỗi khi cập nhật trạng thái đơn hàng"));
+      toast.error("Lỗi khi cập nhật trạng thái đơn hàng");
     }
   };
 

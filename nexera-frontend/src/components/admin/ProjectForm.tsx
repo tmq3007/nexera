@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { createClient } from "@/utils/supabase/client";
+import { contentApi } from "@/lib/api/content.api";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { logActivity } from "@/lib/logger";
 
@@ -13,7 +13,6 @@ interface ProjectFormProps {
 }
 
 export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormProps) {
-  const supabase = createClient();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -36,13 +35,11 @@ export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormPro
       completion_date: form.completion_date || null,
     };
 
-    let error;
-    let createdItem;
+    let result;
 
     if (initialData?.id) {
-      const result = await supabase.from("projects").update(dataToSave).eq("id", initialData.id);
-      error = result.error;
-      if (!error) {
+      result = await contentApi.updateProject(initialData.id, dataToSave);
+      if (result) {
         logActivity({
           action: "UPDATE_PROJECT",
           entity_type: "projects",
@@ -51,14 +48,12 @@ export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormPro
         });
       }
     } else {
-      const result = await supabase.from("projects").insert(dataToSave).select("id").single();
-      error = result.error;
-      createdItem = result.data;
-      if (!error) {
+      result = await contentApi.createProject(dataToSave);
+      if (result) {
         logActivity({
           action: "CREATE_PROJECT",
           entity_type: "projects",
-          entity_id: createdItem?.id,
+          entity_id: result.id,
           details: { name: form.name, data: dataToSave },
         });
       }
@@ -66,8 +61,8 @@ export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormPro
 
     setLoading(false);
 
-    if (error) {
-      alert("Lỗi: " + error.message);
+    if (!result) {
+      alert("Lỗi khi lưu dự án!");
     } else {
       onSuccess();
     }

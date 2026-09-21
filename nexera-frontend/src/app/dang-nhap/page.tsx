@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, Mail, UserCircle2, ArrowRight, Home } from "lucide-react";
 import Link from "next/link";
+import { customersApi } from "@/lib/api/customers.api";
 
 export default function CustomerLoginPage() {
   const [email, setEmail] = useState("");
@@ -32,99 +33,22 @@ export default function CustomerLoginPage() {
     }
 
     if (data.user) {
-      // 1. Tìm customer profile theo auth_user_id hoặc email
-      let customerId: string | null = null;
-      let existingPhones: string[] = [];
-      let existingEmails: string[] = [];
-      let existingPhone: string | null = null;
-      let existingEmail: string | null = null;
-
-      const { data: custList } = await supabase
-        .from("customers")
-        .select("id, phone, email, phone_numbers, emails, auth_user_id")
-        .or(`auth_user_id.eq.${data.user.id},email.eq.${data.user.email}`)
-        .limit(1);
-
-      if (custList && custList.length > 0) {
-        const cust = custList[0];
-        customerId = cust.id;
-        existingPhone = cust.phone || null;
-        existingEmail = cust.email || null;
-        existingPhones = Array.isArray(cust.phone_numbers) ? [...cust.phone_numbers] : [];
-        existingEmails = Array.isArray(cust.emails) ? [...cust.emails] : [];
-
-        // Nếu auth_user_id chưa liên kết thì cập nhật
-        if (cust.auth_user_id !== data.user.id) {
-          await supabase
-            .from("customers")
-            .update({ auth_user_id: data.user.id })
-            .eq("id", cust.id);
-        }
-      } else {
-        const { data: newCust } = await supabase
-          .from("customers")
-          .insert({
-            auth_user_id: data.user.id,
-            email: data.user.email,
-            emails: data.user.email ? [data.user.email] : [],
-            full_name: data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Khách hàng",
-          })
-          .select("id")
-          .single();
-
-        if (newCust) {
-          customerId = newCust.id;
-        }
-      }
-
-      // 2. Tự động đồng bộ phiên chat vãng lai và gộp toàn bộ lịch sử trò chuyện
+      // 1. Tự động đồng bộ hồ sơ khách hàng & gộp phiên chat vãng lai qua Backend API
       const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
       const guestPhone = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_phone") : null;
       const guestEmail = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_email") : null;
       const customerFullName = data.user.user_metadata?.full_name || data.user.email?.split("@")[0] || "Khách hàng";
 
-      if (guestSessionId) {
-        try {
-          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-          await fetch(`${backendUrl}/chat/sync-session`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              guestSessionId,
-              customerId,
-              authUserId: data.user.id,
-              email: data.user.email,
-              fullName: customerFullName,
-              phone: guestPhone || existingPhone || undefined,
-            }),
-          });
-        } catch (syncErr) {
-          console.error("Lỗi đồng bộ chat khi đăng nhập:", syncErr);
-        }
-      }
-
-      if (customerId) {
-        let needsUpdate = false;
-        if (guestPhone && !existingPhones.includes(guestPhone)) {
-          existingPhones.push(guestPhone);
-          needsUpdate = true;
-        }
-        if (guestEmail && !existingEmails.includes(guestEmail)) {
-          existingEmails.push(guestEmail);
-          needsUpdate = true;
-        }
-
-        if (needsUpdate) {
-          await supabase
-            .from("customers")
-            .update({
-              phone: existingPhone || guestPhone || undefined,
-              email: existingEmail || guestEmail || undefined,
-              phone_numbers: existingPhones,
-              emails: existingEmails,
-            })
-            .eq("id", customerId);
-        }
+      try {
+        await customersApi.syncProfile({
+          authUserId: data.user.id,
+          email: data.user.email,
+          fullName: customerFullName,
+          phone: guestPhone || undefined,
+          guestSessionId: guestSessionId || undefined,
+        });
+      } catch (err) {
+        console.error("Lỗi đồng bộ khách hàng:", err);
       }
 
       window.location.href = "/";
