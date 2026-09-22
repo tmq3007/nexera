@@ -389,77 +389,7 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
         </div>
       </div>
 
-      {/* SEO Section */}
-      <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 space-y-4">
-        <div className="flex items-center gap-2 mb-1">
-          <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <span className="text-sm font-semibold text-blue-700">SEO &amp; Tìm kiếm</span>
-          <span className="text-xs text-blue-400">(tùy chọn)</span>
-        </div>
 
-        {/* Google Search Preview */}
-        <div className="bg-white rounded-lg border border-blue-100 p-3">
-          <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide font-medium">Preview kết quả Google</p>
-          <div className="text-blue-600 text-base font-medium leading-tight line-clamp-1">
-            {form.meta_title || form.name || "Tên sản phẩm"}
-          </div>
-          <div className="text-green-700 text-xs mt-0.5">
-            nexera.vn/san-pham/{form.slug || "slug-san-pham"}
-          </div>
-          <div className="text-gray-600 text-sm mt-1 line-clamp-2 leading-snug">
-            {form.meta_description ||
-              (form.description
-                ? form.description.replace(/<[^>]+>/g, "").slice(0, 160)
-                : "Mô tả sản phẩm sẽ xuất hiện ở đây...")}
-          </div>
-        </div>
-
-        {/* Meta Title */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium text-gray-700">Meta Title</label>
-            <span className={`text-xs font-medium ${
-              form.meta_title.length > 70 ? "text-red-500" :
-              form.meta_title.length > 55 ? "text-amber-500" : "text-gray-400"
-            }`}>
-              {form.meta_title.length}/70
-            </span>
-          </div>
-          <input
-            type="text"
-            maxLength={70}
-            value={form.meta_title}
-            onChange={(e) => setForm((prev) => ({ ...prev, meta_title: e.target.value }))}
-            placeholder={form.name || "Nhập tiêu đề SEO (mặc định dùng tên sản phẩm)"}
-            className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300/30 focus:border-blue-400 transition-all text-sm bg-white"
-          />
-          <p className="text-xs text-gray-400 mt-1">Lý tưởng: 50–60 ký tự. Nếu để trống, tự động dùng tên sản phẩm.</p>
-        </div>
-
-        {/* Meta Description */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium text-gray-700">Meta Description</label>
-            <span className={`text-xs font-medium ${
-              form.meta_description.length > 160 ? "text-red-500" :
-              form.meta_description.length > 140 ? "text-amber-500" : "text-gray-400"
-            }`}>
-              {form.meta_description.length}/160
-            </span>
-          </div>
-          <textarea
-            maxLength={160}
-            rows={3}
-            value={form.meta_description}
-            onChange={(e) => setForm((prev) => ({ ...prev, meta_description: e.target.value }))}
-            placeholder="Mô tả ngắn gọn xuất hiện trên Google (mặc định dùng đầu mô tả sản phẩm)"
-            className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300/30 focus:border-blue-400 transition-all text-sm bg-white resize-none"
-          />
-          <p className="text-xs text-gray-400 mt-1">Lý tưởng: 120–160 ký tự. Nếu để trống, tự động dùng 160 ký tự đầu của mô tả.</p>
-        </div>
-      </div>
 
       <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
         <button

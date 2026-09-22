@@ -275,26 +275,7 @@ export function ProductDetailView({ product }: { product: any }) {
           </div>
         )}
 
-        {/* SEO */}
-        {(product.meta_title || product.meta_description) && (
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-2">SEO Metadata</h3>
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-1.5 text-sm">
-              {product.meta_title && (
-                <div>
-                  <span className="text-[11px] text-gray-400">Title: </span>
-                  <span className="text-gray-800">{product.meta_title}</span>
-                </div>
-              )}
-              {product.meta_description && (
-                <div>
-                  <span className="text-[11px] text-gray-400">Description: </span>
-                  <span className="text-gray-800">{product.meta_description}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+
       </div>
 
       {/* ================= LIGHTBOX / FULLSCREEN IMAGE VIEWER ================= */}
