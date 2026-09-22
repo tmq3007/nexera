@@ -9,22 +9,16 @@ interface ImageUploadProps {
   folder?: string;
 }
 
-export function ImageUpload({ value, onChange, folder = "nexera" }: ImageUploadProps) {
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+
+export function ImageUpload({ value, onChange, folder = "products" }: ImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      setError("Thiếu cấu hình Cloudinary (Cloud Name hoặc Upload Preset) trong file .env.local");
-      return;
-    }
 
     if (!file.type.startsWith("image/")) {
       setError("Chỉ chấp nhận file hình ảnh.");
@@ -42,26 +36,25 @@ export function ImageUpload({ value, onChange, folder = "nexera" }: ImageUploadP
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-      if (folder) {
-        formData.append("folder", folder);
-      }
 
-      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch(
+        `${BACKEND_URL}/upload?folder=${encodeURIComponent(folder)}`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || "Lỗi upload ảnh");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Upload thất bại (HTTP ${response.status})`);
       }
 
       const data = await response.json();
-      onChange(data.secure_url);
+      onChange(data.url);
     } catch (err: any) {
-      console.error("Cloudinary upload error:", err);
-      setError(err.message || "Đã xảy ra lỗi khi tải ảnh lên Cloudinary.");
+      console.error("Upload error:", err);
+      setError(err.message || "Đã xảy ra lỗi khi tải ảnh lên.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -111,7 +104,7 @@ export function ImageUpload({ value, onChange, folder = "nexera" }: ImageUploadP
           {isUploading ? (
             <div className="flex flex-col items-center text-gray-500">
               <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)] mb-2" />
-              <p className="text-sm font-medium">Đang tải lên Cloudinary...</p>
+              <p className="text-sm font-medium">Đang tải lên...</p>
             </div>
           ) : (
             <div className="flex flex-col items-center text-gray-500">
@@ -128,4 +121,3 @@ export function ImageUpload({ value, onChange, folder = "nexera" }: ImageUploadP
     </div>
   );
 }
-

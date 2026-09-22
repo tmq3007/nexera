@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { UploadCloud, X, Loader2, GripVertical } from "lucide-react";
+import { UploadCloud, X, Loader2 } from "lucide-react";
 
 interface MultiImageUploadProps {
   value: string[];
@@ -10,13 +10,12 @@ interface MultiImageUploadProps {
   maxFiles?: number;
 }
 
-export function MultiImageUpload({ value = [], onChange, folder = "nexera", maxFiles = 10 }: MultiImageUploadProps) {
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
+
+export function MultiImageUpload({ value = [], onChange, folder = "products_gallery", maxFiles = 10 }: MultiImageUploadProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-  const CLOUDINARY_UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -24,11 +23,6 @@ export function MultiImageUpload({ value = [], onChange, folder = "nexera", maxF
 
     if (value.length + files.length > maxFiles) {
       setError(`Bạn chỉ có thể tải lên tối đa ${maxFiles} ảnh.`);
-      return;
-    }
-
-    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
-      setError("Thiếu cấu hình Cloudinary (Cloud Name hoặc Upload Preset) trong file .env.local");
       return;
     }
 
@@ -47,39 +41,34 @@ export function MultiImageUpload({ value = [], onChange, folder = "nexera", maxF
     setIsUploading(true);
     setError(null);
 
-    const uploadedUrls: string[] = [];
-
     try {
-      // Tải lên song song để nhanh hơn
+      // Upload từng file song song qua Backend API
       const uploadPromises = validFiles.map(async (file) => {
         const formData = new FormData();
         formData.append("file", file);
-        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
-        if (folder) {
-          formData.append("folder", folder);
-        }
 
-        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
-          method: "POST",
-          body: formData,
-        });
+        const response = await fetch(
+          `${BACKEND_URL}/upload?folder=${encodeURIComponent(folder)}`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || "Lỗi upload ảnh");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || `Upload thất bại (HTTP ${response.status})`);
         }
 
         const data = await response.json();
-        return data.secure_url;
+        return data.url;
       });
 
-      const results = await Promise.all(uploadPromises);
-      uploadedUrls.push(...results);
-
+      const uploadedUrls = await Promise.all(uploadPromises);
       onChange([...value, ...uploadedUrls]);
     } catch (err: any) {
-      console.error("Cloudinary upload error:", err);
-      setError(err.message || "Đã xảy ra lỗi khi tải ảnh lên Cloudinary.");
+      console.error("Upload error:", err);
+      setError(err.message || "Đã xảy ra lỗi khi tải ảnh lên.");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -141,7 +130,7 @@ export function MultiImageUpload({ value = [], onChange, folder = "nexera", maxF
           {isUploading ? (
             <div className="flex flex-col items-center text-gray-500">
               <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)] mb-2" />
-              <p className="text-sm font-medium">Đang tải lên Cloudinary...</p>
+              <p className="text-sm font-medium">Đang tải lên...</p>
             </div>
           ) : (
             <div className="flex flex-col items-center text-gray-500">

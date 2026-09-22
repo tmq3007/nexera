@@ -232,26 +232,29 @@ export class ProductsService {
 
   async createProduct(dto: CreateProductDto) {
     const supabase = this.supabaseService.getClient();
+    const d = dto as any; // Hỗ trợ cả camelCase lẫn snake_case từ Frontend
     const payload = {
       name: dto.name,
       slug: dto.slug,
-      category_id: dto.categoryId || null,
+      category_id: dto.categoryId || d.category_id || null,
       description: dto.description || null,
       price: dto.price ?? 0,
-      import_price: dto.importPrice ?? 0,
-      discount_rate: dto.discountRate ?? 0,
+      import_price: dto.importPrice ?? d.import_price ?? 0,
+      discount_rate: dto.discountRate ?? d.discount_rate ?? 0,
       stock: dto.stock ?? 0,
       type: dto.type || 'EQUIPMENT',
-      image_url: dto.imageUrl || (dto.images && dto.images[0]) || null,
-      images: dto.images || (dto.imageUrl ? [dto.imageUrl] : []),
+      image_url: dto.imageUrl || d.image_url || (dto.images && dto.images[0]) || null,
+      images: dto.images || [],
+      gallery: d.gallery || [],
       sku: dto.sku || null,
       brand: dto.brand || null,
       supplier: dto.supplier || null,
       origin: dto.origin || null,
-      warranty_info: dto.warrantyInfo || null,
+      warranty_info: dto.warrantyInfo || d.warranty_info || null,
       specifications: dto.specifications || {},
-      is_active: dto.isActive ?? true,
-      is_bestseller: dto.isBestseller ?? false,
+      is_active: dto.isActive ?? d.is_active ?? true,
+      is_bestseller: dto.isBestseller ?? d.is_bestseller ?? false,
+      restock_date: d.restock_date || null,
     };
 
     const { data, error } = await supabase
@@ -270,26 +273,29 @@ export class ProductsService {
 
   async updateProduct(id: string, dto: UpdateProductDto) {
     const supabase = this.supabaseService.getClient();
+    const d = dto as any;
     const payload: any = {
       name: dto.name,
       slug: dto.slug,
-      category_id: dto.categoryId || null,
+      category_id: dto.categoryId || d.category_id || null,
       description: dto.description || null,
       price: dto.price ?? 0,
-      import_price: dto.importPrice ?? 0,
-      discount_rate: dto.discountRate ?? 0,
+      import_price: dto.importPrice ?? d.import_price ?? 0,
+      discount_rate: dto.discountRate ?? d.discount_rate ?? 0,
       stock: dto.stock ?? 0,
       type: dto.type || 'EQUIPMENT',
-      image_url: dto.imageUrl || (dto.images && dto.images[0]) || null,
-      images: dto.images || (dto.imageUrl ? [dto.imageUrl] : []),
+      image_url: dto.imageUrl || d.image_url || (dto.images && dto.images[0]) || null,
+      images: dto.images || [],
+      gallery: d.gallery || [],
       sku: dto.sku || null,
       brand: dto.brand || null,
       supplier: dto.supplier || null,
       origin: dto.origin || null,
-      warranty_info: dto.warrantyInfo || null,
+      warranty_info: dto.warrantyInfo || d.warranty_info || null,
       specifications: dto.specifications || {},
-      is_active: dto.isActive ?? true,
-      is_bestseller: dto.isBestseller ?? false,
+      is_active: dto.isActive ?? d.is_active ?? true,
+      is_bestseller: dto.isBestseller ?? d.is_bestseller ?? false,
+      restock_date: d.restock_date || null,
     };
 
     const { data, error } = await supabase

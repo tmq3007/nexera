@@ -45,10 +45,15 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  category_id?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
 
+  @IsOptional()
   @IsNumber()
-  price: number;
+  price?: number;
 
   @IsOptional()
   @IsNumber()
@@ -56,7 +61,15 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsNumber()
+  import_price?: number;
+
+  @IsOptional()
+  @IsNumber()
   discountRate?: number;
+
+  @IsOptional()
+  @IsNumber()
+  discount_rate?: number;
 
   @IsOptional()
   @IsNumber()
@@ -71,8 +84,16 @@ export class CreateProductDto {
   imageUrl?: string;
 
   @IsOptional()
+  @IsString()
+  image_url?: string;
+
+  @IsOptional()
   @IsArray()
   images?: string[];
+
+  @IsOptional()
+  @IsArray()
+  gallery?: string[];
 
   @IsOptional()
   @IsString()
@@ -95,6 +116,10 @@ export class CreateProductDto {
   warrantyInfo?: string;
 
   @IsOptional()
+  @IsString()
+  warranty_info?: string;
+
+  @IsOptional()
   specifications?: any;
 
   @IsOptional()
@@ -103,7 +128,27 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsBoolean()
+  is_active?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   isBestseller?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  is_bestseller?: boolean;
+
+  @IsOptional()
+  @IsString()
+  restock_date?: string;
+
+  @IsOptional()
+  @IsString()
+  meta_title?: string;
+
+  @IsOptional()
+  @IsString()
+  meta_description?: string;
 }
 
 export class UpdateProductDto extends CreateProductDto {}

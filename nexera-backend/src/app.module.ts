@@ -11,6 +11,7 @@ import { OrdersModule } from './orders/orders.module';
 import { ContentModule } from './content/content.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { RbacModule } from './rbac/rbac.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { RbacModule } from './rbac/rbac.module';
     ContentModule,
     AnalyticsModule,
     RbacModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
