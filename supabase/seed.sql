@@ -1,3 +1,9 @@
+-- Xóa dữ liệu tài khoản auth mặc định nếu có (để tránh xung đột khi seed lại)
+DELETE FROM auth.identities WHERE user_id IN (
+    SELECT id FROM auth.users WHERE email IN ('admin@nexera.vn', 'customer@nexera.vn')
+);
+DELETE FROM auth.users WHERE email IN ('admin@nexera.vn', 'customer@nexera.vn');
+
 -- Xóa dữ liệu cũ (tuân thủ khóa ngoại)
 TRUNCATE TABLE order_items, orders, products, categories, customer_notes, chat_messages, conversations, customers, articles, projects, roles, permissions, role_permissions, admin_accounts, business_information, policies, policy_versions, activity_logs RESTART IDENTITY CASCADE;
 
@@ -9,6 +15,82 @@ INSERT INTO roles (name, display_name, description, is_system) VALUES
 
 INSERT INTO business_information (business_name, tax_code, address, phone, email) VALUES
 ('CÔNG TY CỔ PHẦN TẬP ĐOÀN NEXERA', '0109999999', 'Hà Nội, Việt Nam', '0123.456.789', 'contact@nexera.com');
+
+-- 0.5 TẠO TÀI KHOẢN MẶC ĐỊNH (Admin & Customer)
+-- Admin: admin@nexera.vn / password: admin
+INSERT INTO auth.users (
+    id, instance_id, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, aud, role,
+    created_at, updated_at, confirmation_token, recovery_token,
+    email_change_token_new, email_change, is_super_admin, is_sso_user, phone
+) VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'admin@nexera.vn',
+    crypt('admin', gen_salt('bf')),
+    NOW(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"full_name":"Nexera Admin"}'::jsonb,
+    'authenticated', 'authenticated',
+    NOW(), NOW(), '', '', '', '', false, false, NULL
+);
+
+INSERT INTO auth.identities (
+    id, user_id, identity_data, provider, provider_id,
+    last_sign_in_at, created_at, updated_at
+) VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '{"sub":"00000000-0000-0000-0000-000000000001","email":"admin@nexera.vn"}'::jsonb,
+    'email', '00000000-0000-0000-0000-000000000001',
+    NOW(), NOW(), NOW()
+);
+
+INSERT INTO public.admin_accounts (auth_user_id, display_name, role_id, is_active)
+VALUES (
+    '00000000-0000-0000-0000-000000000001',
+    'Nexera Admin',
+    (SELECT id FROM public.roles WHERE name = 'SUPER_ADMIN' LIMIT 1),
+    true
+);
+
+-- Customer: customer@nexera.vn / password: customer
+INSERT INTO auth.users (
+    id, instance_id, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, aud, role,
+    created_at, updated_at, confirmation_token, recovery_token,
+    email_change_token_new, email_change, is_super_admin, is_sso_user, phone
+) VALUES (
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000000',
+    'customer@nexera.vn',
+    crypt('customer', gen_salt('bf')),
+    NOW(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"full_name":"Khách Hàng Mặc Định"}'::jsonb,
+    'authenticated', 'authenticated',
+    NOW(), NOW(), '', '', '', '', false, false, NULL
+);
+
+INSERT INTO auth.identities (
+    id, user_id, identity_data, provider, provider_id,
+    last_sign_in_at, created_at, updated_at
+) VALUES (
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    '{"sub":"00000000-0000-0000-0000-000000000002","email":"customer@nexera.vn"}'::jsonb,
+    'email', '00000000-0000-0000-0000-000000000002',
+    NOW(), NOW(), NOW()
+);
+
+INSERT INTO public.customers (full_name, email, phone, address, auth_user_id)
+VALUES (
+    'Khách Hàng Mặc Định',
+    'customer@nexera.vn',
+    '0901234567',
+    '123 Đường Test, Quận 1',
+    '00000000-0000-0000-0000-000000000002'
+);
 
 -- 1. CATEGORIES (Danh mục sản phẩm)
 INSERT INTO categories (name, slug, description) VALUES

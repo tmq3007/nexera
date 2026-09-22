@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- Migration: Thêm SEO fields vào bảng products
 -- Nexera - Nhóm 4: Product SEO Optimization
 -- ============================================================
@@ -453,6 +453,7 @@ END;
 $$;
 
 -- 3. Hàm tương thích ngược: merge_guest_conversation(p_customer_id, p_guest_session_id)
+DROP FUNCTION IF EXISTS public.merge_guest_conversation(uuid, text) CASCADE;
 CREATE OR REPLACE FUNCTION public.merge_guest_conversation(p_customer_id UUID, p_guest_session_id TEXT)
 RETURNS void
 LANGUAGE plpgsql

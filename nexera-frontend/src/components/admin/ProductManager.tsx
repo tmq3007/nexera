@@ -47,6 +47,7 @@ export function ProductManager({
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [viewingProduct, setViewingProduct] = useState<any>(null);
   const [deletingProduct, setDeletingProduct] = useState<any>(null);
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -197,7 +198,7 @@ export function ProductManager({
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   const handleOpenAdd = () => {
-    router.push("/admin/san-pham/them");
+    setIsAddOpen(true);
   };
 
   const handleOpenEdit = (product: any) => {
@@ -420,7 +421,7 @@ export function ProductManager({
                   <td colSpan={10} className="text-center py-16 text-gray-400 text-sm">
                     <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                     Chưa có sản phẩm nào phù hợp bộ lọc.{" "}
-                    <button onClick={handleOpenAdd} className="text-[var(--primary)] hover:underline font-semibold block mt-1">
+                    <button onClick={handleOpenAdd} className="text-[var(--primary)] hover:underline font-semibold inline-block mt-2">
                       + Thêm sản phẩm mới
                     </button>
                   </td>
@@ -578,6 +579,7 @@ export function ProductManager({
         isOpen={isViewOpen}
         onClose={() => setIsViewOpen(false)}
         title="Chi tiết sản phẩm"
+        maxWidth="max-w-5xl"
       >
         <ProductDetailView product={viewingProduct} />
       </Modal>
@@ -605,6 +607,25 @@ export function ProductManager({
               setIsEditOpen(false);
               setEditingProduct(null);
             }}
+          />
+        </div>
+      </Modal>
+
+      {/* Add Product Modal (Popup) */}
+      <Modal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        title="Thêm sản phẩm mới"
+        maxWidth="max-w-4xl"
+      >
+        <div className="max-h-[75vh] overflow-y-auto px-1 py-1 custom-scrollbar">
+          <ProductForm
+            categories={categories}
+            onSuccess={() => {
+              setIsAddOpen(false);
+              router.refresh();
+            }}
+            onCancel={() => setIsAddOpen(false)}
           />
         </div>
       </Modal>
