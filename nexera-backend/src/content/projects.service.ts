@@ -100,7 +100,6 @@ export class ProjectsService {
       description: dto.description || null,
       image_url: dto.imageUrl || null,
       completion_date: dto.completionDate || null,
-      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase

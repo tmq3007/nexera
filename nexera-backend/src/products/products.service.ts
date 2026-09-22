@@ -237,8 +237,8 @@ export class ProductsService {
       slug: dto.slug,
       category_id: dto.categoryId || null,
       description: dto.description || null,
-      price: dto.price,
-      import_price: dto.importPrice ?? null,
+      price: dto.price ?? 0,
+      import_price: dto.importPrice ?? 0,
       discount_rate: dto.discountRate ?? 0,
       stock: dto.stock ?? 0,
       type: dto.type || 'EQUIPMENT',
@@ -275,8 +275,8 @@ export class ProductsService {
       slug: dto.slug,
       category_id: dto.categoryId || null,
       description: dto.description || null,
-      price: dto.price,
-      import_price: dto.importPrice ?? null,
+      price: dto.price ?? 0,
+      import_price: dto.importPrice ?? 0,
       discount_rate: dto.discountRate ?? 0,
       stock: dto.stock ?? 0,
       type: dto.type || 'EQUIPMENT',
@@ -290,7 +290,6 @@ export class ProductsService {
       specifications: dto.specifications || {},
       is_active: dto.isActive ?? true,
       is_bestseller: dto.isBestseller ?? false,
-      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
@@ -298,11 +297,20 @@ export class ProductsService {
       .update(payload)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       this.logger.error('Lỗi cập nhật sản phẩm:', error);
       throw new BadRequestException(`Không thể cập nhật sản phẩm: ${error.message}`);
+    }
+
+    if (!data) {
+      this.logger.error(
+        `Không thể cập nhật sản phẩm id=${id}. Có thể do SUPABASE_SERVICE_ROLE_KEY trong .env đang là key 'anon' nên bị RLS chặn quyền ghi.`,
+      );
+      throw new BadRequestException(
+        'Không thể lưu sản phẩm. Vui lòng kiểm tra lại SUPABASE_SERVICE_ROLE_KEY trong .env (hiện đang dùng key anon nên bị RLS chặn).',
+      );
     }
 
     return data;
@@ -333,7 +341,7 @@ export class ProductsService {
       return { success: true, count: dto.ids.length };
     }
 
-    const updatePayload: any = { updated_at: new Date().toISOString() };
+    const updatePayload: any = {};
 
     if (dto.isActive !== undefined) {
       updatePayload.is_active = dto.isActive;

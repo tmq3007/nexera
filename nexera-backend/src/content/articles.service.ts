@@ -100,7 +100,6 @@ export class ArticlesService {
       content: dto.content || null,
       image_url: dto.imageUrl || null,
       published_at: dto.publishedAt || new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabase
