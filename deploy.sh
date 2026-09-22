@@ -109,7 +109,13 @@ fi
 # 7. Khởi chạy Docker Compose (Frontend & Backend)
 echo "🐳 Đang build và chạy Docker Containers..."
 docker compose down || true
-docker compose up -d --build
+if [ -f ".env.production" ]; then
+    echo "📄 Tìm thấy file .env.production, sử dụng cấu hình Production..."
+    docker compose --env-file .env.production up -d --build
+else
+    echo "⚠️ Không tìm thấy .env.production, sử dụng cấu hình mặc định (.env)..."
+    docker compose up -d --build
+fi
 
 echo "=========================================================="
 echo "🎉 DEPLOY THÀNH CÔNG!"

@@ -37,7 +37,16 @@ function Read-EnvFile($path) {
 }
 
 $Deploy = Read-EnvFile $DeployEnvPath
-$Env    = Read-EnvFile $EnvPath
+
+if (Test-Path (Join-Path $ProjectRoot ".env.production")) {
+    Write-Host "📄 Tìm thấy .env.production, sử dụng cấu hình Production!" -ForegroundColor Green
+    $Env = Read-EnvFile (Join-Path $ProjectRoot ".env.production")
+    $EnvUploadPath = "$ProjectRoot\.env.production"
+} else {
+    Write-Host "⚠️ Không có .env.production, sử dụng .env mặc định!" -ForegroundColor Yellow
+    $Env = Read-EnvFile $EnvPath
+    $EnvUploadPath = "$ProjectRoot\.env"
+}
 
 $SERVER_USER    = $Deploy['SERVER_USER']
 $SERVER_IP      = $Deploy['SERVER_IP']
@@ -174,7 +183,7 @@ function Upload-File($localPath, $remotePath) {
 Upload-File $BackendTar                                  "/tmp/nexera-deploy/"
 Upload-File $FrontendTar                                 "/tmp/nexera-deploy/"
 Upload-File "$ProjectRoot\docker-compose.yml"            "/tmp/nexera-deploy/"
-Upload-File "$ProjectRoot\.env"                          "/tmp/nexera-deploy/"
+Upload-File $EnvUploadPath                               "/tmp/nexera-deploy/"
 Upload-File "$ProjectRoot\nginx\nexeragroup.vn.conf"     "/tmp/nexera-deploy/"
 Upload-File "$ProjectRoot\remote-setup.sh"               "/tmp/nexera-deploy/"
 

@@ -88,6 +88,7 @@ mkdir -p "$APP_DIR/nginx"
 # Di chuyển file cấu hình
 cp "$DEPLOY_DIR/docker-compose.yml"        "$APP_DIR/"
 cp "$DEPLOY_DIR/.env"                      "$APP_DIR/" 2>/dev/null || true
+cp "$DEPLOY_DIR/.env.production"           "$APP_DIR/" 2>/dev/null || true
 cp "$DEPLOY_DIR/nexeragroup.vn.conf"       "$APP_DIR/nginx/"
 
 # ── 6. Load Docker Images ────────────────────────────────────
@@ -107,7 +108,12 @@ echo ""
 echo "🚀 Khởi chạy Docker Compose..."
 cd "$APP_DIR"
 docker compose down --remove-orphans 2>/dev/null || true
-docker compose up -d
+if [ -f ".env.production" ]; then
+    echo "📄 Tìm thấy file .env.production, sử dụng cấu hình Production..."
+    docker compose --env-file .env.production up -d
+else
+    docker compose up -d
+fi
 
 echo ""
 echo "⏳ Chờ containers khởi động (10 giây)..."
