@@ -34,27 +34,7 @@ export function getOptimizedImageUrl(
   options: ImageTransformOptions = {}
 ): string | null {
   if (!url) return null;
-
-  // Chỉ transform các ảnh trong Supabase Storage của project này
-  if (!SUPABASE_URL || !url.startsWith(SUPABASE_URL)) return url;
-
-  const { width, height, quality = 80, resize = "cover" } = options;
-
-  // Supabase transform URL format:
-  // /storage/v1/object/public/... → /storage/v1/render/image/public/...
-  const transformedUrl = url.replace(
-    "/storage/v1/object/public/",
-    "/storage/v1/render/image/public/"
-  );
-
-  const params = new URLSearchParams();
-  if (width)  params.set("width",   String(width));
-  if (height) params.set("height",  String(height));
-  params.set("quality", String(quality));
-  params.set("resize",  resize);
-  params.set("format",  "webp");
-
-  return `${transformedUrl}?${params.toString()}`;
+  return url;
 }
 
 /**
