@@ -41,7 +41,6 @@ const navSections = [
       { label: "Đơn hàng", href: "/admin/don-hang", icon: ShoppingCart },
       { label: "Sản phẩm", href: "/admin/san-pham", icon: Package },
       { label: "Danh mục", href: "/admin/danh-muc", icon: Tags },
-      { label: "Yêu cầu tư vấn", href: "/admin/leads", icon: MessageSquare },
       { label: "Hội thoại tư vấn", href: "/admin/hoi-thoai", icon: MessageCircle },
       { label: "Khách hàng", href: "/admin/khach-hang", icon: Users },
     ],

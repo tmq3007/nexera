@@ -1,5 +1,14 @@
 -- Xóa dữ liệu cũ (tuân thủ khóa ngoại)
-TRUNCATE TABLE order_items, orders, products, categories, customer_notes, chat_messages, conversations, customers, articles, projects RESTART IDENTITY CASCADE;
+TRUNCATE TABLE order_items, orders, products, categories, customer_notes, chat_messages, conversations, customers, articles, projects, roles, permissions, role_permissions, admin_accounts, business_information, policies, policy_versions, activity_logs RESTART IDENTITY CASCADE;
+
+-- 0. SYSTEM CONFIGURATION
+INSERT INTO roles (name, display_name, description, is_system) VALUES
+('SUPER_ADMIN', 'Quản trị viên cấp cao', 'Toàn quyền hệ thống', true),
+('ADMIN', 'Quản trị viên', 'Quản lý cửa hàng và khách hàng', true),
+('SALES', 'Nhân viên kinh doanh', 'Quản lý đơn hàng và chat', false);
+
+INSERT INTO business_information (business_name, tax_code, address, phone, email) VALUES
+('CÔNG TY CỔ PHẦN TẬP ĐOÀN NEXERA', '0109999999', 'Hà Nội, Việt Nam', '0123.456.789', 'contact@nexera.com');
 
 -- 1. CATEGORIES (Danh mục sản phẩm)
 INSERT INTO categories (name, slug, description) VALUES
