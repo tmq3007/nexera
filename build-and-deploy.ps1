@@ -110,8 +110,6 @@ docker build `
     --build-arg "NEXT_PUBLIC_SUPABASE_URL=$($Env['NEXT_PUBLIC_SUPABASE_URL'])" `
     --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=$($Env['NEXT_PUBLIC_SUPABASE_ANON_KEY'])" `
     --build-arg "NEXT_PUBLIC_BACKEND_URL=$($Env['NEXT_PUBLIC_BACKEND_URL'])" `
-    --build-arg "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=$($Env['NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME'])" `
-    --build-arg "NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=$($Env['NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET'])" `
     -f "$ProjectRoot\nexera-frontend\Dockerfile" `
     "$ProjectRoot\nexera-frontend"
 
