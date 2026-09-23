@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ==============================================================
 # remote-setup.sh
 # Chạy tự động trên server 162.4.176.246 (Ubuntu/Debian)
@@ -91,22 +91,16 @@ cp "$DEPLOY_DIR/.env"                      "$APP_DIR/" 2>/dev/null || true
 cp "$DEPLOY_DIR/.env.production"           "$APP_DIR/" 2>/dev/null || true
 cp "$DEPLOY_DIR/nexeragroup.vn.conf"       "$APP_DIR/nginx/"
 
-# ── 6. Load Docker Images ────────────────────────────────────
+# ── 6. Pull Docker Images ────────────────────────────────────
 echo ""
-echo "🐳 Đang load Docker images..."
-
-echo "   Đang load nexera-backend..."
-docker load -i "$DEPLOY_DIR/nexera-backend.tar"
-echo "✅ nexera-backend:latest loaded!"
-
-echo "   Đang load nexera-frontend..."
-docker load -i "$DEPLOY_DIR/nexera-frontend.tar"
-echo "✅ nexera-frontend:latest loaded!"
+echo "🐳 Đang pull Docker images từ Docker Hub..."
+cd "$APP_DIR"
+docker compose pull
+echo "✅ Pull hoàn tất!"
 
 # ── 7. Khởi chạy Containers ─────────────────────────────────
 echo ""
 echo "🚀 Khởi chạy Docker Compose..."
-cd "$APP_DIR"
 docker compose down --remove-orphans 2>/dev/null || true
 if [ -f ".env.production" ]; then
     echo "📄 Tìm thấy file .env.production, sử dụng cấu hình Production..."

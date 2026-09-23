@@ -122,7 +122,7 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
         <Link href="/" className="flex items-center justify-center w-full" title="Về trang chủ">
           {!collapsed ? (
             <Image
-              src="/Logo.png"
+              src="/logo.png"
               alt="Nexera"
               width={120}
               height={40}

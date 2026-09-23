@@ -36,19 +36,18 @@ export function FloatingContact() {
 
   return (
     <>
-      <NexeraChatWidget 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
+      <NexeraChatWidget
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
         onUnreadChange={handleUnreadChange}
       />
 
       {/* Speed Dial / Floating Buttons - Smoothly hidden when chat is open */}
-      <div 
-        className={`fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end gap-2.5 sm:gap-3 transition-all duration-300 ease-out ${
-          isChatOpen 
-            ? "opacity-0 scale-90 pointer-events-none translate-y-4" 
+      <div
+        className={`fixed bottom-5 right-4 sm:bottom-6 sm:right-6 z-40 flex flex-col items-end gap-2.5 sm:gap-3 transition-all duration-300 ease-out ${isChatOpen
+            ? "opacity-0 scale-90 pointer-events-none translate-y-4"
             : "opacity-100 scale-100 pointer-events-auto translate-y-0"
-        }`}
+          }`}
       >
         {/* Unread Message Preview Tooltip */}
         {showTooltip && unreadCount > 0 && !isChatOpen && (
@@ -69,8 +68,8 @@ export function FloatingContact() {
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p 
-              onClick={handleOpenChat} 
+            <p
+              onClick={handleOpenChat}
               className="text-gray-600 text-[11px] line-clamp-2 cursor-pointer hover:text-[#13426e] leading-relaxed"
             >
               {lastAdminMessage || "Bạn có tin nhắn mới từ tư vấn viên..."}
@@ -93,7 +92,7 @@ export function FloatingContact() {
             title="Nhắn tin trực tiếp với tư vấn viên"
           >
             <MessageCircle className="w-6 h-6 sm:w-7 sm:h-7" />
-            
+
             {/* Unread Count Badge */}
             {unreadCount > 0 ? (
               <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1 bg-red-600 text-white text-[11px] font-extrabold border-2 border-white rounded-full flex items-center justify-center shadow-md animate-bounce">
@@ -105,7 +104,7 @@ export function FloatingContact() {
               </span>
             )}
           </button>
-          
+
           {/* Tooltip on desktop */}
           <span className="hidden sm:block absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap bg-gray-900/90 text-white text-xs px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
             Tư vấn trực tuyến

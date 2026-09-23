@@ -96,17 +96,17 @@ New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
 Write-Host ""
 Write-Host "🔨 [1/2] Build nexera-backend image..." -ForegroundColor Cyan
 docker build `
-    -t nexera-backend:latest `
+    -t tmquan3007/nexera-backend:latest `
     -f "$ProjectRoot\nexera-backend\Dockerfile" `
     "$ProjectRoot\nexera-backend"
 
 if ($LASTEXITCODE -ne 0) { Write-Host "❌ Build backend thất bại!" -ForegroundColor Red; exit 1 }
-Write-Host "✅ nexera-backend:latest đã build xong!" -ForegroundColor Green
+Write-Host "✅ tmquan3007/nexera-backend:latest đã build xong!" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "🔨 [2/2] Build nexera-frontend image..." -ForegroundColor Cyan
 docker build `
-    -t nexera-frontend:latest `
+    -t tmquan3007/nexera-frontend:latest `
     --build-arg "NEXT_PUBLIC_SUPABASE_URL=$($Env['NEXT_PUBLIC_SUPABASE_URL'])" `
     --build-arg "NEXT_PUBLIC_SUPABASE_ANON_KEY=$($Env['NEXT_PUBLIC_SUPABASE_ANON_KEY'])" `
     --build-arg "NEXT_PUBLIC_BACKEND_URL=$($Env['NEXT_PUBLIC_BACKEND_URL'])" `
@@ -114,25 +114,21 @@ docker build `
     "$ProjectRoot\nexera-frontend"
 
 if ($LASTEXITCODE -ne 0) { Write-Host "❌ Build frontend thất bại!" -ForegroundColor Red; exit 1 }
-Write-Host "✅ nexera-frontend:latest đã build xong!" -ForegroundColor Green
+Write-Host "✅ tmquan3007/nexera-frontend:latest đã build xong!" -ForegroundColor Green
 
-# ── 5. Lưu (save) images ra file .tar ────────────────────────
+# ── 5. Push images lên Docker Hub ────────────────────────────
 Write-Host ""
-Write-Host "💾 Đang lưu images thành .tar..." -ForegroundColor Yellow
+Write-Host "🚀 Đang đẩy (Push) images lên Docker Hub..." -ForegroundColor Yellow
 
-$BackendTar  = Join-Path $DistDir "nexera-backend.tar"
-$FrontendTar = Join-Path $DistDir "nexera-frontend.tar"
+Write-Host "   Đang push tmquan3007/nexera-backend..."
+docker push tmquan3007/nexera-backend:latest
+if ($LASTEXITCODE -ne 0) { Write-Host "❌ Push backend thất bại! (Bạn đã đăng nhập docker login chưa?)" -ForegroundColor Red; exit 1 }
 
-Write-Host "   Đang save nexera-backend... (có thể mất 1-2 phút)"
-docker save nexera-backend:latest -o $BackendTar
+Write-Host "   Đang push tmquan3007/nexera-frontend..."
+docker push tmquan3007/nexera-frontend:latest
+if ($LASTEXITCODE -ne 0) { Write-Host "❌ Push frontend thất bại! (Bạn đã đăng nhập docker login chưa?)" -ForegroundColor Red; exit 1 }
 
-Write-Host "   Đang save nexera-frontend... (có thể mất 2-3 phút)"
-docker save nexera-frontend:latest -o $FrontendTar
-
-$backendSize  = [math]::Round((Get-Item $BackendTar).Length / 1MB, 1)
-$frontendSize = [math]::Round((Get-Item $FrontendTar).Length / 1MB, 1)
-Write-Host "✅ nexera-backend.tar  ($backendSize MB)" -ForegroundColor Green
-Write-Host "✅ nexera-frontend.tar ($frontendSize MB)" -ForegroundColor Green
+Write-Host "✅ Push hoàn tất!" -ForegroundColor Green
 
 # ── 6. Kết nối SSH ────────────────────────────────────────────
 Write-Host ""
@@ -178,8 +174,6 @@ function Upload-File($localPath, $remotePath) {
         -Path $localPath -Destination $remotePath
 }
 
-Upload-File $BackendTar                                  "/tmp/nexera-deploy/"
-Upload-File $FrontendTar                                 "/tmp/nexera-deploy/"
 Upload-File "$ProjectRoot\docker-compose.yml"            "/tmp/nexera-deploy/"
 Upload-File $EnvUploadPath                               "/tmp/nexera-deploy/"
 Upload-File "$ProjectRoot\nginx\nexeragroup.vn.conf"     "/tmp/nexera-deploy/"
@@ -193,7 +187,7 @@ Write-Host "🚀 Đang chạy remote-setup.sh trên server..." -ForegroundColor 
 Write-Host "   (Quá trình này mất khoảng 2-5 phút)" -ForegroundColor Gray
 Write-Host ""
 
-$setupCmd = "chmod +x /tmp/nexera-deploy/remote-setup.sh && bash /tmp/nexera-deploy/remote-setup.sh '$CERTBOT_EMAIL' 2>&1"
+$setupCmd = "sed -i 's/\r$//' /tmp/nexera-deploy/* 2>/dev/null; chmod +x /tmp/nexera-deploy/remote-setup.sh && bash /tmp/nexera-deploy/remote-setup.sh '$CERTBOT_EMAIL' 2>&1"
 $result = Invoke-SSHCommand -SessionId $Session.SessionId -Command $setupCmd -TimeOut 600
 
 # In output từ server
@@ -209,9 +203,7 @@ if ($result.ExitStatus -ne 0) {
 # ── 10. Dọn dẹp ───────────────────────────────────────────────
 Remove-SSHSession -SessionId $Session.SessionId | Out-Null
 
-# Xóa file .tar local để tiết kiệm disk
-Remove-Item $BackendTar  -Force -ErrorAction SilentlyContinue
-Remove-Item $FrontendTar -Force -ErrorAction SilentlyContinue
+# (Đã xóa thao tác .tar file)
 
 # ── 11. Kết quả ───────────────────────────────────────────────
 Write-Host ""

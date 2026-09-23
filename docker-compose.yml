@@ -1,9 +1,6 @@
 services:
   backend:
-    image: nexera-backend:latest
-    build:
-      context: ./nexera-backend
-      dockerfile: Dockerfile
+    image: tmquan3007/nexera-backend:latest
     container_name: nexera-backend
     restart: always
     ports:
@@ -26,20 +23,15 @@ services:
       - nexera-network
 
   frontend:
-    image: nexera-frontend:latest
-    build:
-      context: ./nexera-frontend
-      dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL}
-        NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: ${NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}
-        NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: ${NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET}
+    image: tmquan3007/nexera-frontend:latest
     container_name: nexera-frontend
     restart: always
     ports:
       - "3000:3000"
+    environment:
+      - INTERNAL_BACKEND_URL=http://backend:4000
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://backend:4000}
+      - JWT_SECRET=${JWT_SECRET:-default-secret-key-please-change-in-production}
     depends_on:
       - backend
     networks:

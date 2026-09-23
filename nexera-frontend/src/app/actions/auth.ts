@@ -3,9 +3,18 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+const getBackendUrl = () => {
+  return (
+    process.env.INTERNAL_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    (process.env.NODE_ENV === 'production' ? 'http://backend:4000' : 'http://localhost:4000')
+  );
+};
+
 export async function loginAdminAction(email: string, password: string) {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/auth/login/admin`, {
+    const res = await fetch(`${getBackendUrl()}/auth/login/admin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -38,7 +47,7 @@ export async function loginAdminAction(email: string, password: string) {
 
 export async function loginCustomerAction(email: string, password: string) {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/auth/login`, {
+    const res = await fetch(`${getBackendUrl()}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
