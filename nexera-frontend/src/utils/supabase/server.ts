@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 export async function createClient() {
   const cookieStore = await cookies()
 
-  return createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -18,11 +18,22 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
-            // Lỗi này xảy ra khi cố gắng set cookie từ Server Component.
-            // Có thể bỏ qua nếu đã cấu hình middleware refresh session.
           }
         },
       },
     }
-  )
+  );
+
+  // Đè hàm getUser để sử dụng Custom JWT
+  const originalGetUser = supabase.auth.getUser.bind(supabase.auth);
+  supabase.auth.getUser = async () => {
+    const { getUserFromCookie } = await import('@/app/actions/auth');
+    const userRes = await getUserFromCookie();
+    if (userRes.data.user) {
+      return userRes as any;
+    }
+    return originalGetUser();
+  };
+
+  return supabase;
 }

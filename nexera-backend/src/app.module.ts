@@ -12,6 +12,7 @@ import { ContentModule } from './content/content.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { RbacModule } from './rbac/rbac.module';
 import { UploadModule } from './upload/upload.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { UploadModule } from './upload/upload.module';
     AnalyticsModule,
     RbacModule,
     UploadModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import * as bcrypt from 'bcrypt';
 import {
   CreateRoleDto,
   UpdateRolePermissionsDto,
@@ -36,7 +37,7 @@ export class RbacService {
     const { data: currentAdmin, error: adminErr } = await supabase
       .from('admin_accounts')
       .select('id, role_id, is_active, roles(name)')
-      .eq('auth_user_id', authUserId)
+      .eq('id', authUserId)
       .maybeSingle();
 
     if (adminErr || !currentAdmin || !currentAdmin.is_active) {
@@ -210,45 +211,14 @@ export class RbacService {
   async createAdminAccount(dto: CreateAdminAccountDto) {
     const supabase = this.supabaseService.getClient();
 
-    let authUserId: string;
-
-    // Ưu tiên dùng supabase.auth.admin.createUser nếu có Service Role
-    const { data: adminUser, error: authAdminError } =
-      await supabase.auth.admin.createUser({
-        email: dto.email,
-        password: dto.password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: dto.displayName,
-        },
-      });
-
-    if (authAdminError || !adminUser?.user) {
-      // Fallback: signUp thông thường
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: dto.email,
-        password: dto.password,
-        options: {
-          data: {
-            full_name: dto.displayName,
-          },
-        },
-      });
-
-      if (signUpError || !signUpData.user) {
-        throw new BadRequestException(
-          `Không thể tạo tài khoản xác thực: ${signUpError?.message || authAdminError?.message}`,
-        );
-      }
-      authUserId = signUpData.user.id;
-    } else {
-      authUserId = adminUser.user.id;
-    }
+    // Mã hóa mật khẩu
+    const password_hash = await bcrypt.hash(dto.password, 10);
 
     const { data: adminAccount, error: insertError } = await supabase
       .from('admin_accounts')
       .insert({
-        auth_user_id: authUserId,
+        email: dto.email,
+        password_hash: password_hash,
         display_name: dto.displayName,
         role_id: dto.roleId,
         is_active: true,

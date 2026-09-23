@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { Loader2, Lock, Mail, ShieldCheck, ArrowRight, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
+import { loginAdminAction } from "@/app/actions/auth";
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -13,20 +13,16 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const res = await loginAdminAction(email, password);
 
-    if (error) {
-      setError(error.message);
+    if (res.error) {
+      setError(res.error);
       setLoading(false);
     } else {
       window.location.href = "/admin";
