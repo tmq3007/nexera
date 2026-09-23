@@ -235,28 +235,11 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 border-b border-gray-200/80 pb-6 gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 text-amber-600 rounded-full text-xs font-bold uppercase tracking-wider mb-3">
-              <Flame className="w-4 h-4 text-amber-500 fill-amber-500 animate-pulse" />
-              Sản Phẩm Hot Nhất
-            </div>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-[#13426E] uppercase tracking-tight flex items-center gap-3">
-              Sản Phẩm Bán Chạy
-            </h2>
-            <p className="text-gray-500 mt-2 text-sm md:text-base max-w-xl">
-              Các thiết bị điện mặt trời, inverter và pin lưu trữ được tin dùng nhiều nhất từ khách hàng Nexera.
-            </p>
-          </div>
-
-          {/* View All Link */}
-          <Link
-            href="/san-pham"
-            className="inline-flex items-center gap-2 text-[#13426E] hover:text-[#80BF49] font-bold text-sm group transition-colors self-start md:self-auto"
-          >
-            <span>Xem tất cả sản phẩm</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </Link>
+        <div className="flex flex-col items-center justify-center mb-12 text-center">
+          <h2 className="text-3xl md:text-4xl font-extrabold text-[#13426E] uppercase tracking-tight relative inline-block">
+            Sản Phẩm Bán Chạy
+            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-24 h-1 bg-[#80BF49] rounded-full"></div>
+          </h2>
         </div>
 
         {/* Horizontal Embla Carousel Track Container with Side Navigation Buttons */}
@@ -302,83 +285,80 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
 
                       {/* Card Info */}
                       <div className="p-5 flex-1 flex flex-col justify-between">
-                      <div>
-                        {product.brand && (
-                          <p className="text-[11px] font-bold uppercase tracking-wider text-[#80BF49] mb-1">
-                            {product.brand}
-                          </p>
-                        )}
-                        <h3 className="text-base font-bold text-[#13426E] line-clamp-2 mb-2 group-hover:text-[#80BF49] transition-colors" title={product.name}>
-                          {product.name}
-                        </h3>
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t border-gray-100">
-                        {/* Pricing */}
-                        <div className="flex items-baseline gap-2 mb-3">
-                          <span className="text-lg font-bold text-[#E30019]">
-                            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(discountedPrice)}
-                          </span>
-                          {hasDiscount && (
-                            <span className="text-xs text-gray-400 line-through">
-                              {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}
-                            </span>
+                        <div>
+                          {product.brand && (
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[#80BF49] mb-1">
+                              {product.brand}
+                            </p>
                           )}
+                          <h3 className="text-[15px] md:text-[17px] font-bold text-[#13426E] mb-2.5 group-hover:text-[#80BF49] transition-colors line-clamp-2 leading-snug" title={product.name}>
+                            {product.name}
+                          </h3>
                         </div>
 
-                        {/* Stock Status & Restock Date */}
-                        {isOutOfStock ? (
-                          <div className="bg-red-50/80 border border-red-100 rounded-xl p-2.5 mb-3 text-center">
-                            <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-red-600 mb-0.5">
-                              <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-ping" />
-                              Hết hàng tạm thời
+                        <div className="mt-auto pt-4 flex flex-col gap-3 border-t border-gray-100">
+                          {/* Pricing */}
+                          <div className="flex items-start justify-between mb-1">
+                            <div className="flex flex-col">
+                              {hasDiscount ? (
+                                <>
+                                  <div className="text-lg md:text-[22px] font-extrabold text-[#E30019] tracking-tight leading-none">
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(discountedPrice)}
+                                  </div>
+                                  <div className="text-[13px] font-medium text-gray-400 line-through mt-1.5">
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="text-lg md:text-[22px] font-extrabold text-[#13426E] tracking-tight leading-none">
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}
+                                </div>
+                              )}
                             </div>
-                            {product.restock_date && (
-                              <div className="text-[11px] text-amber-700 font-medium flex items-center justify-center gap-1">
-                                <Calendar className="w-3 h-3 text-amber-600" />
-                                Dự kiến có hàng: <strong>{new Date(product.restock_date).toLocaleDateString('vi-VN')}</strong>
-                              </div>
-                            )}
+                            <span className={`text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg uppercase tracking-wide shrink-0 ${!isOutOfStock ? "bg-[#80BF49]/10 text-[#80BF49]" : "bg-red-50 text-red-600"}`}>
+                              {!isOutOfStock ? "Còn hàng" : "Hết hàng"}
+                            </span>
                           </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 mb-3">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                            Còn hàng ({product.stock} sản phẩm)
-                          </div>
-                        )}
 
-                        {/* Action Buttons Matching ProductCatalog */}
-                        {!isAdmin && (
-                          isOutOfStock ? (
-                            <button 
-                            onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
-                            className="w-full py-2 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm group"
-                          >
-                            <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
-                            Tư vấn ngay
-                          </button>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={(e) => handleAddToCart(product, e)}
-                                className="py-2.5 px-3 bg-white border border-[#13426E] text-[#13426E] rounded-xl font-medium hover:bg-gray-50 shadow-sm transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
-                                title="Thêm vào giỏ"
-                              >
-                                <ShoppingCart className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => handleBuyNow(product, e)}
-                                className="flex-1 py-2.5 bg-[#13426E] text-white rounded-xl font-bold hover:bg-[#80BF49] shadow-md transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
-                              >
-                                Mua ngay
-                              </button>
+                          {/* Stock Status & Restock Date */}
+                          {isOutOfStock && product.restock_date && (
+                            <div className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100/50 mt-1">
+                              <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>Có hàng: <strong>{new Date(product.restock_date).toLocaleDateString('vi-VN')}</strong></span>
                             </div>
-                          )
-                        )}
+                          )}
+
+                          {/* Action Buttons Matching ProductCatalog */}
+                          {!isAdmin && (
+                            isOutOfStock ? (
+                              <button 
+                                onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
+                                className="w-full py-3 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-600 text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm mt-1"
+                              >
+                                Nhận Tư Vấn Ngay
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-2 mt-1">
+                                <button
+                                  onClick={(e) => handleAddToCart(product, e)}
+                                  className="w-[46px] h-[46px] bg-gray-50 border border-gray-200 hover:border-[#80BF49] hover:bg-[#80BF49] text-gray-500 hover:text-white rounded-xl flex items-center justify-center transition-all group shrink-0"
+                                  title="Thêm vào giỏ"
+                                >
+                                  <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
+                                </button>
+                                <button
+                                  onClick={(e) => handleBuyNow(product, e)}
+                                  className="flex-1 h-[46px] bg-[#13426E] text-white rounded-xl font-bold hover:bg-[#1a5b99] hover:shadow-md transition-all text-[15px] flex items-center justify-center"
+                                >
+                                  Mua Ngay
+                                </button>
+                              </div>
+                            )
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
               );
             })}
           </div>
@@ -412,6 +392,16 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
             ))}
           </div>
         )}
+
+        {/* View All Button */}
+        <div className="flex justify-center mt-10">
+          <Link
+            href="/san-pham"
+            className="flex items-center gap-2 bg-[#13426E] text-white px-8 py-3 rounded-full hover:bg-[#80BF49] hover:shadow-lg transition-all font-semibold shadow-md"
+          >
+            Xem tất cả sản phẩm <ChevronRight className="w-5 h-5" />
+          </Link>
+        </div>
       </div>
 
       {/* Consultation Modal */}

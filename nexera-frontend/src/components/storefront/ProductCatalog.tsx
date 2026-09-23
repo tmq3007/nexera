@@ -23,18 +23,18 @@ function stripHtml(html: string | null | undefined): string {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', { 
-    style: 'currency', 
-    currency: 'VND', 
-    maximumFractionDigits: 2 
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    maximumFractionDigits: 2
   }).format(amount);
 }
 
 export function getProductPriceInfo(product: any) {
   const originalPrice = Number(product?.price || 0);
   const discountRate = Number(product?.discount_rate || 0);
-  const discountedPrice = discountRate > 0 
-    ? originalPrice * (1 - discountRate / 100) 
+  const discountedPrice = discountRate > 0
+    ? originalPrice * (1 - discountRate / 100)
     : originalPrice;
   const hasDiscount = discountRate > 0 && discountedPrice < originalPrice;
 
@@ -212,7 +212,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
   const itemsPerPage = 9;
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  
+
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCategory, selectedType, selectedPrice, searchQuery]);
@@ -253,7 +253,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
       {/* ================= LEFT SIDEBAR (STICKY) ================= */}
       <div className={`lg:col-span-3 space-y-6 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full pr-1 ${mobileFiltersOpen ? "block" : "hidden lg:block"}`}>
-        
+
         {/* Search */}
         <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-colors">
           <h3 className="font-semibold text-[#13426E] mb-4 flex items-center gap-2">
@@ -261,8 +261,8 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
             Tìm kiếm
           </h3>
           <form onSubmit={handleSearchSubmit} className="relative">
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Tên sản phẩm..."
               className="w-full pl-4 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#13426E] focus:border-[#13426E] text-gray-900 placeholder:text-gray-400 transition-colors text-sm"
               value={searchQuery}
@@ -283,11 +283,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
           <div className="flex flex-col gap-1.5">
             <button
               onClick={() => updateUrl({ category: "all" })}
-              className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                !selectedCategory || selectedCategory === "all" 
-                  ? "bg-[#13426E] text-white font-medium shadow-sm" 
+              className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${!selectedCategory || selectedCategory === "all"
+                  ? "bg-[#13426E] text-white font-medium shadow-sm"
                   : "bg-transparent text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
-              }`}
+                }`}
             >
               Tất cả danh mục
             </button>
@@ -295,11 +294,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
               <button
                 key={cat.id}
                 onClick={() => updateUrl({ category: cat.slug })}
-                className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between group ${
-                  selectedCategory === cat.slug 
-                    ? "bg-[#13426E] text-white font-medium shadow-sm" 
+                className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between group ${selectedCategory === cat.slug
+                    ? "bg-[#13426E] text-white font-medium shadow-sm"
                     : "bg-transparent text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
-                }`}
+                  }`}
               >
                 {cat.name}
                 <ChevronRight className={`w-4 h-4 transition-transform ${selectedCategory === cat.slug ? "translate-x-1" : "opacity-0 group-hover:opacity-100 group-hover:translate-x-1"}`} />
@@ -325,11 +323,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 <button
                   key={type.id}
                   onClick={() => updateUrl({ type: type.id })}
-                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                    isActive
+                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${isActive
                       ? "bg-[#13426E] text-white font-medium shadow-sm"
                       : "bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   {type.label}
                 </button>
@@ -356,11 +353,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 <button
                   key={price.id}
                   onClick={() => updateUrl({ price: price.id })}
-                  className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${
-                    isActive
+                  className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${isActive
                       ? "bg-[#13426E]/10 text-[#13426E] font-medium border border-[#13426E]/20"
                       : "bg-transparent text-gray-600 hover:bg-gray-50 border border-transparent"
-                  }`}
+                    }`}
                 >
                   {price.label}
                 </button>
@@ -375,14 +371,14 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
       <div className="lg:col-span-9 flex flex-col min-h-[60vh] lg:min-h-[1200px]">
         {/* Results Info */}
         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6 flex justify-between items-center shrink-0 transition-colors">
-           <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
-               <Filter className="w-4 h-4 text-gray-500" />
-             </div>
-             <p className="text-gray-600 text-sm">
-               Tìm thấy <strong className="text-[#13426E] text-base mx-1 font-bold">{filteredProducts.length}</strong> sản phẩm phù hợp
-             </p>
-           </div>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
+              <Filter className="w-4 h-4 text-gray-500" />
+            </div>
+            <p className="text-gray-600 text-sm">
+              Tìm thấy <strong className="text-[#13426E] text-base mx-1 font-bold">{filteredProducts.length}</strong> sản phẩm phù hợp
+            </p>
+          </div>
         </div>
 
         {filteredProducts.length > 0 ? (
@@ -392,12 +388,12 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 const isCompared = compareList.find(p => p.id === product.id);
                 return (
                   <div key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden flex flex-col group transition-all border border-gray-100 relative">
-                    
+
                     {/* Image Container */}
                     <div className="relative aspect-[4/3] bg-gray-50 p-6 flex items-center justify-center group/img overflow-hidden border-b border-gray-50">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={product.image_url || "/doi.png"} alt={product.name} className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500" />
-                      
+
                       {/* Top Badges */}
                       <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
                         {/* Bestseller Badge */}
@@ -408,12 +404,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                           </div>
                         )}
 
-                        {/* Type Badge */}
-                        <div className="bg-white/90 backdrop-blur-sm text-[#13426E] text-[10px] font-bold px-2.5 py-1 rounded-md uppercase border border-gray-200 shadow-sm flex items-center gap-1.5 w-fit">
-                          {product.type === "EQUIPMENT" ? <Zap className="w-3 h-3 text-[#80BF49]"/> : <ShoppingCart className="w-3 h-3 text-[#80BF49]" />}
-                          {product.type === "EQUIPMENT" ? "Thiết bị" : "Trọn gói"}
-                        </div>
-                        
+
                         {/* Discount Badge */}
                         {product.discount_rate > 0 && (
                           <div className="bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm w-fit">
@@ -425,10 +416,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                       {/* Hover Overlay - Actions */}
                       <div className="absolute inset-0 bg-[#13426E]/20 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px] z-20">
                         <div className="flex items-center gap-3 transform translate-y-4 group-hover/img:translate-y-0 transition-transform duration-300">
-                          
+
                           {/* Quick View Button */}
                           <div className="relative group/btn">
-                            <button 
+                            <button
                               onClick={() => setQuickViewProduct(product)}
                               className="w-10 h-10 bg-white text-[#13426E] rounded-full shadow-lg flex items-center justify-center hover:bg-[#13426E] hover:text-white transition-colors"
                             >
@@ -443,13 +434,12 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
                           {/* Compare Button */}
                           <div className="relative group/btn">
-                            <button 
+                            <button
                               onClick={(e) => toggleCompare(product, e)}
-                              className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors ${
-                                isCompared 
-                                  ? "bg-[#13426E] text-white" 
+                              className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors ${isCompared
+                                  ? "bg-[#13426E] text-white"
                                   : "bg-white text-[#13426E] hover:bg-[#13426E] hover:text-white"
-                              }`}
+                                }`}
                             >
                               <Scale className="w-4 h-4" />
                               {isCompared && <Check className="w-3 h-3 absolute -bottom-1 -right-1 bg-[#80BF49] rounded-full text-white border border-white" />}
@@ -467,46 +457,46 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
                     {/* Card Content */}
                     <div className="p-5 flex-1 flex flex-col">
-                      <h3 className="text-base font-semibold text-[#13426E] mb-2 group-hover:text-[#80BF49] transition-colors line-clamp-2" title={product.name}>
+                      <h3 className="text-[15px] md:text-[17px] font-bold text-[#13426E] mb-2.5 group-hover:text-[#80BF49] transition-colors line-clamp-2 leading-snug" title={product.name}>
                         {product.name}
                       </h3>
-                      <div 
+                      <div
                         className="text-gray-500 mb-4 flex-1 text-sm line-clamp-4 leading-relaxed [&_p]:inline [&_p]:m-0"
                         dangerouslySetInnerHTML={{ __html: (product.description || "").replace(/&nbsp;/g, " ") }}
                       />
-                      
+
                       <div className="mt-auto pt-4 flex flex-col gap-3">
                         {(() => {
                           const { originalPrice, discountedPrice, hasDiscount } = getProductPriceInfo(product);
                           return (
                             <div className="flex flex-col gap-1">
-                              <div className="flex items-start justify-between">
-                                <div>
+                              <div className="flex items-start justify-between mb-1">
+                                <div className="flex flex-col">
                                   {hasDiscount ? (
                                     <>
-                                      <div className="text-lg font-bold text-red-600">
+                                      <div className="text-lg md:text-[22px] font-extrabold text-[#E30019] tracking-tight leading-none">
                                         {formatCurrency(discountedPrice)}
                                       </div>
-                                      <div className="text-xs text-gray-400 line-through mt-0.5">
+                                      <div className="text-[13px] font-medium text-gray-400 line-through mt-1.5">
                                         {formatCurrency(originalPrice)}
                                       </div>
                                     </>
                                   ) : (
-                                    <div className="text-lg font-bold text-[#13426E]">
+                                    <div className="text-lg md:text-[22px] font-extrabold text-[#13426E] tracking-tight leading-none">
                                       {formatCurrency(originalPrice)}
                                     </div>
                                   )}
                                 </div>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 ${product.stock > 0 ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"}`}>
+                                <span className={`text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg uppercase tracking-wide shrink-0 ${product.stock > 0 ? "bg-[#80BF49]/10 text-[#80BF49]" : "bg-red-50 text-red-600"}`}>
                                   {product.stock > 0 ? "Còn hàng" : "Hết hàng"}
                                 </span>
                               </div>
 
                               {/* Restock date info if stock = 0 */}
                               {product.stock <= 0 && product.restock_date && (
-                                <div className="text-[11px] text-amber-700 font-medium flex items-center gap-1 bg-amber-50 px-2 py-1 rounded border border-amber-100 mt-1">
-                                  <Calendar className="w-3 h-3 text-amber-600 shrink-0" />
-                                  <span>Dự kiến có hàng: <strong>{new Date(product.restock_date).toLocaleDateString('vi-VN')}</strong></span>
+                                <div className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100/50 mt-1">
+                                  <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                  <span>Có hàng: <strong>{new Date(product.restock_date).toLocaleDateString('vi-VN')}</strong></span>
                                 </div>
                               )}
                             </div>
@@ -514,27 +504,26 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                         })()}
                         {!isAdmin && (
                           product.stock <= 0 ? (
-                            <button 
+                            <button
                               onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
-                              className="px-4 py-2.5 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-700 text-sm font-semibold rounded-lg flex items-center justify-center gap-2 transition-all w-full md:w-auto mt-2 md:mt-0 shadow-sm whitespace-nowrap group"
+                              className="w-full py-3 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-600 hover:text-white text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm mt-1"
                             >
-                              <MessageSquare className="w-4 h-4 text-gray-400 group-hover:text-white" />
-                              Tư vấn ngay
+                              Nhận Tư Vấn Ngay
                             </button>
                           ) : (
-                            <div className="flex items-center gap-2">
-                              <button 
+                            <div className="flex items-center gap-2 mt-1">
+                              <button
                                 onClick={(e) => handleAddToCart(product, e)}
-                                className="flex-1 py-2.5 bg-white border border-[#13426E] text-[#13426E] rounded-lg font-medium hover:bg-gray-50 shadow-sm transition-colors text-sm flex items-center justify-center gap-2"
+                                className="w-[46px] h-[46px] bg-gray-50 border border-gray-200 hover:border-[#80BF49] hover:bg-[#80BF49] text-gray-500 hover:text-white rounded-xl flex items-center justify-center transition-all group shrink-0"
                                 title="Thêm vào giỏ"
                               >
-                                <ShoppingCart className="w-4 h-4" />
+                                <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
                               </button>
-                              <button 
+                              <button
                                 onClick={(e) => handleBuyNow(product, e)}
-                                className="flex-[3] py-2.5 bg-[#13426E] text-white rounded-lg font-medium hover:bg-[#1a5b99] shadow-sm transition-colors text-sm flex items-center justify-center gap-2"
+                                className="flex-1 h-[46px] bg-[#13426E] text-white rounded-xl font-bold hover:bg-[#1a5b99] hover:shadow-md transition-all text-[15px] flex items-center justify-center"
                               >
-                                Mua ngay
+                                Mua Ngay
                               </button>
                             </div>
                           )
@@ -557,7 +546,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
-                
+
                 {(() => {
                   const getPageNumbers = () => {
                     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -573,11 +562,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                       <button
                         key={`page-${pageNum}`}
                         onClick={() => setCurrentPage(pageNum as number)}
-                        className={`w-10 h-10 rounded-full text-sm font-medium transition-colors flex items-center justify-center ${
-                          currentPage === pageNum
+                        className={`w-10 h-10 rounded-full text-sm font-medium transition-colors flex items-center justify-center ${currentPage === pageNum
                             ? "bg-[#13426E] text-white"
                             : "text-gray-600 hover:bg-gray-100 hover:text-[#13426E]"
-                        }`}
+                          }`}
                       >
                         {pageNum}
                       </button>
@@ -599,11 +587,11 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
         ) : (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-10 md:p-16 text-center flex flex-col items-center justify-center flex-1 transition-colors">
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-5 border border-gray-100">
-               <Search className="w-8 h-8 text-gray-400" />
+              <Search className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-xl font-semibold text-[#13426E] mb-2">Không tìm thấy sản phẩm</h3>
             <p className="text-gray-500 mb-6 max-w-md text-sm">Rất tiếc, không có sản phẩm nào khớp với bộ lọc của bạn. Vui lòng thử lại với các tiêu chí khác.</p>
-            <button 
+            <button
               onClick={() => updateUrl({ category: null, price: null, type: null, q: null })}
               className="px-6 py-2.5 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors"
             >
@@ -617,26 +605,26 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
       {quickViewProduct && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#13426E]/50 backdrop-blur-sm transition-opacity" onClick={() => setQuickViewProduct(null)}>
           <div className="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row relative border border-gray-100" onClick={e => e.stopPropagation()}>
-            <button 
+            <button
               onClick={() => setQuickViewProduct(null)}
               className="absolute top-4 right-4 z-10 w-8 h-8 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center transition-colors shadow-sm"
             >
               <X className="w-4 h-4 text-gray-500" />
             </button>
-            
+
             {/* Left: Image Gallery */}
             <div className="w-full md:w-1/2 bg-gray-50 p-6 md:p-8 flex flex-col items-center justify-start border-b md:border-b-0 md:border-r border-gray-100 h-[300px] md:h-auto">
               <div className="w-full flex-1 flex items-center justify-center bg-white rounded-xl mb-4 p-4 border border-gray-200">
                 <button onClick={() => setZoomedImage(activeModalImage || quickViewProduct.image_url)} className="w-full h-full cursor-zoom-in">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
-                    src={activeModalImage || quickViewProduct.image_url || "/doi.png"} 
-                    alt={quickViewProduct.name} 
-                    className="w-full h-full max-h-[250px] md:max-h-[350px] object-contain transition-opacity duration-300 hover:scale-105" 
+                  <img
+                    src={activeModalImage || quickViewProduct.image_url || "/doi.png"}
+                    alt={quickViewProduct.name}
+                    className="w-full h-full max-h-[250px] md:max-h-[350px] object-contain transition-opacity duration-300 hover:scale-105"
                   />
                 </button>
               </div>
-              
+
               {/* Thumbnails */}
               {quickViewProduct.images && Array.isArray(quickViewProduct.images) && quickViewProduct.images.length > 0 && (
                 <div className="flex items-center justify-center gap-3 w-full overflow-x-auto py-2 custom-scrollbar shrink-0">
@@ -644,11 +632,10 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                     <button
                       key={idx}
                       onClick={() => setActiveModalImage(img.url)}
-                      className={`w-16 h-16 md:w-20 md:h-20 rounded-lg border-2 p-1 bg-white shrink-0 transition-all ${
-                        (activeModalImage || quickViewProduct.image_url) === img.url 
-                          ? "border-[#13426E] opacity-100 shadow-md" 
+                      className={`w-16 h-16 md:w-20 md:h-20 rounded-lg border-2 p-1 bg-white shrink-0 transition-all ${(activeModalImage || quickViewProduct.image_url) === img.url
+                          ? "border-[#13426E] opacity-100 shadow-md"
                           : "border-gray-200 opacity-60 hover:opacity-100"
-                      }`}
+                        }`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img.url} alt={`Thumbnail ${idx}`} className="w-full h-full object-contain" />
@@ -657,7 +644,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 </div>
               )}
             </div>
-            
+
             {/* Right: Details */}
             <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col h-[50vh] md:h-auto overflow-hidden">
               <div className="mb-3 shrink-0">
@@ -671,7 +658,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 )}
               </div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 shrink-0">{quickViewProduct.name}</h2>
-              
+
               {(() => {
                 const { originalPrice, discountRate, discountedPrice, hasDiscount } = getProductPriceInfo(quickViewProduct);
                 return (
@@ -692,13 +679,13 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                   </div>
                 );
               })()}
-              
+
               <div className="h-px w-full bg-gray-100 mb-4 shrink-0"></div>
-              
+
               {/* Product Specifications Table */}
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 mb-6">
                 <div className="text-gray-600 text-sm leading-relaxed mb-6 space-y-2" dangerouslySetInnerHTML={{ __html: (quickViewProduct.description || "").replace(/&nbsp;/g, " ") }} />
-                
+
                 {quickViewProduct.specifications && Object.keys(quickViewProduct.specifications).length > 0 && (
                   <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <table className="w-full text-sm text-left">
@@ -714,18 +701,18 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                   </div>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-3 mt-auto pt-4 border-t border-gray-100">
                 {!isAdmin ? (
                   <>
-                    <button 
+                    <button
                       onClick={() => handleBuyNow(quickViewProduct)}
                       className="flex-1 py-3 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors flex items-center justify-center gap-2"
                     >
                       <ShoppingBag className="w-4 h-4" />
                       Mua ngay
                     </button>
-                    <button 
+                    <button
                       onClick={() => handleAddToCart(quickViewProduct)}
                       className="w-12 h-12 rounded-lg border flex items-center justify-center transition-colors bg-white border-[#13426E] text-[#13426E] hover:bg-gray-50"
                       title="Thêm vào giỏ"
@@ -734,20 +721,19 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                     </button>
                   </>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => setQuickViewProduct(null)}
                     className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
                   >
                     Đóng
                   </button>
                 )}
-                <button 
+                <button
                   onClick={() => toggleCompare(quickViewProduct)}
-                  className={`w-12 h-12 rounded-lg border flex items-center justify-center transition-colors ${
-                    compareList.find(p => p.id === quickViewProduct.id) 
-                      ? "bg-[#13426E] border-[#13426E] text-white" 
+                  className={`w-12 h-12 rounded-lg border flex items-center justify-center transition-colors ${compareList.find(p => p.id === quickViewProduct.id)
+                      ? "bg-[#13426E] border-[#13426E] text-white"
                       : "bg-white border-gray-200 text-gray-500 hover:border-[#13426E] hover:text-[#13426E]"
-                  }`}
+                    }`}
                   title="So sánh"
                 >
                   <Scale className="w-5 h-5" />
@@ -762,9 +748,9 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
       {compareList.length > 0 && (
         <div className={`fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none transition-transform duration-300 ease-in-out ${isCompareDockHidden ? 'translate-y-[calc(100%-38px)]' : 'translate-y-0'}`}>
           <div className="bg-white shadow-[0_-5px_25px_rgba(0,0,0,0.15)] border border-gray-200 rounded-t-2xl pointer-events-auto flex flex-col overflow-hidden max-w-4xl w-full mx-2 sm:mx-4 transition-colors">
-            
+
             {/* Dock Header (Click to toggle) */}
-            <div 
+            <div
               className="bg-[#13426E] text-white px-4 py-2 sm:px-5 sm:py-2.5 flex items-center justify-between cursor-pointer hover:bg-[#1a5b99] transition-colors select-none"
               onClick={() => setIsCompareDockHidden(!isCompareDockHidden)}
             >
@@ -772,7 +758,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                 <Scale className="w-4 h-4 text-[#80BF49]" />
                 <span>So sánh sản phẩm ({compareList.length}/3)</span>
               </span>
-              <button 
+              <button
                 type="button"
                 className="p-1 hover:bg-white/20 rounded-md transition-colors"
                 aria-label="Thu gọn hoặc mở rộng bảng so sánh"
@@ -783,7 +769,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
             {/* Dock Body */}
             <div className="p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-              
+
               {/* Product Slots */}
               <div className="flex gap-2 sm:gap-3 flex-1 w-full justify-center sm:justify-start overflow-x-auto pb-1 sm:pb-0">
                 {[0, 1, 2].map(index => {
@@ -792,7 +778,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                     <div key={index} className="w-[85px] sm:w-[110px] md:w-[130px] shrink-0">
                       {p ? (
                         <div className="relative bg-white rounded-lg border border-gray-200 p-1.5 sm:p-2 flex flex-col items-center group shadow-sm">
-                          <button 
+                          <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); toggleCompare(p); }}
                             className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-white border border-gray-300 text-gray-500 rounded-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 hover:border-red-300 transition-colors z-10 shadow-sm"
@@ -817,7 +803,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
               {/* Action Buttons */}
               <div className="flex sm:flex-col gap-2 shrink-0 w-full sm:w-auto">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowCompareModal(true)}
                   disabled={compareList.length < 2}
@@ -826,7 +812,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                   <ArrowLeftRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   <span>So sánh ngay {compareList.length >= 2 ? `(${compareList.length})` : ''}</span>
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={clearCompare}
                   className="px-3 py-2 sm:px-6 sm:py-2 bg-white border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-colors text-xs sm:text-sm font-medium"
@@ -842,12 +828,12 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
       {/* ================= MODAL: COMPARE DETAILS ================= */}
       {showCompareModal && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm transition-opacity" 
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 md:p-6 bg-black/60 backdrop-blur-sm transition-opacity"
           onClick={() => setShowCompareModal(false)}
         >
-          <div 
-            className="bg-white w-full max-w-6xl max-h-[94vh] sm:max-h-[90vh] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden border border-gray-200" 
+          <div
+            className="bg-white w-full max-w-6xl max-h-[94vh] sm:max-h-[90vh] rounded-2xl shadow-2xl flex flex-col relative overflow-hidden border border-gray-200"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
@@ -865,7 +851,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                   </p>
                 </div>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setShowCompareModal(false)}
                 className="w-8 h-8 sm:w-9 sm:h-9 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors text-gray-600 flex items-center justify-center shrink-0"
@@ -897,7 +883,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                       </th>
                       {compareList.map((p) => (
                         <td key={`img-${p.id}`} className="p-3 sm:p-5 text-center border-r border-gray-200 last:border-0 relative group min-w-[180px] sm:min-w-[220px] md:min-w-[260px] align-top">
-                          <button 
+                          <button
                             type="button"
                             onClick={() => {
                               const newList = compareList.filter(item => item.id !== p.id);
@@ -910,9 +896,9 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
-                          <button 
+                          <button
                             type="button"
-                            onClick={() => setZoomedImage(p.image_url)} 
+                            onClick={() => setZoomedImage(p.image_url)}
                             className="cursor-zoom-in block mx-auto hover:scale-105 transition-transform"
                             title="Phóng to ảnh"
                           >
@@ -1083,9 +1069,9 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                   </tbody>
                 </table>
               </div>
-              
+
               <div className="mt-4 sm:mt-6 flex justify-center pb-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowCompareModal(false)}
                   className="px-6 py-2.5 sm:px-8 sm:py-3 bg-[#13426E] hover:bg-[#1a5b99] text-white rounded-xl font-bold shadow-md transition-colors text-xs sm:text-sm"
@@ -1100,20 +1086,20 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
       {/* ================= LIGHTBOX / IMAGE ZOOM MODAL ================= */}
       {zoomedImage && (
-        <div 
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md transition-opacity cursor-zoom-out" 
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-8 bg-black/80 backdrop-blur-md transition-opacity cursor-zoom-out"
           onClick={() => setZoomedImage(null)}
         >
-          <button 
+          <button
             onClick={() => setZoomedImage(null)}
             className="absolute top-6 right-6 z-10 w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full flex items-center justify-center transition-colors shadow-sm"
           >
             <X className="w-5 h-5 text-white" />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            src={zoomedImage || "/doi.png"} 
-            alt="Zoomed" 
+          <img
+            src={zoomedImage || "/doi.png"}
+            alt="Zoomed"
             className="max-w-full max-h-full object-contain select-none shadow-2xl rounded-lg"
             onClick={(e) => e.stopPropagation()} // Keep it open if clicking the image itself, or remove this to close on any click
           />

@@ -10,7 +10,7 @@ import { contentApi } from "@/lib/api/content.api";
 export default async function Home() {
   const [articlesRes, bestSellerProducts] = await Promise.all([
     contentApi.getArticles({ limit: 4 }),
-    productsApi.getBestsellers(8),
+    productsApi.getBestsellers(24),
   ]);
 
   const articles = articlesRes.data;

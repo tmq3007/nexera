@@ -59,9 +59,11 @@ export function Header() {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setIsAuth(true);
-          const profileRes = await customersApi.getMe(user.id, user.email);
           
-          if (profileRes.isAdmin) {
+          // Kiểm tra loại user từ JWT Payload (đã map vào app_metadata.type)
+          const isUserAdmin = user.app_metadata?.type === 'admin';
+          
+          if (isUserAdmin) {
             setIsAdmin(true);
             setIsCustomer(false);
             localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
@@ -73,7 +75,7 @@ export function Header() {
           } else {
             setIsAdmin(false);
             setIsCustomer(true);
-            const name = profileRes.customer?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
+            const name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Khách hàng";
             setCustomerName(name);
 
             localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({
@@ -83,14 +85,14 @@ export function Header() {
               customerName: name,
             }));
 
-            // Tự động đảm bảo tạo/đồng bộ hồ sơ customer và phiên chat vãng lai qua Backend API
+            // Bỏ qua bước gọi API đồng bộ ở Frontend vì Backend nên xử lý, hoặc gọi nhẹ để đồng bộ
             const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
-            if (!profileRes.customer || guestSessionId) {
+            if (guestSessionId) {
               customersApi.syncProfile({
                 authUserId: user.id,
                 email: user.email,
                 fullName: name,
-                guestSessionId: guestSessionId || undefined,
+                guestSessionId: guestSessionId,
               }).catch(() => {});
             }
           }
