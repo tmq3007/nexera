@@ -11,6 +11,7 @@ import { MiniCart } from "@/components/storefront/MiniCart";
 import { ConfirmLogoutModal } from "@/components/ui/ConfirmLogoutModal";
 import { customersApi } from "@/lib/api/customers.api";
 import { productsApi } from "@/lib/api/products.api";
+import { clearAuthCookie } from "@/app/actions/auth";
 
 const AUTH_STORAGE_KEY = "nexera_auth_session";
 
@@ -72,6 +73,7 @@ export function Header() {
               isCustomer: false,
               customerName: "",
             }));
+            window.dispatchEvent(new CustomEvent("nexera-auth-changed", { detail: { isAdmin: true } }));
           } else {
             setIsAdmin(false);
             setIsCustomer(true);
@@ -84,6 +86,7 @@ export function Header() {
               isCustomer: true,
               customerName: name,
             }));
+            window.dispatchEvent(new CustomEvent("nexera-auth-changed", { detail: { isAdmin: false } }));
 
             // Bỏ qua bước gọi API đồng bộ ở Frontend vì Backend nên xử lý, hoặc gọi nhẹ để đồng bộ
             const guestSessionId = typeof window !== "undefined" ? localStorage.getItem("nexera_chat_guest_session") : null;
@@ -103,6 +106,7 @@ export function Header() {
           setIsCustomer(false);
           setCustomerName("");
           localStorage.removeItem(AUTH_STORAGE_KEY);
+          window.dispatchEvent(new CustomEvent("nexera-auth-changed", { detail: { isAdmin: false } }));
         }
       } catch (err) {
         console.error("Lỗi kiểm tra phiên:", err);
@@ -116,8 +120,12 @@ export function Header() {
   const handleConfirmLogout = async () => {
     try {
       setIsLoggingOut(true);
+      // Xóa HTTP-only cookie access_token (quan trọng nhất)
+      await clearAuthCookie();
+      // Xóa Supabase session (nếu có)
       await supabase.auth.signOut();
       localStorage.removeItem(AUTH_STORAGE_KEY);
+      window.dispatchEvent(new CustomEvent("nexera-auth-changed", { detail: { isAdmin: false } }));
       setIsAdmin(false);
       setIsCustomer(false);
       setIsAuth(false);

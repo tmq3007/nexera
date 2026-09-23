@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import {
-  X,
-  Send,
-  Phone,
+import { 
+  X, 
+  Send, 
+  Phone, 
   Clock,
   Volume2,
   VolumeX,
@@ -294,7 +294,7 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
           const newConvId = payload.payload.newConversationId;
           if (newConvId) {
             setConversationId(newConvId);
-
+            
             // Tự động nạp lại tin nhắn của cuộc hội thoại vừa được gộp qua Backend API
             try {
               const msgs = await chatApi.getMessages(newConvId);
@@ -504,7 +504,7 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
     <>
       {/* Mobile Backdrop */}
       {isOpen && (
-        <div
+        <div 
           className="fixed inset-0 bg-slate-900/30 backdrop-blur-[2px] z-[65] sm:hidden transition-opacity duration-300"
           onClick={onClose}
           aria-hidden="true"
@@ -512,16 +512,17 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
       )}
 
       <div
-        className={`fixed bottom-3 sm:bottom-5 right-3 sm:right-6 left-3 sm:left-auto z-[70] w-auto sm:w-[380px] h-[580px] sm:h-[620px] max-h-[calc(100dvh-7rem)] sm:max-h-[min(650px,calc(100dvh-7.5rem))] bg-white rounded-3xl shadow-2xl shadow-[#13426e]/20 border border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ease-out origin-bottom-right ${isOpen
+        className={`fixed bottom-3 sm:bottom-5 right-3 sm:right-6 left-3 sm:left-auto z-[70] w-auto sm:w-[380px] h-[580px] sm:h-[620px] max-h-[calc(100dvh-7rem)] sm:max-h-[min(650px,calc(100dvh-7.5rem))] bg-white rounded-3xl shadow-2xl shadow-[#13426e]/20 border border-gray-200 flex flex-col overflow-hidden transition-all duration-300 ease-out origin-bottom-right ${
+          isOpen
             ? "opacity-100 scale-100 translate-y-0 pointer-events-auto"
             : "opacity-0 scale-95 translate-y-6 pointer-events-none"
-          }`}
+        }`}
       >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#13426e] via-[#164b7d] to-[#1e5a92] text-white px-4 py-4 flex items-center justify-between shadow-md select-none relative overflow-hidden">
           {/* Background decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-
+          
           <div className="flex items-center gap-3 min-w-0 pr-1 relative z-10">
             <div className="relative shrink-0">
               <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center font-black text-[13px] text-[#13426e] shadow-sm ring-2 ring-white/30">
@@ -543,7 +544,7 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
               <p className="text-[11px] text-white/75 truncate mt-0.5">Hỗ trợ kỹ thuật & báo giá 24/7</p>
             </div>
           </div>
-
+          
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <a
               href={`tel:${siteConfig.company.phone.replace(/\D/g, '')}`}
@@ -683,50 +684,26 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
           </div>
         )}
 
-        {/* Messages List Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400 text-xs gap-2">
-              <Clock className="w-5 h-5 animate-spin text-[#80bf49]" />
-              <span>Đang kết nối trung tâm tư vấn...</span>
-            </div>
-          ) : (
-            <>
-              {messages.map((msg, index) => {
-                const isCustomer = msg.sender_type === "CUSTOMER";
-                const isSystem = msg.sender_type === "SYSTEM";
-                const prevMsg = index > 0 ? messages[index - 1] : null;
-                const isNewDay =
-                  !prevMsg ||
-                  (msg.created_at &&
-                    prevMsg.created_at &&
-                    new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString());
+      {/* Messages List Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/50">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-400 text-xs gap-2">
+            <Clock className="w-5 h-5 animate-spin text-[#80bf49]" />
+            <span>Đang kết nối trung tâm tư vấn...</span>
+          </div>
+        ) : (
+          <>
+            {messages.map((msg, index) => {
+              const isCustomer = msg.sender_type === "CUSTOMER";
+              const isSystem = msg.sender_type === "SYSTEM";
+              const prevMsg = index > 0 ? messages[index - 1] : null;
+              const isNewDay =
+                !prevMsg ||
+                (msg.created_at &&
+                  prevMsg.created_at &&
+                  new Date(msg.created_at).toDateString() !== new Date(prevMsg.created_at).toDateString());
 
-                if (isSystem) {
-                  return (
-                    <React.Fragment key={msg.id || index}>
-                      {isNewDay && msg.created_at && (
-                        <div className="flex items-center justify-center my-2 select-none">
-                          <span className="text-[10px] bg-slate-200/80 text-gray-500 font-medium px-3 py-0.5 rounded-full shadow-2xs">
-                            {formatChatDate(msg.created_at)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-end gap-2 justify-start my-1 animate-in slide-in-from-bottom-2 duration-300">
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#13426e] to-[#1e5a92] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm ring-2 ring-white">
-                          NX
-                        </div>
-                        <div className="max-w-[85%] bg-white border border-[#e2e8f0] text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-[12.5px] shadow-sm leading-relaxed relative">
-                          <p className="text-[10px] font-bold text-[#13426e] mb-1.5 opacity-90">
-                            {msg.sender_name || "Nexera Support"}
-                          </p>
-                          {msg.content}
-                        </div>
-                      </div>
-                    </React.Fragment>
-                  );
-                }
-
+              if (isSystem) {
                 return (
                   <React.Fragment key={msg.id || index}>
                     {isNewDay && msg.created_at && (
@@ -736,128 +713,297 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
                         </span>
                       </div>
                     )}
-                    <div
-                      className={`flex items-end gap-2 ${isCustomer ? "justify-end" : "justify-start"}`}
-                    >
-                      {!isCustomer && (
-                        <div className="w-7 h-7 rounded-full bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
-                          NX
-                        </div>
-                      )}
-
-                      <div
-                        className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-2xs ${isCustomer
-                            ? "bg-[#13426e] text-white rounded-br-xs"
-                            : "bg-white text-gray-800 border border-gray-100 rounded-bl-xs"
-                          }`}
-                      >
-                        {!isCustomer ? (
-                          <p className="text-[10px] font-bold text-[#80bf49] mb-1">
-                            {(!msg.sender_name ||
-                              msg.sender_name === "Khách Hàng Mặc Định" ||
-                              msg.sender_name === "Khách hàng" ||
-                              msg.sender_name === customerName ||
-                              msg.sender_name === guestName)
-                              ? "Tư vấn viên NEXERA"
-                              : msg.sender_name}
-                          </p>
-                        ) : (
-                          <p className="text-[10px] font-bold text-emerald-300 mb-1">
-                            {customerName || guestName || "Bạn"}
-                          </p>
-                        )}
-                        {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
-
-                        {/* Attachments rendering */}
-                        {msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
-                          <div className="mt-2 space-y-2">
-                            {msg.attachments.map((att: any, attIdx: number) => {
-                              if (att.type === "product") {
-                                return (
-                                  <div
-                                    key={attIdx}
-                                    className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:border-[#80bf49] transition-all text-gray-800"
-                                  >
-                                    {att.image && (
-                                      <div className="h-28 w-full bg-gray-50 flex items-center justify-center overflow-hidden">
-                                        <img src={att.image} alt={att.name} className="w-full h-full object-cover" />
-                                      </div>
-                                    )}
-                                    <div className="p-2.5">
-                                      <h4 className="font-bold text-xs text-gray-900 line-clamp-2 leading-tight">
-                                        {att.name}
-                                      </h4>
-                                      <div className="flex items-center gap-1.5 mt-1.5">
-                                        <span className="font-bold text-xs text-[#e11d48]">
-                                          {new Intl.NumberFormat("vi-VN").format(att.sale_price || att.price)} đ
-                                        </span>
-                                        {att.sale_price && att.sale_price < att.price && (
-                                          <span className="text-[10px] text-gray-400 line-through">
-                                            {new Intl.NumberFormat("vi-VN").format(att.price)} đ
-                                          </span>
-                                        )}
-                                      </div>
-                                      {att.slug && (
-                                        <a
-                                          href={`/san-pham/${att.slug}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="mt-2 block w-full py-1 bg-[#13426e] hover:bg-[#1e5a92] text-white text-[10px] font-semibold text-center rounded-lg transition-colors"
-                                        >
-                                          Xem chi tiết sản phẩm →
-                                        </a>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              }
-
-                              if (att.type === "image") {
-                                return (
-                                  <div
-                                    key={attIdx}
-                                    className="rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity border border-gray-100 max-w-[220px]"
-                                    onClick={() => setSelectedLightboxImage(att.url)}
-                                    title="Nhấp để xem ảnh to"
-                                  >
-                                    <img src={att.url} alt={att.name || "Hình ảnh"} className="w-full h-auto max-h-[180px] object-cover" />
-                                  </div>
-                                );
-                              }
-
-                              return null;
-                            })}
-                          </div>
-                        )}
-
-                        <span
-                          className={`text-[9px] block text-right mt-1 ${isCustomer ? "text-white/60" : "text-gray-400"
-                            }`}
-                        >
-                          {new Date(msg.created_at).toLocaleTimeString("vi-VN", {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </span>
+                    <div className="flex items-end gap-2 justify-start my-1 animate-in slide-in-from-bottom-2 duration-300">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#13426e] to-[#1e5a92] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-sm ring-2 ring-white">
+                        NX
+                      </div>
+                      <div className="max-w-[85%] bg-white border border-[#e2e8f0] text-gray-800 rounded-2xl rounded-bl-sm px-4 py-3 text-[12.5px] shadow-sm leading-relaxed relative">
+                        <p className="text-[10px] font-bold text-[#13426e] mb-1.5 opacity-90">
+                          {msg.sender_name || "Nexera Support"}
+                        </p>
+                        {msg.content}
                       </div>
                     </div>
                   </React.Fragment>
                 );
-              })}
+              }
 
-              {/* Quick Prompt Suggestions if few messages */}
-              {!isAdmin && messages.length <= 2 && (
-                <div className="pt-2">
-                  <p className="text-[11px] text-gray-500 font-semibold mb-2 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#80bf49]" />
-                    Gợi ý chủ đề hỗ trợ nhanh:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
+              return (
+                <React.Fragment key={msg.id || index}>
+                  {isNewDay && msg.created_at && (
+                    <div className="flex items-center justify-center my-2 select-none">
+                      <span className="text-[10px] bg-slate-200/80 text-gray-500 font-medium px-3 py-0.5 rounded-full shadow-2xs">
+                        {formatChatDate(msg.created_at)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className={`flex items-end gap-2 ${isCustomer ? "justify-end" : "justify-start"}`}
+                  >
+                  {!isCustomer && (
+                    <div className="w-7 h-7 rounded-full bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
+                      NX
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-2xs ${
+                      isCustomer
+                        ? "bg-[#13426e] text-white rounded-br-xs"
+                        : "bg-white text-gray-800 border border-gray-100 rounded-bl-xs"
+                    }`}
+                  >
+                    {!isCustomer ? (
+                      <p className="text-[10px] font-bold text-[#80bf49] mb-1">
+                        {(!msg.sender_name ||
+                          msg.sender_name === "Khách Hàng Mặc Định" ||
+                          msg.sender_name === "Khách hàng" ||
+                          msg.sender_name === customerName ||
+                          msg.sender_name === guestName)
+                            ? "Tư vấn viên NEXERA"
+                            : msg.sender_name}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] font-bold text-emerald-300 mb-1">
+                        {customerName || guestName || "Bạn"}
+                      </p>
+                    )}
+                    {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+
+                    {/* Attachments rendering */}
+                    {msg.attachments && Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                      <div className="mt-2 space-y-2">
+                        {msg.attachments.map((att: any, attIdx: number) => {
+                          if (att.type === "product") {
+                            return (
+                              <div
+                                key={attIdx}
+                                className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-xs hover:border-[#80bf49] transition-all text-gray-800"
+                              >
+                                {att.image && (
+                                  <div className="h-28 w-full bg-gray-50 flex items-center justify-center overflow-hidden">
+                                    <img src={att.image} alt={att.name} className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                                <div className="p-2.5">
+                                  <h4 className="font-bold text-xs text-gray-900 line-clamp-2 leading-tight">
+                                    {att.name}
+                                  </h4>
+                                  <div className="flex items-center gap-1.5 mt-1.5">
+                                    <span className="font-bold text-xs text-[#e11d48]">
+                                      {new Intl.NumberFormat("vi-VN").format(att.sale_price || att.price)} đ
+                                    </span>
+                                    {att.sale_price && att.sale_price < att.price && (
+                                      <span className="text-[10px] text-gray-400 line-through">
+                                        {new Intl.NumberFormat("vi-VN").format(att.price)} đ
+                                      </span>
+                                    )}
+                                  </div>
+                                  {att.slug && (
+                                    <a
+                                      href={`/san-pham/${att.slug}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-2 block w-full py-1 bg-[#13426e] hover:bg-[#1e5a92] text-white text-[10px] font-semibold text-center rounded-lg transition-colors"
+                                    >
+                                      Xem chi tiết sản phẩm →
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          if (att.type === "image") {
+                            return (
+                              <div
+                                key={attIdx}
+                                className="rounded-xl overflow-hidden cursor-pointer hover:opacity-95 transition-opacity border border-gray-100 max-w-[220px]"
+                                onClick={() => setSelectedLightboxImage(att.url)}
+                                title="Nhấp để xem ảnh to"
+                              >
+                                <img src={att.url} alt={att.name || "Hình ảnh"} className="w-full h-auto max-h-[180px] object-cover" />
+                              </div>
+                            );
+                          }
+
+                          return null;
+                        })}
+                      </div>
+                    )}
+
+                    <span
+                      className={`text-[9px] block text-right mt-1 ${
+                        isCustomer ? "text-white/60" : "text-gray-400"
+                      }`}
+                    >
+                      {new Date(msg.created_at).toLocaleTimeString("vi-VN", {
+                        hour: "2-digit",
+                        minute: "2-digit"
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </React.Fragment>
+            );
+          })}
+
+            {/* Quick Prompt Suggestions if few messages */}
+            {!isAdmin && messages.length <= 2 && (
+              <div className="pt-2">
+                <p className="text-[11px] text-gray-500 font-semibold mb-2 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#80bf49]" />
+                  Gợi ý chủ đề hỗ trợ nhanh:
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_PROMPTS.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSendMessage(prompt)}
+                      className="text-[11.5px] font-medium bg-white hover:bg-[#80bf49] text-gray-600 hover:text-white px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-[#80bf49] transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Inline Conversational Lead Capture */}
+            {!contactSaved && !customerId && !dismissedLeadCard && messages.some(m => m.sender_type === "CUSTOMER") && (
+              <div className="my-2.5 p-3.5 bg-gradient-to-br from-[#f0f7fb] via-[#eaf4fa] to-[#e0f0f9] border border-[#bcdbf1] rounded-2xl shadow-xs animate-in fade-in duration-300 relative">
+                <button
+                  type="button"
+                  onClick={() => setDismissedLeadCard(true)}
+                  className="absolute top-2.5 right-2.5 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-white/60 transition-colors cursor-pointer"
+                  title="Để lại sau"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+                <div className="flex items-start gap-2.5 mb-2.5 pr-6">
+                  <div className="w-7 h-7 rounded-xl bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
+                    NX
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#13426e]">Để Nexera tư vấn bạn chu đáo nhất:</h4>
+                    <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">
+                      Bạn để lại Tên & Số điện thoại để chuyên viên gửi báo giá & thông số qua Zalo nhé!
+                    </p>
+                  </div>
+                </div>
+                <form onSubmit={handleSaveContact} className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <User className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Họ và tên..."
+                        value={guestName}
+                        onChange={(e) => setGuestName(e.target.value)}
+                        className="w-full text-xs pl-8 pr-2.5 py-2 bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#80bf49] focus:ring-1 focus:ring-[#80bf49] shadow-2xs"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="tel"
+                        placeholder="Số điện thoại / Zalo..."
+                        value={guestPhone}
+                        onChange={(e) => setGuestPhone(e.target.value)}
+                        className="w-full text-xs pl-8 pr-2.5 py-2 bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#80bf49] focus:ring-1 focus:ring-[#80bf49] shadow-2xs"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={!guestPhone.trim()}
+                    className="w-full py-2 bg-gradient-to-r from-[#80bf49] to-[#6ea93e] hover:from-[#9ad166] hover:to-[#80bf49] disabled:opacity-40 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Xác nhận gửi thông tin
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Admin Typing Indicator */}
+            {isAdminTyping && (
+              <div className="flex items-end gap-2 justify-start animate-in fade-in duration-200">
+                <div className="w-7 h-7 rounded-full bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
+                  NX
+                </div>
+                <div className="bg-white text-gray-600 border border-gray-100 rounded-2xl rounded-bl-xs px-3.5 py-2 text-xs flex items-center gap-1.5 shadow-2xs">
+                  <span className="text-[11px] text-gray-500 font-medium">Tư vấn viên đang soạn tin</span>
+                  <span className="flex gap-1 items-center ml-1">
+                    <span className="w-1.5 h-1.5 bg-[#80bf49] rounded-full animate-bounce [animation-delay:-0.3s]" />
+                    <span className="w-1.5 h-1.5 bg-[#80bf49] rounded-full animate-bounce [animation-delay:-0.15s]" />
+                    <span className="w-1.5 h-1.5 bg-[#80bf49] rounded-full animate-bounce" />
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
+          </>
+        )}
+      </div>
+
+      {/* Input Form Bar */}
+      <div className="p-3 bg-white border-t border-slate-100 shrink-0">
+        {/* Subtle fallback prompt only if user dismissed the inline card */}
+        {!contactSaved && !customerId && dismissedLeadCard && !showContactForm && (
+          <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500 bg-[#f0f7fb] px-3 py-1.5 rounded-xl border border-[#d4e6f1]/80 animate-in fade-in duration-200">
+            <span>Cần tư vấn trực tiếp qua điện thoại?</span>
+            <button
+              onClick={() => setShowContactForm(true)}
+              className="text-[#13426e] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <Phone className="w-3 h-3 text-[#80bf49]" />
+              Để lại SĐT
+            </button>
+          </div>
+        )}
+
+        {isAdmin ? (
+          <div className="flex flex-col items-center justify-center p-2 text-center">
+            <p className="text-[11px] font-semibold text-red-500 mb-2">
+              🚫 Bạn đang đăng nhập dưới quyền Quản trị viên. Bạn không thể tự gửi tin nhắn cho hệ thống.
+            </p>
+            <a 
+              href="/admin/hoi-thoai"
+              className="px-4 py-2 bg-[#13426e] hover:bg-[#1e5a92] text-white text-[11px] font-bold rounded-lg transition-colors shadow-sm"
+            >
+              Chuyển đến Trang Quản trị
+            </a>
+          </div>
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSendMessage();
+            }}
+            className="flex items-end gap-2 bg-white relative"
+          >
+            {/* Quick Prompts Button & Menu */}
+            <div className="relative">
+              {showPromptsMenu && (
+                <div className="absolute bottom-full left-0 mb-3 w-[280px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-[80] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <div className="text-[11px] font-bold text-gray-500 px-2 pb-2 mb-1 border-b border-gray-100 flex items-center justify-between">
+                    <span>Gợi ý câu hỏi:</span>
+                    <button type="button" onClick={() => setShowPromptsMenu(false)} className="hover:text-gray-800">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
                     {QUICK_PROMPTS.map((prompt, idx) => (
                       <button
                         key={idx}
-                        onClick={() => handleSendMessage(prompt)}
-                        className="text-[11.5px] font-medium bg-white hover:bg-[#80bf49] text-gray-600 hover:text-white px-3.5 py-1.5 rounded-full border border-gray-200 hover:border-[#80bf49] transition-all shadow-sm cursor-pointer whitespace-nowrap"
+                        type="button"
+                        onClick={() => {
+                          handleSendMessage(prompt);
+                          setShowPromptsMenu(false);
+                        }}
+                        className="text-left text-[11.5px] px-3 py-2 text-gray-700 hover:bg-[#f0f7fb] hover:text-[#13426e] rounded-xl transition-colors cursor-pointer"
                       >
                         {prompt}
                       </button>
@@ -865,206 +1011,64 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
                   </div>
                 </div>
               )}
-
-              {/* Inline Conversational Lead Capture */}
-              {!contactSaved && !customerId && !dismissedLeadCard && messages.some(m => m.sender_type === "CUSTOMER") && (
-                <div className="my-2.5 p-3.5 bg-gradient-to-br from-[#f0f7fb] via-[#eaf4fa] to-[#e0f0f9] border border-[#bcdbf1] rounded-2xl shadow-xs animate-in fade-in duration-300 relative">
-                  <button
-                    type="button"
-                    onClick={() => setDismissedLeadCard(true)}
-                    className="absolute top-2.5 right-2.5 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-white/60 transition-colors cursor-pointer"
-                    title="Để lại sau"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                  <div className="flex items-start gap-2.5 mb-2.5 pr-6">
-                    <div className="w-7 h-7 rounded-xl bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
-                      NX
-                    </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-[#13426e]">Để Nexera tư vấn bạn chu đáo nhất:</h4>
-                      <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">
-                        Bạn để lại Tên & Số điện thoại để chuyên viên gửi báo giá & thông số qua Zalo nhé!
-                      </p>
-                    </div>
-                  </div>
-                  <form onSubmit={handleSaveContact} className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="relative">
-                        <User className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Họ và tên..."
-                          value={guestName}
-                          onChange={(e) => setGuestName(e.target.value)}
-                          className="w-full text-xs pl-8 pr-2.5 py-2 bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#80bf49] focus:ring-1 focus:ring-[#80bf49] shadow-2xs"
-                        />
-                      </div>
-                      <div className="relative">
-                        <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          type="tel"
-                          placeholder="Số điện thoại / Zalo..."
-                          value={guestPhone}
-                          onChange={(e) => setGuestPhone(e.target.value)}
-                          className="w-full text-xs pl-8 pr-2.5 py-2 bg-white border border-gray-200 rounded-xl focus:outline-hidden focus:border-[#80bf49] focus:ring-1 focus:ring-[#80bf49] shadow-2xs"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={!guestPhone.trim()}
-                      className="w-full py-2 bg-gradient-to-r from-[#80bf49] to-[#6ea93e] hover:from-[#9ad166] hover:to-[#80bf49] disabled:opacity-40 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      Xác nhận gửi thông tin
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* Admin Typing Indicator */}
-              {isAdminTyping && (
-                <div className="flex items-end gap-2 justify-start animate-in fade-in duration-200">
-                  <div className="w-7 h-7 rounded-full bg-[#13426e] text-white flex items-center justify-center text-[10px] font-bold shrink-0 shadow-2xs">
-                    NX
-                  </div>
-                  <div className="bg-white text-gray-600 border border-gray-100 rounded-2xl rounded-bl-xs px-3.5 py-2 text-xs flex items-center gap-1.5 shadow-2xs">
-                    <span className="text-[11px] text-gray-500 font-medium">Tư vấn viên đang soạn tin</span>
-                    <span className="flex gap-1 items-center ml-1">
-                      <span className="w-1.5 h-1.5 bg-[#80bf49] rounded-full animate-bounce [animation-delay:-0.3s]" />
-                      <span className="w-1.5 h-1.5 bg-[#80bf49] rounded-full animate-bounce [animation-delay:-0.15s]" />
-                      <span className="w-1.5 h-1.5 bg-[#80bf49] rounded-full animate-bounce" />
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </>
-          )}
-        </div>
-
-        {/* Input Form Bar */}
-        <div className="p-3 bg-white border-t border-slate-100 shrink-0">
-          {/* Subtle fallback prompt only if user dismissed the inline card */}
-          {!contactSaved && !customerId && dismissedLeadCard && !showContactForm && (
-            <div className="mb-2 flex items-center justify-between text-[11px] text-gray-500 bg-[#f0f7fb] px-3 py-1.5 rounded-xl border border-[#d4e6f1]/80 animate-in fade-in duration-200">
-              <span>Cần tư vấn trực tiếp qua điện thoại?</span>
               <button
-                onClick={() => setShowContactForm(true)}
-                className="text-[#13426e] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                type="button"
+                onClick={() => setShowPromptsMenu(!showPromptsMenu)}
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${
+                  showPromptsMenu ? "bg-[#13426e] text-white shadow-md" : "text-gray-400 hover:text-[#13426e] hover:bg-slate-100"
+                }`}
+                title="Xem các câu hỏi gợi ý"
               >
-                <Phone className="w-3 h-3 text-[#80bf49]" />
-                Để lại SĐT
+                <MessageSquarePlus className="w-4 h-4" />
               </button>
             </div>
-          )}
-
-          {isAdmin ? (
-            <div className="flex flex-col items-center justify-center p-2 text-center">
-              <p className="text-[11px] font-semibold text-red-500 mb-2">
-                🚫 Bạn đang đăng nhập dưới quyền Quản trị viên. Bạn không thể tự gửi tin nhắn cho hệ thống.
-              </p>
-              <a
-                href="/admin/hoi-thoai"
-                className="px-4 py-2 bg-[#13426e] hover:bg-[#1e5a92] text-white text-[11px] font-bold rounded-lg transition-colors shadow-sm"
-              >
-                Chuyển đến Trang Quản trị
-              </a>
-            </div>
-          ) : (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="flex items-end gap-2 bg-white relative"
-            >
-              {/* Quick Prompts Button & Menu */}
-              <div className="relative">
-                {showPromptsMenu && (
-                  <div className="absolute bottom-full left-0 mb-3 w-[280px] bg-white rounded-2xl shadow-2xl border border-gray-100 p-2 z-[80] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                    <div className="text-[11px] font-bold text-gray-500 px-2 pb-2 mb-1 border-b border-gray-100 flex items-center justify-between">
-                      <span>Gợi ý câu hỏi:</span>
-                      <button type="button" onClick={() => setShowPromptsMenu(false)} className="hover:text-gray-800">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      {QUICK_PROMPTS.map((prompt, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            handleSendMessage(prompt);
-                            setShowPromptsMenu(false);
-                          }}
-                          className="text-left text-[11.5px] px-3 py-2 text-gray-700 hover:bg-[#f0f7fb] hover:text-[#13426e] rounded-xl transition-colors cursor-pointer"
-                        >
-                          {prompt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setShowPromptsMenu(!showPromptsMenu)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 cursor-pointer ${showPromptsMenu ? "bg-[#13426e] text-white shadow-md" : "text-gray-400 hover:text-[#13426e] hover:bg-slate-100"
-                    }`}
-                  title="Xem các câu hỏi gợi ý"
-                >
-                  <MessageSquarePlus className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  placeholder="Nhập tin nhắn..."
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  onPaste={handlePaste}
-                  disabled={isSending || isLoading}
-                  className="w-full text-[13px] pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#13426e]/20 focus:border-[#13426e]/40 focus:bg-white text-gray-800 placeholder-gray-400 transition-all shadow-sm"
-                />
-                <button
-                  type="submit"
-                  disabled={!inputValue.trim() || isSending || isLoading}
-                  className="absolute right-1 top-1 bottom-1 w-8 h-8 rounded-full bg-[#13426e] hover:bg-[#1a5b99] disabled:opacity-40 disabled:bg-gray-400 text-white flex items-center justify-center transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
-                  title="Gửi tin nhắn"
-                >
-                  <Send className="w-3.5 h-3.5 -ml-0.5" />
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* Image Lightbox Modal */}
-        {selectedLightboxImage && (
-          <div
-            className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
-            onClick={() => setSelectedLightboxImage(null)}
-          >
-            <div className="relative max-w-2xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => setSelectedLightboxImage(null)}
-                className="absolute -top-10 right-0 text-white hover:text-gray-300 p-1.5 rounded-full bg-white/10 transition-colors cursor-pointer"
-                title="Đóng ảnh"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              <img
-                src={selectedLightboxImage}
-                alt="Chi tiết ảnh"
-                className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+            
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                placeholder="Nhập tin nhắn..."
+                value={inputValue}
+                onChange={handleInputChange}
+                onPaste={handlePaste}
+                disabled={isSending || isLoading}
+                className="w-full text-[13px] pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#13426e]/20 focus:border-[#13426e]/40 focus:bg-white text-gray-800 placeholder-gray-400 transition-all shadow-sm"
               />
+              <button
+                type="submit"
+                disabled={!inputValue.trim() || isSending || isLoading}
+                className="absolute right-1 top-1 bottom-1 w-8 h-8 rounded-full bg-[#13426e] hover:bg-[#1a5b99] disabled:opacity-40 disabled:bg-gray-400 text-white flex items-center justify-center transition-all shadow-sm cursor-pointer disabled:cursor-not-allowed"
+                title="Gửi tin nhắn"
+              >
+                <Send className="w-3.5 h-3.5 -ml-0.5" />
+              </button>
             </div>
-          </div>
+          </form>
         )}
       </div>
-    </>
+
+      {/* Image Lightbox Modal */}
+      {selectedLightboxImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedLightboxImage(null)}
+        >
+          <div className="relative max-w-2xl max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setSelectedLightboxImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 p-1.5 rounded-full bg-white/10 transition-colors cursor-pointer"
+              title="Đóng ảnh"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={selectedLightboxImage}
+              alt="Chi tiết ảnh"
+              className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  </>
   );
 }

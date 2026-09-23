@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ConfirmLogoutModal } from "@/components/ui/ConfirmLogoutModal";
+import { clearAuthCookie } from "@/app/actions/auth";
 
 const navSections = [
   {
@@ -99,6 +100,9 @@ export function AdminSidebar({ mobileOpen = false, onMobileClose }: AdminSidebar
   const handleConfirmLogout = async () => {
     try {
       setIsLoggingOut(true);
+      // Xóa HTTP-only cookie access_token (quan trọng nhất)
+      await clearAuthCookie();
+      // Xóa Supabase session (nếu có)
       await supabase.auth.signOut();
       try {
         localStorage.removeItem("nexera_auth_session");

@@ -78,9 +78,13 @@ export async function loginCustomerAction(email: string, password: string) {
   }
 }
 
-export async function logoutAction() {
+export async function clearAuthCookie() {
   const cookieStore = await cookies();
   cookieStore.delete('access_token');
+}
+
+export async function logoutAction() {
+  await clearAuthCookie();
   redirect('/');
 }
 

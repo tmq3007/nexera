@@ -49,7 +49,7 @@ export class RbacService {
       };
     }
 
-    const isSuperAdmin = (currentAdmin.roles as any)?.name === 'super_admin';
+    const isSuperAdmin = (currentAdmin.roles as any)?.name?.toLowerCase() === 'super_admin';
 
     if (isSuperAdmin) {
       return {
