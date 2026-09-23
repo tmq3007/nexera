@@ -98,22 +98,8 @@ export default function BusinessInfoAdminPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Thông tin doanh nghiệp</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Chỉnh sửa thông tin công ty hiển thị tại Footer và các trang chính sách
-          </p>
-        </div>
-        <button
-          onClick={fetchBusinessInfo}
-          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Tải lại dữ liệu"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
+
+
 
       {/* Form Card */}
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">

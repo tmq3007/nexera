@@ -102,9 +102,6 @@ export function ProjectManager({
     <div className="flex flex-col h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)]">
       {/* Header Toolbar */}
       <AdminTableToolbar
-        title="Dự án"
-        totalCount={totalCount}
-        subtitle="Quản lý danh sách dự án tiêu biểu"
         showFilterToggle={true}
         filterToggleLabel="Loại hình"
         isFiltersOpen={showFilters}

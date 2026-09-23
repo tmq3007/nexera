@@ -235,17 +235,11 @@ export default function RolesAndPermissionsPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-7.5rem)] overflow-hidden">
 
-      {/* Page Header (Fixed) */}
-      <div className="mb-4 flex-shrink-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Vai trò & Phân quyền</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Định nghĩa các vai trò quản trị và phân quyền truy cập tính năng chi tiết cho từng module
-          </p>
-        </div>
+      {/* Toolbar */}
+      <div className="mb-4 flex-shrink-0 flex items-center justify-end">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors self-start md:self-auto"
+          className="bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
         >
           <Plus className="w-4 h-4" />
           Tạo Vai Trò Mới

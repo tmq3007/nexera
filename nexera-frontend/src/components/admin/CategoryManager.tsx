@@ -93,9 +93,6 @@ export function CategoryManager({
     <div className="flex flex-col h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)]">
       {/* Header Toolbar */}
       <AdminTableToolbar
-        title="Danh mục"
-        totalCount={totalCount}
-        subtitle="Quản lý danh mục phân loại sản phẩm"
         density={density}
         onDensityChange={setDensity}
         primaryAction={{

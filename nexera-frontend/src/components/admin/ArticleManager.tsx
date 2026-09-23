@@ -113,9 +113,6 @@ export function ArticleManager({
     <div className="flex flex-col h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)]">
       {/* Header Toolbar */}
       <AdminTableToolbar
-        title="Bài viết"
-        totalCount={totalCount}
-        subtitle="Quản lý tin tức & bài viết blog"
         showFilterToggle={true}
         filterToggleLabel="Lọc ngày"
         isFiltersOpen={showFilters}

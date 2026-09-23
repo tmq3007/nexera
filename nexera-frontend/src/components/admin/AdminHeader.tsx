@@ -15,6 +15,10 @@ const pageTitles: Record<string, string> = {
   "/admin/du-an": "Quản Lý Dự Án",
   "/admin/tai-khoan": "Quản Lý Tài Khoản",
   "/admin/vai-tro": "Vai Trò & Phân Quyền",
+  "/admin/thong-tin-doanh-nghiep": "Thông Tin Doanh Nghiệp",
+  "/admin/chinh-sach": "Quản Lý Chính Sách",
+  "/admin/nhat-ky-hoat-dong": "Nhật Ký Hoạt Động",
+  "/admin/hoi-thoai": "Hội Thoại",
 };
 
 interface AdminHeaderProps {
