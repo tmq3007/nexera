@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env bash
+#!/usr/bin/env bash
 # ==============================================================
 # remote-setup.sh
 # Chạy tự động trên server 162.4.176.246 (Ubuntu/Debian)
