@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { customersApi } from "@/lib/api/customers.api";
 import { loginCustomerAction } from "@/app/actions/auth";
+import { UserCircle2, Mail, Lock, Eye, EyeOff, Loader2, ArrowRight, Home } from "lucide-react";
 
 export default function CustomerLoginPage() {
   const [email, setEmail] = useState("");
