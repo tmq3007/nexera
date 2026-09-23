@@ -14,6 +14,7 @@ import {
 } from './rbac.dto';
 
 const slugify = (str: string) => {
+  if (!str) return '';
   return str
     .toLowerCase()
     .normalize('NFD')
@@ -51,14 +52,7 @@ export class RbacService {
 
     const isSuperAdmin = (currentAdmin.roles as any)?.name?.toLowerCase() === 'super_admin';
 
-    if (isSuperAdmin) {
-      return {
-        hasPermission: true,
-        isSuperAdmin: true,
-        isActive: true,
-        permissions: ['*'],
-      };
-    }
+
 
     const { data: rpData } = await supabase
       .from('role_permissions')
@@ -97,13 +91,13 @@ export class RbacService {
 
   async createRole(dto: CreateRoleDto) {
     const supabase = this.supabaseService.getClient();
-    const slug = dto.name || slugify(dto.displayName) || `role_${Date.now()}`;
+    const slug = dto.name || slugify(dto.displayName || '') || `role_${Date.now()}`;
 
     const { data, error } = await supabase
       .from('roles')
       .insert({
         name: slug,
-        display_name: dto.displayName.trim(),
+        display_name: (dto.displayName || '').trim(),
         description: dto.description || null,
         is_system: false,
       })
@@ -173,8 +167,13 @@ export class RbacService {
   async updateRolePermissions(roleId: string, dto: UpdateRolePermissionsDto) {
     const supabase = this.supabaseService.getClient();
 
+    this.logger.log(`[updateRolePermissions] roleId: ${roleId}, permissionIds count: ${dto.permissionIds?.length}`);
+
     // Xóa phân quyền cũ
-    await supabase.from('role_permissions').delete().eq('role_id', roleId);
+    const { error: deleteError } = await supabase.from('role_permissions').delete().eq('role_id', roleId);
+    if (deleteError) {
+      this.logger.error('[updateRolePermissions] Delete error:', deleteError);
+    }
 
     // Chèn mới
     if (dto.permissionIds && dto.permissionIds.length > 0) {
@@ -183,11 +182,20 @@ export class RbacService {
         permission_id: permId,
       }));
 
-      const { error } = await supabase.from('role_permissions').insert(rows);
+      const { data: insertedData, error } = await supabase.from('role_permissions').insert(rows).select();
       if (error) {
+        this.logger.error('[updateRolePermissions] Insert error:', error);
         throw new BadRequestException(`Lỗi lưu phân quyền: ${error.message}`);
       }
+      this.logger.log(`[updateRolePermissions] Inserted ${insertedData?.length} rows`);
     }
+
+    // Verify
+    const { data: verifyData } = await supabase
+      .from('role_permissions')
+      .select('permission_id')
+      .eq('role_id', roleId);
+    this.logger.log(`[updateRolePermissions] Verify: ${verifyData?.length} permissions in DB for role ${roleId}`);
 
     return { success: true };
   }

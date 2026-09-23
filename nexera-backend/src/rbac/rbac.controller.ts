@@ -26,6 +26,7 @@ export class RbacController {
     @Query('authUserId') authUserId: string,
     @Query('permission') permission?: string,
   ) {
+    console.log(`[checkPermission] authUserId: ${authUserId}, permission: ${permission}`);
     return this.rbacService.checkPermission(authUserId, permission);
   }
 
@@ -61,6 +62,7 @@ export class RbacController {
     @Param('id') id: string,
     @Body() dto: UpdateRolePermissionsDto,
   ) {
+    console.log('[updateRolePermissions] raw body:', JSON.stringify(dto));
     return this.rbacService.updateRolePermissions(id, dto);
   }
 
