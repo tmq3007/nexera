@@ -1,11 +1,22 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { PaymentService } from '../payment/payment.service';
 import {
-  CreateOrderDto,
+  CheckoutDto,
   GetOrdersQueryDto,
   UpdateOrderStatusDto,
+  UpdateShippingDto,
   BulkUpdateOrdersDto,
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  VALID_STATUS_TRANSITIONS,
 } from './orders.dto';
 
 @Injectable()
@@ -17,72 +28,71 @@ export class OrdersService {
     private readonly paymentService: PaymentService,
   ) {}
 
-  /**
-   * Tạo đơn hàng mới an toàn từ Backend
-   */
-  async createOrder(dto: CreateOrderDto) {
+  // ==========================================
+  // CHECKOUT (Tạo đơn hàng mới)
+  // ==========================================
+
+  async checkout(dto: CheckoutDto) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Đơn hàng phải có ít nhất một sản phẩm.');
     }
 
     const supabase = this.supabaseService.getClient();
 
-    // 1. Tìm hoặc tạo khách hàng
-    let customerId = dto.customerId;
+    // 1. Tìm customer theo authUserId (bắt buộc đăng nhập)
+    const { data: customer } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('auth_user_id', dto.authUserId)
+      .maybeSingle();
+
+    let customerId = customer?.id;
+
+    // Nếu chưa có customer record, tạo mới
     if (!customerId) {
-      // Tìm theo authUserId hoặc phone/email
-      let custQuery = supabase.from('customers').select('id');
-      if (dto.authUserId) {
-        custQuery = custQuery.eq('auth_user_id', dto.authUserId);
-      } else if (dto.customerPhone) {
-        custQuery = custQuery.eq('phone', dto.customerPhone);
+      const { data: newCust, error: custErr } = await supabase
+        .from('customers')
+        .insert({
+          auth_user_id: dto.authUserId,
+          full_name: dto.customerName,
+          phone: dto.customerPhone,
+          email: dto.customerEmail || null,
+          address: `${dto.shippingAddress}, ${dto.shippingWard}, ${dto.shippingDistrict}, ${dto.shippingProvince}`,
+          phone_numbers: [dto.customerPhone],
+          emails: dto.customerEmail ? [dto.customerEmail] : [],
+        })
+        .select('id')
+        .maybeSingle();
+
+      if (custErr) {
+        this.logger.error('Lỗi tạo customer:', custErr);
       }
-
-      const { data: existingCust } = await custQuery.maybeSingle();
-
-      if (existingCust) {
-        customerId = existingCust.id;
-      } else {
-        // Tạo customer mới
-        const { data: newCust, error: custErr } = await supabase
-          .from('customers')
-          .insert({
-            auth_user_id: dto.authUserId || null,
-            full_name: dto.customerName,
-            phone: dto.customerPhone,
-            email: dto.customerEmail || null,
-            address: dto.shippingAddress,
-            phone_numbers: dto.customerPhone ? [dto.customerPhone] : [],
-            emails: dto.customerEmail ? [dto.customerEmail] : [],
-          })
-          .select('id')
-          .maybeSingle();
-
-        if (!custErr && newCust) {
-          customerId = newCust.id;
-        }
-      }
+      customerId = newCust?.id || null;
     }
 
-    // 2. Lấy giá sản phẩm thật từ DB để tính toán an toàn
+    // 2. Validate sản phẩm: check tồn tại, giá, tồn kho
     const productIds = dto.items.map((it) => it.productId);
     const { data: dbProducts, error: prodErr } = await supabase
       .from('products')
-      .select('id, name, price, discount_rate, stock')
+      .select('id, name, price, discount_rate, stock, image_url, sku, is_active')
       .in('id', productIds);
 
     if (prodErr || !dbProducts || dbProducts.length === 0) {
-      throw new BadRequestException('Không tìm thấy thông tin các sản phẩm đã chọn.');
+      throw new BadRequestException('Không tìm thấy thông tin sản phẩm.');
     }
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
-    let totalAmount = 0;
+    // 3. Validate stock và tính giá
+    let subtotal = 0;
     const validatedItems: Array<{
       productId: string;
       productName: string;
+      productImage: string;
+      productSku: string;
       quantity: number;
       unitPrice: number;
+      discountRate: number;
       totalPrice: number;
     }> = [];
 
@@ -91,33 +101,60 @@ export class OrdersService {
       if (!prod) {
         throw new BadRequestException(`Sản phẩm với ID ${item.productId} không tồn tại.`);
       }
+      if (!prod.is_active) {
+        throw new BadRequestException(`Sản phẩm "${prod.name}" hiện không còn bán.`);
+      }
+      if (prod.stock !== null && prod.stock < item.quantity) {
+        throw new BadRequestException(
+          `Sản phẩm "${prod.name}" chỉ còn ${prod.stock} sản phẩm trong kho.`,
+        );
+      }
 
       const discountRate = Number(prod.discount_rate) || 0;
       const basePrice = Number(prod.price) || 0;
-      const finalPrice = discountRate > 0 ? Math.round(basePrice * (1 - discountRate / 100)) : basePrice;
+      const finalPrice =
+        discountRate > 0 ? Math.round(basePrice * (1 - discountRate / 100)) : basePrice;
       const itemTotal = finalPrice * item.quantity;
 
-      totalAmount += itemTotal;
+      subtotal += itemTotal;
       validatedItems.push({
         productId: prod.id,
         productName: prod.name,
+        productImage: prod.image_url || '',
+        productSku: prod.sku || '',
         quantity: item.quantity,
         unitPrice: finalPrice,
+        discountRate,
         totalPrice: itemTotal,
       });
     }
 
-    // 3. Tạo orderCode duy nhất
-    const orderCode = Number(`${Date.now().toString().slice(-6)}${Math.floor(1000 + Math.random() * 9000)}`);
+    const totalAmount = subtotal; // shipping_fee = 0, discount = 0 for now
 
-    // 4. Lưu đơn hàng vào bảng `orders`
+    // 4. Xác định trạng thái ban đầu
+    const isBankTransfer = dto.paymentMethod === PaymentMethod.BANK_TRANSFER;
+    const initialStatus = isBankTransfer
+      ? OrderStatus.PENDING_PAYMENT
+      : OrderStatus.CONFIRMED;
+
+    // 5. Tạo đơn hàng (order_code sẽ auto-generate bởi trigger)
     const orderPayload = {
-      customer_id: customerId || null,
+      customer_id: customerId,
+      customer_name: dto.customerName,
+      customer_email: dto.customerEmail || null,
+      customer_phone: dto.customerPhone,
+      shipping_address: dto.shippingAddress,
+      shipping_ward: dto.shippingWard,
+      shipping_district: dto.shippingDistrict,
+      shipping_province: dto.shippingProvince,
+      subtotal,
+      shipping_fee: 0,
+      discount_amount: 0,
       total_amount: totalAmount,
-      status: 'PENDING',
-      payment_method: dto.paymentMethod || 'COD',
-      payos_order_code: String(orderCode),
-      note: dto.note ? `${dto.note} | Giao tới: ${dto.shippingAddress}` : `Giao tới: ${dto.shippingAddress}`,
+      payment_method: dto.paymentMethod,
+      payment_status: PaymentStatus.UNPAID,
+      status: initialStatus,
+      note: dto.note || null,
     };
 
     const { data: createdOrder, error: orderErr } = await supabase
@@ -131,12 +168,16 @@ export class OrdersService {
       throw new BadRequestException(`Không thể tạo đơn hàng: ${orderErr.message}`);
     }
 
-    // 5. Lưu order_items
+    // 6. Lưu order_items (với product snapshot)
     const orderItemRows = validatedItems.map((v) => ({
       order_id: createdOrder.id,
       product_id: v.productId,
+      product_name: v.productName,
+      product_image: v.productImage,
+      product_sku: v.productSku,
       quantity: v.quantity,
       unit_price: v.unitPrice,
+      discount_rate: v.discountRate,
       total_price: v.totalPrice,
     }));
 
@@ -145,18 +186,24 @@ export class OrdersService {
       this.logger.error('Lỗi lưu order items:', itemsErr);
     }
 
-    // 6. Xử lý thanh toán trực tuyến PayOS nếu người dùng chọn PAYOS
+    // 7. Trừ tồn kho
+    await this.deductStock(validatedItems);
+
+    // 8. Ghi lịch sử trạng thái
+    await this.logStatusChange(createdOrder.id, null, initialStatus, 'SYSTEM', 'Tạo đơn hàng mới');
+
+    // 9. Xử lý thanh toán
     let checkoutUrl: string | null = null;
     let qrCode: string | null = null;
 
-    if (dto.paymentMethod === 'PAYOS') {
+    if (isBankTransfer) {
       try {
         const payosRes = await this.paymentService.createPaymentOrder({
           customer: {
             name: dto.customerName,
             phone: dto.customerPhone,
             email: dto.customerEmail,
-            address: dto.shippingAddress,
+            address: `${dto.shippingAddress}, ${dto.shippingWard}, ${dto.shippingDistrict}, ${dto.shippingProvince}`,
             notes: dto.note,
           },
           items: validatedItems.map((v) => ({
@@ -170,96 +217,207 @@ export class OrdersService {
 
         checkoutUrl = payosRes.checkoutUrl || null;
         qrCode = payosRes.qrCode || null;
+
+        // Lưu payos info vào order
+        if (payosRes.orderCode || checkoutUrl) {
+          await supabase
+            .from('orders')
+            .update({
+              payos_order_code: String(payosRes.orderCode),
+              payos_checkout_url: checkoutUrl,
+            })
+            .eq('id', createdOrder.id);
+        }
       } catch (payErr) {
-        this.logger.warn('Không thể tạo liên kết PayOS, chuyển về chế độ thanh toán thông thường:', payErr);
+        this.logger.error('Lỗi tạo link PayOS:', payErr);
+        // Rollback: hủy đơn và hoàn tồn kho
+        await supabase
+          .from('orders')
+          .update({ status: OrderStatus.CANCELLED, cancel_reason: 'Lỗi tạo link thanh toán' })
+          .eq('id', createdOrder.id);
+        await this.restoreStock(validatedItems);
+        throw new BadRequestException('Không thể tạo link thanh toán. Vui lòng thử lại.');
       }
     }
 
     return {
       success: true,
-      order: createdOrder,
-      orderCode,
-      totalAmount,
+      order: {
+        id: createdOrder.id,
+        orderCode: createdOrder.order_code,
+        status: initialStatus,
+        totalAmount,
+        paymentMethod: dto.paymentMethod,
+      },
       checkoutUrl,
       qrCode,
-      items: validatedItems,
     };
   }
 
-  /**
-   * Lấy danh sách đơn hàng của khách đang đăng nhập
-   */
-  async getMyOrders(authUserId?: string, customerId?: string) {
-    if (!authUserId && !customerId) {
-      return [];
+  // ==========================================
+  // WEBHOOK: PayOS thanh toán thành công
+  // ==========================================
+
+  async handlePaymentWebhook(orderCode: string, payosData: any) {
+    const supabase = this.supabaseService.getClient();
+
+    // Tìm đơn hàng
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id, status, payment_status')
+      .eq('payos_order_code', orderCode)
+      .maybeSingle();
+
+    if (!order) {
+      this.logger.warn(`Webhook: Không tìm thấy đơn với payos_order_code=${orderCode}`);
+      return { success: false };
     }
+
+    // Idempotent: nếu đã PAID thì bỏ qua
+    if (order.payment_status === PaymentStatus.PAID) {
+      this.logger.log(`Webhook: Đơn ${orderCode} đã PAID, bỏ qua.`);
+      return { success: true, message: 'Đã xử lý trước đó' };
+    }
+
+    // Cập nhật trạng thái
+    const { error } = await supabase
+      .from('orders')
+      .update({
+        status: OrderStatus.CONFIRMED,
+        payment_status: PaymentStatus.PAID,
+        paid_at: new Date().toISOString(),
+      })
+      .eq('id', order.id);
+
+    if (error) {
+      this.logger.error('Webhook update error:', error);
+      return { success: false };
+    }
+
+    await this.logStatusChange(
+      order.id,
+      OrderStatus.PENDING_PAYMENT,
+      OrderStatus.CONFIRMED,
+      'SYSTEM',
+      'Thanh toán PayOS thành công',
+    );
+
+    this.logger.log(`Webhook: Đơn ${orderCode} → CONFIRMED + PAID`);
+    return { success: true };
+  }
+
+  // ==========================================
+  // PAYMENT STATUS (FE poll)
+  // ==========================================
+
+  async getPaymentStatus(orderId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, order_code, status, payment_status, payment_method, total_amount')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (error || !data) {
+      throw new NotFoundException('Không tìm thấy đơn hàng.');
+    }
+
+    return data;
+  }
+
+  // ==========================================
+  // CUSTOMER: Xem đơn hàng của mình
+  // ==========================================
+
+  async getMyOrders(authUserId: string) {
+    if (!authUserId) return [];
 
     const supabase = this.supabaseService.getClient();
 
-    let targetCustId = customerId;
-    if (!targetCustId && authUserId) {
-      const { data: cust } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('auth_user_id', authUserId)
-        .maybeSingle();
+    const { data: cust } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
 
-      if (cust) targetCustId = cust.id;
-    }
-
-    if (!targetCustId) return [];
+    if (!cust) return [];
 
     const { data: orders, error } = await supabase
       .from('orders')
-      .select('*, order_items(*, products(id, name, image_url, slug))')
-      .eq('customer_id', targetCustId)
+      .select('*, order_items(id, product_name, product_image, quantity, unit_price, total_price)')
+      .eq('customer_id', cust.id)
       .order('created_at', { ascending: false });
 
     if (error) {
-      this.logger.error('Lỗi lấy đơn hàng của tôi:', error);
+      this.logger.error('Lỗi lấy đơn hàng:', error);
       return [];
     }
 
     return orders || [];
   }
 
-  /**
-   * Tra cứu đơn hàng theo mã đơn hoặc UUID
-   */
-  async getOrderLookup(codeOrId: string) {
+  // ==========================================
+  // CUSTOMER: Hủy đơn hàng
+  // ==========================================
+
+  async cancelOrder(orderId: string, authUserId: string) {
     const supabase = this.supabaseService.getClient();
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(codeOrId);
 
-    const query = supabase
+    // Verify ownership
+    const { data: order } = await supabase
       .from('orders')
-      .select('*, customers(id, full_name, phone, email, address), order_items(*, products(id, name, image_url, slug))');
+      .select('id, status, customer_id, customers!inner(auth_user_id)')
+      .eq('id', orderId)
+      .maybeSingle();
 
-    if (isUuid) {
-      query.eq('id', codeOrId);
-    } else {
-      query.eq('payos_order_code', codeOrId);
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
+
+    const custAuthId = (order as any).customers?.auth_user_id;
+    if (custAuthId !== authUserId) {
+      throw new ForbiddenException('Bạn không có quyền hủy đơn hàng này.');
     }
 
-    const { data, error } = await query.maybeSingle();
-    if (error || !data) {
-      throw new NotFoundException('Không tìm thấy đơn hàng tương ứng');
+    // Chỉ cho hủy khi PENDING_PAYMENT hoặc CONFIRMED
+    const cancellableStatuses = [OrderStatus.PENDING_PAYMENT, OrderStatus.CONFIRMED];
+    if (!cancellableStatuses.includes(order.status as OrderStatus)) {
+      throw new BadRequestException('Đơn hàng ở trạng thái này không thể hủy.');
     }
 
-    return data;
+    const fromStatus = order.status;
+
+    await supabase
+      .from('orders')
+      .update({
+        status: OrderStatus.CANCELLED,
+        cancelled_by: 'CUSTOMER',
+        cancel_reason: 'Khách hàng yêu cầu hủy',
+      })
+      .eq('id', orderId);
+
+    // Hoàn tồn kho
+    await this.restoreStockByOrderId(orderId);
+
+    await this.logStatusChange(orderId, fromStatus, OrderStatus.CANCELLED, 'CUSTOMER', 'Khách hàng hủy đơn');
+
+    return { success: true };
   }
 
-  /**
-   * Admin: Danh sách đơn hàng phân trang, lọc trạng thái, tìm kiếm
-   */
+  // ==========================================
+  // ADMIN: Danh sách đơn hàng
+  // ==========================================
+
   async getAdminOrders(query: GetOrdersQueryDto) {
     const supabase = this.supabaseService.getClient();
     const page = Math.max(1, Number(query.page) || 1);
-    const limit = Math.max(1, Math.min(100, Number(query.limit) || 10));
+    const limit = Math.max(1, Math.min(100, Number(query.limit) || 20));
     const offset = (page - 1) * limit;
 
     let dbQuery = supabase
       .from('orders')
-      .select('*, customers(id, full_name, phone, email), order_items(id, quantity, unit_price, total_price, products(name, image_url))', { count: 'exact' })
+      .select(
+        '*, order_items(id, product_name, product_image, quantity, unit_price, total_price)',
+        { count: 'exact' },
+      )
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -267,100 +425,197 @@ export class OrdersService {
       dbQuery = dbQuery.eq('status', query.status);
     }
 
+    if (query.paymentStatus) {
+      dbQuery = dbQuery.eq('payment_status', query.paymentStatus);
+    }
+
+    if (query.paymentMethod) {
+      dbQuery = dbQuery.eq('payment_method', query.paymentMethod);
+    }
+
     if (query.search) {
       const q = query.search.trim();
-      dbQuery = dbQuery.or(`payos_order_code.ilike.%${q}%,note.ilike.%${q}%`);
+      dbQuery = dbQuery.or(
+        `order_code.ilike.%${q}%,customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%`,
+      );
     }
 
     const { data, count, error } = await dbQuery;
 
     if (error) {
-      this.logger.error('Lỗi lấy danh sách đơn hàng Admin:', error);
-      return {
-        data: [],
-        total: 0,
-        page,
-        limit,
-        totalPages: 0,
-      };
+      this.logger.error('Lỗi lấy danh sách đơn hàng:', error);
+      return { data: [], total: 0, page, limit, totalPages: 0 };
     }
 
-    const total = count || 0;
     return {
       data: data || [],
-      total,
+      total: count || 0,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil((count || 0) / limit),
     };
   }
 
-  /**
-   * Admin: Chi tiết đơn hàng
-   */
+  // ==========================================
+  // ADMIN: Chi tiết đơn hàng
+  // ==========================================
+
   async getAdminOrderById(id: string) {
     const supabase = this.supabaseService.getClient();
+
     const { data, error } = await supabase
       .from('orders')
-      .select('*, customers(*), order_items(*, products(*))')
+      .select('*, order_items(*, products(id, name, slug, image_url))')
       .eq('id', id)
       .maybeSingle();
 
     if (error || !data) {
-      throw new NotFoundException('Không tìm thấy thông tin đơn hàng.');
+      throw new NotFoundException('Không tìm thấy đơn hàng.');
     }
 
-    return data;
+    // Lấy lịch sử trạng thái
+    const { data: history } = await supabase
+      .from('order_status_history')
+      .select('*')
+      .eq('order_id', id)
+      .order('created_at', { ascending: true });
+
+    return { ...data, statusHistory: history || [] };
   }
 
-  /**
-   * Admin: Cập nhật trạng thái đơn hàng
-   */
+  // ==========================================
+  // ADMIN: Đổi trạng thái đơn hàng
+  // ==========================================
+
   async updateOrderStatus(id: string, dto: UpdateOrderStatusDto) {
     const supabase = this.supabaseService.getClient();
+
+    // Lấy trạng thái hiện tại
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id, status, payment_method')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
+
+    const currentStatus = order.status as OrderStatus;
+    const newStatus = dto.status;
+
+    // Validate chuyển trạng thái hợp lệ
+    const validTransitions = VALID_STATUS_TRANSITIONS[currentStatus] || [];
+    if (!validTransitions.includes(newStatus)) {
+      throw new BadRequestException(
+        `Không thể chuyển từ "${currentStatus}" sang "${newStatus}".`,
+      );
+    }
+
+    // Build update payload
+    const updatePayload: any = { status: newStatus };
+
+    // Xử lý logic phụ theo trạng thái
+    if (newStatus === OrderStatus.CONFIRMED && currentStatus === OrderStatus.PENDING_PAYMENT) {
+      updatePayload.payment_status = PaymentStatus.PAID;
+      updatePayload.paid_at = new Date().toISOString();
+    }
+
+    if (newStatus === OrderStatus.SHIPPED) {
+      updatePayload.shipped_at = new Date().toISOString();
+    }
+
+    if (newStatus === OrderStatus.DELIVERED) {
+      updatePayload.delivered_at = new Date().toISOString();
+      // COD: khi giao thành công → đánh dấu đã thanh toán
+      if (order.payment_method === PaymentMethod.COD) {
+        updatePayload.payment_status = PaymentStatus.PAID;
+        updatePayload.paid_at = new Date().toISOString();
+      }
+    }
+
+    if (newStatus === OrderStatus.CANCELLED) {
+      updatePayload.cancelled_by = 'ADMIN';
+      updatePayload.cancel_reason = dto.note || 'Admin hủy đơn';
+      // Hoàn tồn kho
+      await this.restoreStockByOrderId(id);
+    }
+
+    if (newStatus === OrderStatus.RETURNED) {
+      // Hoàn tồn kho
+      await this.restoreStockByOrderId(id);
+    }
+
+    if (newStatus === OrderStatus.REFUNDED) {
+      updatePayload.payment_status = PaymentStatus.REFUNDED;
+    }
+
     const { data, error } = await supabase
       .from('orders')
-      .update({ status: dto.status })
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
 
     if (error) {
-      this.logger.error('Lỗi cập nhật trạng thái đơn hàng:', error);
-      throw new BadRequestException(`Không thể cập nhật trạng thái: ${error.message}`);
+      throw new BadRequestException(`Không thể cập nhật: ${error.message}`);
+    }
+
+    // Ghi lịch sử
+    await this.logStatusChange(id, currentStatus, newStatus, dto.changedBy || 'ADMIN', dto.note);
+
+    return data;
+  }
+
+  // ==========================================
+  // ADMIN: Cập nhật thông tin vận chuyển
+  // ==========================================
+
+  async updateShipping(id: string, dto: UpdateShippingDto) {
+    const supabase = this.supabaseService.getClient();
+
+    const updatePayload: any = {};
+    if (dto.shippingCarrier) updatePayload.shipping_carrier = dto.shippingCarrier;
+    if (dto.trackingNumber) updatePayload.tracking_number = dto.trackingNumber;
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new BadRequestException(`Không thể cập nhật vận chuyển: ${error.message}`);
     }
 
     return data;
   }
 
-  /**
-   * Admin: Xóa đơn hàng
-   */
+  // ==========================================
+  // ADMIN: Xóa đơn hàng
+  // ==========================================
+
   async deleteOrder(id: string) {
     const supabase = this.supabaseService.getClient();
-    // Xóa order_items trước nếu không có cascade
+    await supabase.from('order_status_history').delete().eq('order_id', id);
     await supabase.from('order_items').delete().eq('order_id', id);
-
     const { error } = await supabase.from('orders').delete().eq('id', id);
-    if (error) {
-      this.logger.error('Lỗi xóa đơn hàng:', error);
-      throw new BadRequestException(`Không thể xóa đơn hàng: ${error.message}`);
-    }
-
+    if (error) throw new BadRequestException(`Không thể xóa: ${error.message}`);
     return { success: true };
   }
 
-  /**
-   * Admin: Cập nhật / Xóa đơn hàng hàng loạt
-   */
+  // ==========================================
+  // ADMIN: Bulk operations
+  // ==========================================
+
   async bulkUpdateOrders(dto: BulkUpdateOrdersDto) {
     if (!dto.ids || dto.ids.length === 0) {
-      throw new BadRequestException('Danh sách ID đơn hàng không được rỗng.');
+      throw new BadRequestException('Danh sách ID không được rỗng.');
     }
 
     const supabase = this.supabaseService.getClient();
 
     if (dto.action === 'delete') {
+      await supabase.from('order_status_history').delete().in('order_id', dto.ids);
       await supabase.from('order_items').delete().in('order_id', dto.ids);
       const { error } = await supabase.from('orders').delete().in('id', dto.ids);
       if (error) throw new BadRequestException(`Lỗi xóa hàng loạt: ${error.message}`);
@@ -372,11 +627,158 @@ export class OrdersService {
         .from('orders')
         .update({ status: dto.status })
         .in('id', dto.ids);
-
-      if (error) throw new BadRequestException(`Lỗi cập nhật trạng thái hàng loạt: ${error.message}`);
+      if (error) throw new BadRequestException(`Lỗi cập nhật hàng loạt: ${error.message}`);
       return { success: true, count: dto.ids.length };
     }
 
     return { success: true, count: 0 };
+  }
+
+  // ==========================================
+  // AUTO-CANCEL: Đơn CK hết hạn 15 phút
+  // ==========================================
+
+  async autoCancelExpiredOrders() {
+    const supabase = this.supabaseService.getClient();
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+    const { data: expiredOrders } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('status', OrderStatus.PENDING_PAYMENT)
+      .lt('created_at', fifteenMinutesAgo);
+
+    if (!expiredOrders || expiredOrders.length === 0) return { cancelled: 0 };
+
+    for (const order of expiredOrders) {
+      await supabase
+        .from('orders')
+        .update({
+          status: OrderStatus.CANCELLED,
+          cancelled_by: 'SYSTEM',
+          cancel_reason: 'Hết hạn thanh toán (15 phút)',
+        })
+        .eq('id', order.id);
+
+      await this.restoreStockByOrderId(order.id);
+      await this.logStatusChange(
+        order.id,
+        OrderStatus.PENDING_PAYMENT,
+        OrderStatus.CANCELLED,
+        'SYSTEM',
+        'Hết hạn thanh toán 15 phút',
+      );
+    }
+
+    this.logger.log(`Auto-cancelled ${expiredOrders.length} expired orders`);
+    return { cancelled: expiredOrders.length };
+  }
+
+  // ==========================================
+  // HELPER: Tồn kho
+  // ==========================================
+
+  private async deductStock(
+    items: Array<{ productId: string; quantity: number }>,
+  ) {
+    const supabase = this.supabaseService.getClient();
+    for (const item of items) {
+      // Đọc stock hiện tại rồi trừ
+      const { data: prod } = await supabase
+        .from('products')
+        .select('stock')
+        .eq('id', item.productId)
+        .maybeSingle();
+
+      if (prod && prod.stock !== null) {
+        const newStock = Math.max(0, (prod.stock || 0) - item.quantity);
+        await supabase
+          .from('products')
+          .update({ stock: newStock })
+          .eq('id', item.productId);
+      }
+    }
+  }
+
+  private async restoreStock(
+    items: Array<{ productId: string; quantity: number }>,
+  ) {
+    const supabase = this.supabaseService.getClient();
+    for (const item of items) {
+      // Fallback: đọc stock hiện tại rồi cộng lại
+      const { data: prod } = await supabase
+        .from('products')
+        .select('stock')
+        .eq('id', item.productId)
+        .maybeSingle();
+
+      if (prod) {
+        await supabase
+          .from('products')
+          .update({ stock: (prod.stock || 0) + item.quantity })
+          .eq('id', item.productId);
+      }
+    }
+  }
+
+  private async restoreStockByOrderId(orderId: string) {
+    const supabase = this.supabaseService.getClient();
+    const { data: items } = await supabase
+      .from('order_items')
+      .select('product_id, quantity')
+      .eq('order_id', orderId);
+
+    if (items && items.length > 0) {
+      await this.restoreStock(
+        items.map((i) => ({ productId: i.product_id, quantity: i.quantity })),
+      );
+    }
+  }
+
+  // ==========================================
+  // HELPER: Ghi log thay đổi trạng thái
+  // ==========================================
+
+  private async logStatusChange(
+    orderId: string,
+    fromStatus: string | null,
+    toStatus: string,
+    changedBy: string,
+    note?: string,
+  ) {
+    const supabase = this.supabaseService.getClient();
+    await supabase.from('order_status_history').insert({
+      order_id: orderId,
+      from_status: fromStatus,
+      to_status: toStatus,
+      changed_by: changedBy,
+      note: note || null,
+    });
+  }
+
+  // ==========================================
+  // LEGACY: Tra cứu đơn hàng (backward compat)
+  // ==========================================
+
+  async getOrderLookup(codeOrId: string) {
+    const supabase = this.supabaseService.getClient();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(codeOrId);
+
+    const query = supabase
+      .from('orders')
+      .select('*, order_items(*, products(id, name, image_url, slug))');
+
+    if (isUuid) {
+      query.eq('id', codeOrId);
+    } else {
+      query.or(`payos_order_code.eq.${codeOrId},order_code.eq.${codeOrId}`);
+    }
+
+    const { data, error } = await query.maybeSingle();
+    if (error || !data) {
+      throw new NotFoundException('Không tìm thấy đơn hàng.');
+    }
+
+    return data;
   }
 }
