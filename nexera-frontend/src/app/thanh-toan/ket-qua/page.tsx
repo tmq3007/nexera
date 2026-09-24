@@ -12,6 +12,7 @@ import {
   PackageCheck,
   Clock,
 } from "lucide-react";
+import { ordersApi } from "@/lib/api/orders.api";
 
 function PaymentResultContent() {
   const searchParams = useSearchParams();
@@ -32,10 +33,8 @@ function PaymentResultContent() {
     }
 
     if (orderCode) {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-      fetch(`${backendUrl}/payment/order/${orderCode}`)
-        .then((res) => (res.ok ? res.json() : null))
+      ordersApi
+        .getOrderLookup(orderCode)
         .then((data) => {
           if (data) setOrder(data);
         })

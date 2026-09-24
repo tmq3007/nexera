@@ -11,32 +11,22 @@ import {
 import { Type } from 'class-transformer';
 
 // ==========================================
-// Enums
+// Enums (Imported from common/enums)
 // ==========================================
 
-export enum OrderStatus {
-  PENDING_PAYMENT = 'PENDING_PAYMENT',
-  CONFIRMED = 'CONFIRMED',
-  PROCESSING = 'PROCESSING',
-  SHIPPED = 'SHIPPED',
-  DELIVERED = 'DELIVERED',
-  COMPLETED = 'COMPLETED',
-  CANCELLED = 'CANCELLED',
-  REFUND_REQUESTED = 'REFUND_REQUESTED',
-  REFUNDED = 'REFUNDED',
-  RETURNED = 'RETURNED',
-}
+import {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  OrderCancelledBy,
+} from '../common/enums';
 
-export enum PaymentMethod {
-  BANK_TRANSFER = 'BANK_TRANSFER',
-  COD = 'COD',
-}
-
-export enum PaymentStatus {
-  UNPAID = 'UNPAID',
-  PAID = 'PAID',
-  REFUNDED = 'REFUNDED',
-}
+export {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  OrderCancelledBy,
+};
 
 // Quy tắc chuyển trạng thái hợp lệ
 export const VALID_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
@@ -44,12 +34,9 @@ export const VALID_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
   [OrderStatus.PROCESSING]: [OrderStatus.SHIPPED, OrderStatus.CANCELLED],
   [OrderStatus.SHIPPED]: [OrderStatus.DELIVERED, OrderStatus.RETURNED],
-  [OrderStatus.DELIVERED]: [OrderStatus.COMPLETED, OrderStatus.REFUND_REQUESTED],
-  [OrderStatus.COMPLETED]: [],
-  [OrderStatus.CANCELLED]: [],
-  [OrderStatus.REFUND_REQUESTED]: [OrderStatus.REFUNDED, OrderStatus.DELIVERED],
-  [OrderStatus.REFUNDED]: [],
+  [OrderStatus.DELIVERED]: [],
   [OrderStatus.RETURNED]: [OrderStatus.CANCELLED],
+  [OrderStatus.CANCELLED]: [],
 };
 
 // ==========================================
@@ -68,8 +55,9 @@ export class CheckoutItemDto {
 
 export class CheckoutDto {
   @IsString()
-  @IsNotEmpty()
-  authUserId: string;
+  @IsOptional()
+  @IsString()
+  authUserId?: string;
 
   // Thông tin khách hàng
   @IsString()
@@ -84,18 +72,18 @@ export class CheckoutDto {
   @IsString()
   customerEmail?: string;
 
-  // Địa chỉ giao hàng (cascading dropdown)
+  // Địa chỉ giao hàng
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  shippingProvince: string;
+  shippingProvince?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  shippingDistrict: string;
+  shippingDistrict?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  shippingWard: string;
+  shippingWard?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -166,6 +154,36 @@ export class UpdateShippingDto {
   @IsOptional()
   @IsString()
   trackingNumber?: string;
+}
+
+export class UpdateRecipientDto {
+  @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsString()
+  customerPhone?: string;
+
+  @IsOptional()
+  @IsString()
+  shippingProvince?: string;
+
+  @IsOptional()
+  @IsString()
+  shippingDistrict?: string;
+
+  @IsOptional()
+  @IsString()
+  shippingWard?: string;
+
+  @IsOptional()
+  @IsString()
+  shippingAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
 }
 
 // ==========================================

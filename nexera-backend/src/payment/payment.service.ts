@@ -39,10 +39,91 @@ export class PaymentService {
   /**
    * Tạo mã đơn hàng số nguyên dương duy nhất cho PayOS (yêu cầu kiểu số nguyên)
    */
-  private generateOrderCode(): number {
+  generateOrderCode(): number {
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.floor(1000 + Math.random() * 9000);
     return Number(`${timestamp}${random}`);
+  }
+
+  /**
+   * Tạo link thanh toán PayOS (chỉ giao tiếp cổng thanh toán, KHÔNG tự ý lưu đơn)
+   */
+  async createPayOSPaymentLink(params: {
+    orderCode: number;
+    totalAmount: number;
+    items: Array<{ name: string; quantity: number; unitPrice: number }>;
+    customer: {
+      name: string;
+      phone: string;
+      email?: string;
+      address: string;
+      notes?: string;
+    };
+  }) {
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000';
+
+    const payOSItems = params.items.map((it) => ({
+      name: it.name.slice(0, 50),
+      quantity: it.quantity,
+      price: Math.round(it.unitPrice),
+    }));
+
+    const paymentPayload = {
+      orderCode: params.orderCode,
+      amount: Math.round(params.totalAmount),
+      description: `DH${params.orderCode}`.slice(0, 25),
+      items: payOSItems,
+      cancelUrl: `${frontendUrl}/gio-hang?status=CANCELLED&orderCode=${params.orderCode}`,
+      returnUrl: `${frontendUrl}/thanh-toan/ket-qua?status=PAID&orderCode=${params.orderCode}`,
+      buyerName: params.customer.name,
+      buyerPhone: params.customer.phone,
+      buyerEmail: params.customer.email || undefined,
+      buyerAddress: params.customer.address,
+    };
+
+    if (this.payOS) {
+      try {
+        const paymentResponse =
+          await this.payOS.paymentRequests.create(paymentPayload);
+        return {
+          orderCode: params.orderCode,
+          checkoutUrl: paymentResponse.checkoutUrl,
+          qrCode: paymentResponse.qrCode,
+        };
+      } catch (payOSError: any) {
+        this.logger.error('Lỗi gọi API PayOS:', payOSError);
+        throw new BadRequestException(
+          `Không thể tạo link PayOS: ${payOSError.message || 'Lỗi kết nối cổng thanh toán'}`,
+        );
+      }
+    } else {
+      this.logger.log(
+        `[MOCK MODE] Giả lập tạo link PayOS cho đơn hàng ${params.orderCode}`,
+      );
+      const mockCheckoutUrl = `${frontendUrl}/thanh-toan/ket-qua?status=PAID&orderCode=${params.orderCode}&mock=true`;
+      return {
+        orderCode: params.orderCode,
+        checkoutUrl: mockCheckoutUrl,
+        qrCode: '',
+        isMock: true,
+      };
+    }
+  }
+
+  /**
+   * Xác thực chữ ký HMAC bảo mật của Webhook PayOS
+   */
+  verifyWebhook(webhookBody: any) {
+    if (this.payOS) {
+      try {
+        return this.payOS.webhooks.verify(webhookBody);
+      } catch (verifyErr: any) {
+        this.logger.error('Chữ ký Webhook PayOS không hợp lệ:', verifyErr);
+        throw new BadRequestException('Chữ ký xác thực Webhook không hợp lệ.');
+      }
+    }
+    return webhookBody.data || webhookBody;
   }
 
   /**

@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { useRouter } from "next/navigation";
+import { ordersApi } from "@/lib/api/orders.api";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, totalPrice, clearCart } = useCartStore();
@@ -61,37 +62,22 @@ export default function CartPage() {
     setIsSubmitting(true);
 
     try {
-      const backendUrl =
-        process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-
-      const payload = {
-        customer: {
-          name: formData.name.trim(),
-          phone: formData.phone.trim(),
-          email: formData.email.trim() || undefined,
-          address: formData.address.trim(),
-          notes: formData.notes.trim() || undefined,
-        },
+      const checkoutPayload = {
+        customerName: formData.name.trim(),
+        customerPhone: formData.phone.trim(),
+        customerEmail: formData.email.trim() || undefined,
+        shippingAddress: formData.address.trim(),
+        paymentMethod: (paymentMethod === "PAYOS" ? "BANK_TRANSFER" : "COD") as "BANK_TRANSFER" | "COD",
+        note: formData.notes.trim() || undefined,
         items: items.map((item) => ({
           productId: item.id,
           quantity: item.quantity,
-          name: item.name,
-          price: item.price,
         })),
-        paymentMethod: paymentMethod,
       };
 
-      const response = await fetch(`${backendUrl}/payment/create-order`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const result = await ordersApi.checkout(checkoutPayload);
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
+      if (!result.success || !result.order) {
         throw new Error(
           result.message || "Không thể khởi tạo đơn hàng. Vui lòng thử lại!"
         );
@@ -105,16 +91,15 @@ export default function CartPage() {
           window.location.href = result.checkoutUrl;
           return;
         } else {
-          router.push(
-            `/thanh-toan/ket-qua?status=PAID&orderCode=${result.orderCode}`
-          );
+          clearCart();
+          const code = result.order.orderCode || result.order.id;
+          router.push(`/thanh-toan/ket-qua?status=PAID&orderCode=${code}`);
         }
       } else {
         // COD
         clearCart();
-        router.push(
-          `/thanh-toan/ket-qua?status=SUCCESS&orderCode=${result.orderCode}`
-        );
+        const code = result.order.orderCode || result.order.id;
+        router.push(`/thanh-toan/ket-qua?status=SUCCESS&orderCode=${code}`);
       }
     } catch (err: any) {
       console.error("Lỗi đặt hàng:", err);

@@ -1,36 +1,33 @@
 import { BACKEND_URL } from "./config";
 
 // ==========================================
-// Enums & Types
+// Enums & Types (from @/types/enums)
 // ==========================================
 
-export type OrderStatus =
-  | 'PENDING_PAYMENT'
-  | 'CONFIRMED'
-  | 'PROCESSING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'REFUND_REQUESTED'
-  | 'REFUNDED'
-  | 'RETURNED';
+import {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  OrderCancelledBy,
+} from "@/types/enums";
 
-export type PaymentMethod = 'BANK_TRANSFER' | 'COD';
-export type PaymentStatusType = 'UNPAID' | 'PAID' | 'REFUNDED';
+export type PaymentStatusType = PaymentStatus;
+export {
+  OrderStatus,
+  PaymentMethod,
+  PaymentStatus,
+  OrderCancelledBy,
+};
 
-// Nút hành động theo trạng thái hiện tại
+// Nút hành động theo trạng thái hiện tại (Chuẩn 3PL)
 export const STATUS_ACTIONS: Record<OrderStatus, { label: string; nextStatus: OrderStatus; color: string } | null> = {
   PENDING_PAYMENT: { label: 'Xác nhận Đã TT', nextStatus: 'CONFIRMED', color: 'bg-blue-600 hover:bg-blue-700' },
-  CONFIRMED: { label: 'Xử lý đơn', nextStatus: 'PROCESSING', color: 'bg-blue-600 hover:bg-blue-700' },
-  PROCESSING: { label: 'Giao hàng', nextStatus: 'SHIPPED', color: 'bg-purple-600 hover:bg-purple-700' },
-  SHIPPED: { label: 'Đã giao', nextStatus: 'DELIVERED', color: 'bg-emerald-600 hover:bg-emerald-700' },
-  DELIVERED: { label: 'Hoàn tất', nextStatus: 'COMPLETED', color: 'bg-green-600 hover:bg-green-700' },
-  COMPLETED: null,
+  CONFIRMED: { label: 'Duyệt đóng gói', nextStatus: 'PROCESSING', color: 'bg-blue-600 hover:bg-blue-700' },
+  PROCESSING: { label: 'Gửi bưu cục', nextStatus: 'SHIPPED', color: 'bg-purple-600 hover:bg-purple-700' },
+  SHIPPED: { label: 'Đã giao thành công', nextStatus: 'DELIVERED', color: 'bg-emerald-600 hover:bg-emerald-700' },
+  DELIVERED: null,
+  RETURNED: null,
   CANCELLED: null,
-  REFUND_REQUESTED: { label: 'Duyệt hoàn tiền', nextStatus: 'REFUNDED', color: 'bg-orange-600 hover:bg-orange-700' },
-  REFUNDED: null,
-  RETURNED: { label: 'Xác nhận hủy', nextStatus: 'CANCELLED', color: 'bg-red-600 hover:bg-red-700' },
 };
 
 // Trạng thái có thể hủy
@@ -107,13 +104,13 @@ export interface GetOrdersResponse {
 }
 
 export interface CheckoutPayload {
-  authUserId: string;
+  authUserId?: string;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
-  shippingProvince: string;
-  shippingDistrict: string;
-  shippingWard: string;
+  shippingProvince?: string;
+  shippingDistrict?: string;
+  shippingWard?: string;
   shippingAddress: string;
   paymentMethod: PaymentMethod;
   note?: string;
@@ -281,6 +278,33 @@ export const ordersApi = {
   async updateShipping(id: string, data: { shippingCarrier?: string; trackingNumber?: string }): Promise<boolean> {
     try {
       const res = await fetch(`${BACKEND_URL}/orders/admin/${id}/shipping`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Admin: Sửa thông tin người nhận (SĐT/Địa chỉ) khi chưa gửi bưu cục
+   */
+  async updateRecipient(
+    id: string,
+    data: {
+      customerName?: string;
+      customerPhone?: string;
+      shippingProvince?: string;
+      shippingDistrict?: string;
+      shippingWard?: string;
+      shippingAddress?: string;
+      note?: string;
+    }
+  ): Promise<boolean> {
+    try {
+      const res = await fetch(`${BACKEND_URL}/orders/admin/${id}/recipient`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),

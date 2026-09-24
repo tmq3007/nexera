@@ -16,6 +16,7 @@ import {
   GetOrdersQueryDto,
   UpdateOrderStatusDto,
   UpdateShippingDto,
+  UpdateRecipientDto,
   BulkUpdateOrdersDto,
 } from './orders.dto';
 
@@ -47,12 +48,7 @@ export class OrdersController {
   @Post('webhook/payos')
   @HttpCode(HttpStatus.OK)
   async handlePayOSWebhook(@Body() body: any) {
-    // PayOS gửi webhook với data.orderCode
-    const orderCode = body?.data?.orderCode || body?.orderCode;
-    if (!orderCode) {
-      return { success: false, message: 'Missing orderCode' };
-    }
-    return this.ordersService.handlePaymentWebhook(String(orderCode), body);
+    return this.ordersService.handlePaymentWebhook(body);
   }
 
   // ==========================================
@@ -143,6 +139,17 @@ export class OrdersController {
     @Body() dto: UpdateShippingDto,
   ) {
     return this.ordersService.updateShipping(id, dto);
+  }
+
+  /**
+   * Admin: Sửa thông tin người nhận (SĐT/Địa chỉ) khi chưa gửi bưu cục
+   */
+  @Patch('admin/:id/recipient')
+  async updateRecipient(
+    @Param('id') id: string,
+    @Body() dto: UpdateRecipientDto,
+  ) {
+    return this.ordersService.updateRecipient(id, dto);
   }
 
   /**

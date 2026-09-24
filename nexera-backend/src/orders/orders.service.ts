@@ -12,6 +12,7 @@ import {
   GetOrdersQueryDto,
   UpdateOrderStatusDto,
   UpdateShippingDto,
+  UpdateRecipientDto,
   BulkUpdateOrdersDto,
   OrderStatus,
   PaymentMethod,
@@ -39,25 +40,45 @@ export class OrdersService {
 
     const supabase = this.supabaseService.getClient();
 
-    // 1. Tìm customer theo authUserId (bắt buộc đăng nhập)
-    const { data: customer } = await supabase
-      .from('customers')
-      .select('id')
-      .eq('auth_user_id', dto.authUserId)
-      .maybeSingle();
+    // 1. Tìm customer theo authUserId (nếu đăng nhập) hoặc theo phone
+    let customerId: string | null = null;
+    if (dto.authUserId) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('auth_user_id', dto.authUserId)
+        .maybeSingle();
+      customerId = customer?.id || null;
+    }
 
-    let customerId = customer?.id;
+    if (!customerId && dto.customerPhone) {
+      const { data: customer } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('phone', dto.customerPhone)
+        .maybeSingle();
+      customerId = customer?.id || null;
+    }
 
     // Nếu chưa có customer record, tạo mới
     if (!customerId) {
+      const fullAddress = [
+        dto.shippingAddress,
+        dto.shippingWard,
+        dto.shippingDistrict,
+        dto.shippingProvince,
+      ]
+        .filter(Boolean)
+        .join(', ');
+
       const { data: newCust, error: custErr } = await supabase
         .from('customers')
         .insert({
-          auth_user_id: dto.authUserId,
+          auth_user_id: dto.authUserId || null,
           full_name: dto.customerName,
           phone: dto.customerPhone,
           email: dto.customerEmail || null,
-          address: `${dto.shippingAddress}, ${dto.shippingWard}, ${dto.shippingDistrict}, ${dto.shippingProvince}`,
+          address: fullAddress,
           phone_numbers: [dto.customerPhone],
           emails: dto.customerEmail ? [dto.customerEmail] : [],
         })
@@ -131,13 +152,47 @@ export class OrdersService {
 
     const totalAmount = subtotal; // shipping_fee = 0, discount = 0 for now
 
-    // 4. Xác định trạng thái ban đầu
+    // 4. Xác định trạng thái ban đầu & Xử lý tạo link PayOS nếu là Bank Transfer
     const isBankTransfer = dto.paymentMethod === PaymentMethod.BANK_TRANSFER;
     const initialStatus = isBankTransfer
       ? OrderStatus.PENDING_PAYMENT
       : OrderStatus.CONFIRMED;
 
-    // 5. Tạo đơn hàng (order_code sẽ auto-generate bởi trigger)
+    let checkoutUrl: string | null = null;
+    let qrCode: string | null = null;
+    let payosOrderCode: string | null = null;
+
+    if (isBankTransfer) {
+      try {
+        const orderCodeNum = this.paymentService.generateOrderCode();
+        payosOrderCode = String(orderCodeNum);
+
+        const payosRes = await this.paymentService.createPayOSPaymentLink({
+          orderCode: orderCodeNum,
+          totalAmount,
+          customer: {
+            name: dto.customerName,
+            phone: dto.customerPhone,
+            email: dto.customerEmail,
+            address: `${dto.shippingAddress}, ${dto.shippingWard}, ${dto.shippingDistrict}, ${dto.shippingProvince}`,
+            notes: dto.note,
+          },
+          items: validatedItems.map((v) => ({
+            name: v.productName,
+            quantity: v.quantity,
+            unitPrice: v.unitPrice,
+          })),
+        });
+
+        checkoutUrl = payosRes.checkoutUrl || null;
+        qrCode = payosRes.qrCode || null;
+      } catch (payErr) {
+        this.logger.error('Lỗi tạo link PayOS:', payErr);
+        throw new BadRequestException('Không thể tạo link thanh toán. Vui lòng thử lại.');
+      }
+    }
+
+    // 5. Tạo đơn hàng DUY NHẤT trong bảng `orders`
     const orderPayload = {
       customer_id: customerId,
       customer_name: dto.customerName,
@@ -154,6 +209,8 @@ export class OrdersService {
       payment_method: dto.paymentMethod,
       payment_status: PaymentStatus.UNPAID,
       status: initialStatus,
+      payos_order_code: payosOrderCode,
+      payos_checkout_url: checkoutUrl,
       note: dto.note || null,
     };
 
@@ -186,59 +243,11 @@ export class OrdersService {
       this.logger.error('Lỗi lưu order items:', itemsErr);
     }
 
-    // 7. Trừ tồn kho
+    // 7. Trừ tồn kho an toàn
     await this.deductStock(validatedItems);
 
     // 8. Ghi lịch sử trạng thái
     await this.logStatusChange(createdOrder.id, null, initialStatus, 'SYSTEM', 'Tạo đơn hàng mới');
-
-    // 9. Xử lý thanh toán
-    let checkoutUrl: string | null = null;
-    let qrCode: string | null = null;
-
-    if (isBankTransfer) {
-      try {
-        const payosRes = await this.paymentService.createPaymentOrder({
-          customer: {
-            name: dto.customerName,
-            phone: dto.customerPhone,
-            email: dto.customerEmail,
-            address: `${dto.shippingAddress}, ${dto.shippingWard}, ${dto.shippingDistrict}, ${dto.shippingProvince}`,
-            notes: dto.note,
-          },
-          items: validatedItems.map((v) => ({
-            productId: v.productId,
-            name: v.productName,
-            quantity: v.quantity,
-            price: v.unitPrice,
-          })),
-          paymentMethod: 'PAYOS',
-        });
-
-        checkoutUrl = payosRes.checkoutUrl || null;
-        qrCode = payosRes.qrCode || null;
-
-        // Lưu payos info vào order
-        if (payosRes.orderCode || checkoutUrl) {
-          await supabase
-            .from('orders')
-            .update({
-              payos_order_code: String(payosRes.orderCode),
-              payos_checkout_url: checkoutUrl,
-            })
-            .eq('id', createdOrder.id);
-        }
-      } catch (payErr) {
-        this.logger.error('Lỗi tạo link PayOS:', payErr);
-        // Rollback: hủy đơn và hoàn tồn kho
-        await supabase
-          .from('orders')
-          .update({ status: OrderStatus.CANCELLED, cancel_reason: 'Lỗi tạo link thanh toán' })
-          .eq('id', createdOrder.id);
-        await this.restoreStock(validatedItems);
-        throw new BadRequestException('Không thể tạo link thanh toán. Vui lòng thử lại.');
-      }
-    }
 
     return {
       success: true,
@@ -258,14 +267,32 @@ export class OrdersService {
   // WEBHOOK: PayOS thanh toán thành công
   // ==========================================
 
-  async handlePaymentWebhook(orderCode: string, payosData: any) {
+  async handlePaymentWebhook(webhookBody: any) {
+    let verifiedData: any;
+    try {
+      verifiedData = this.paymentService.verifyWebhook(webhookBody);
+    } catch (err: any) {
+      this.logger.error('Webhook xác thực chữ ký thất bại:', err);
+      return { success: false, message: 'Invalid signature' };
+    }
+
+    const orderCode =
+      verifiedData?.data?.orderCode ||
+      verifiedData?.orderCode ||
+      webhookBody?.data?.orderCode ||
+      webhookBody?.orderCode;
+
+    if (!orderCode) {
+      return { success: false, message: 'Missing orderCode' };
+    }
+
     const supabase = this.supabaseService.getClient();
 
-    // Tìm đơn hàng
+    // Tìm đơn hàng theo payos_order_code
     const { data: order } = await supabase
       .from('orders')
       .select('id, status, payment_status')
-      .eq('payos_order_code', orderCode)
+      .eq('payos_order_code', String(orderCode))
       .maybeSingle();
 
     if (!order) {
@@ -279,7 +306,7 @@ export class OrdersService {
       return { success: true, message: 'Đã xử lý trước đó' };
     }
 
-    // Cập nhật trạng thái
+    // Cập nhật trạng thái sang CONFIRMED và PAID
     const { error } = await supabase
       .from('orders')
       .update({
@@ -544,10 +571,6 @@ export class OrdersService {
       await this.restoreStockByOrderId(id);
     }
 
-    if (newStatus === OrderStatus.REFUNDED) {
-      updatePayload.payment_status = PaymentStatus.REFUNDED;
-    }
-
     const { data, error } = await supabase
       .from('orders')
       .update(updatePayload)
@@ -586,6 +609,67 @@ export class OrdersService {
     if (error) {
       throw new BadRequestException(`Không thể cập nhật vận chuyển: ${error.message}`);
     }
+
+    return data;
+  }
+
+  // ==========================================
+  // ADMIN: Sửa thông tin người nhận (khi chưa gửi bưu cục)
+  // ==========================================
+
+  async updateRecipient(id: string, dto: UpdateRecipientDto) {
+    const supabase = this.supabaseService.getClient();
+
+    const { data: order } = await supabase
+      .from('orders')
+      .select('id, status')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (!order) throw new NotFoundException('Không tìm thấy đơn hàng.');
+
+    // Chỉ cho sửa khi chưa gửi bưu tá (PENDING_PAYMENT, CONFIRMED, PROCESSING)
+    const editableStatuses = [
+      OrderStatus.PENDING_PAYMENT,
+      OrderStatus.CONFIRMED,
+      OrderStatus.PROCESSING,
+    ];
+
+    if (!editableStatuses.includes(order.status as OrderStatus)) {
+      throw new BadRequestException(
+        'Không thể sửa thông tin người nhận khi đơn đã gửi bưu cục hoặc đã kết thúc.',
+      );
+    }
+
+    const updatePayload: any = {};
+    if (dto.customerName) updatePayload.customer_name = dto.customerName;
+    if (dto.customerPhone) updatePayload.customer_phone = dto.customerPhone;
+    if (dto.shippingProvince) updatePayload.shipping_province = dto.shippingProvince;
+    if (dto.shippingDistrict) updatePayload.shipping_district = dto.shippingDistrict;
+    if (dto.shippingWard) updatePayload.shipping_ward = dto.shippingWard;
+    if (dto.shippingAddress) updatePayload.shipping_address = dto.shippingAddress;
+    if (dto.note !== undefined) updatePayload.note = dto.note;
+
+    const { data, error } = await supabase
+      .from('orders')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new BadRequestException(
+        `Không thể cập nhật thông tin người nhận: ${error.message}`,
+      );
+    }
+
+    await this.logStatusChange(
+      id,
+      order.status,
+      order.status,
+      'ADMIN',
+      'Chỉnh sửa thông tin người nhận (SĐT/Địa chỉ)',
+    );
 
     return data;
   }
