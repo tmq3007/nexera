@@ -42,10 +42,10 @@ export default async function ProjectsPage() {
       <PageHeader title="Dự Án Tiêu Biểu" breadcrumb="Dự án" />
 
       {/* Intro */}
-      <section className="py-16 bg-white">
+      <section className="py-12 sm:py-16 bg-white">
         <div className="container mx-auto px-4 text-center max-w-4xl">
-          <h2 className="text-3xl font-bold text-[#13426E] mb-6 uppercase">Hàng Trăm Dự Án Thành Công Trên Toàn Quốc</h2>
-          <p className="text-lg text-gray-700 leading-relaxed">
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#13426E] mb-4 sm:mb-6 uppercase">Hàng Trăm Dự Án Thành Công Trên Toàn Quốc</h2>
+          <p className="text-base sm:text-lg text-gray-700 leading-relaxed">
             NEXERA tự hào đã triển khai hơn <strong className="text-[#80BF49]">113,5 MWp điện mặt trời hòa lưới</strong> và hàng trăm công trình cho hộ gia đình, doanh nghiệp trên khắp các tỉnh thành. Dưới đây là một số dự án tiêu biểu mà chúng tôi đã thực hiện.
           </p>
         </div>
@@ -53,16 +53,16 @@ export default async function ProjectsPage() {
 
       {/* Categories */}
       {categories.map((category, index) => (
-        <section key={category.id} id={category.id} className={`py-16 ${index % 2 === 0 ? 'bg-[#F0F7FB]' : 'bg-white'}`}>
+        <section key={category.id} id={category.id} className={`py-12 sm:py-16 ${index % 2 === 0 ? 'bg-[#F0F7FB]' : 'bg-white'}`}>
           <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row gap-12 items-start">
+            <div className="flex flex-col md:flex-row gap-8 sm:gap-12 items-start">
               
               {/* Info Side */}
-              <div className="md:w-1/3 space-y-6">
+              <div className="md:w-1/3 space-y-4 sm:space-y-6">
                 <div className="w-16 h-1 bg-[#80BF49] rounded-full"></div>
-                <h3 className="text-3xl font-bold text-[#13426E]">{category.title}</h3>
-                <p className="text-gray-700 leading-relaxed">{category.desc}</p>
-                <Link href={`/du-an/${category.id}`} className="inline-flex items-center gap-2 text-[#80BF49] font-bold hover:text-[#13426E] transition-colors">
+                <h3 className="text-2xl sm:text-3xl font-bold text-[#13426E]">{category.title}</h3>
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{category.desc}</p>
+                <Link href={`/du-an/${category.id}`} className="inline-flex items-center gap-2 text-[#80BF49] font-bold hover:text-[#13426E] transition-colors text-sm sm:text-base">
                   Xem tất cả dự án <ChevronRight className="w-5 h-5" />
                 </Link>
               </div>
@@ -89,27 +89,27 @@ export default async function ProjectsPage() {
       ))}
 
       {/* Stats Section */}
-      <section className="py-20 relative text-white text-center">
+      <section className="py-14 sm:py-20 relative text-white text-center">
          <Image src="/doi.png" alt="Thống kê dự án" fill className="object-cover" />
          <div className="absolute inset-0 bg-[#13426E]/90"></div>
          <div className="container mx-auto px-4 relative z-10">
-            <h2 className="text-3xl font-bold uppercase mb-12">Năng Lực Triển Khai Thực Tế</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <h2 className="text-xl sm:text-2xl md:text-3xl font-bold uppercase mb-8 sm:mb-12">Năng Lực Triển Khai Thực Tế</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
               <div>
-                <div className="text-5xl font-bold text-[#80BF49] mb-2">113.5</div>
-                <div className="text-xl">MWp Điện Mặt Trời</div>
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#80BF49] mb-1 sm:mb-2">113.5</div>
+                <div className="text-sm sm:text-lg">MWp Điện Mặt Trời</div>
               </div>
               <div>
-                <div className="text-5xl font-bold text-[#80BF49] mb-2">2689+</div>
-                <div className="text-xl">Hộ Gia Đình</div>
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#80BF49] mb-1 sm:mb-2">2689+</div>
+                <div className="text-sm sm:text-lg">Hộ Gia Đình</div>
               </div>
               <div>
-                <div className="text-5xl font-bold text-[#80BF49] mb-2">226+</div>
-                <div className="text-xl">Doanh Nghiệp</div>
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#80BF49] mb-1 sm:mb-2">226+</div>
+                <div className="text-sm sm:text-lg">Doanh Nghiệp</div>
               </div>
               <div>
-                <div className="text-5xl font-bold text-[#80BF49] mb-2">50+</div>
-                <div className="text-xl">Tỉnh Thành</div>
+                <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-[#80BF49] mb-1 sm:mb-2">50+</div>
+                <div className="text-sm sm:text-lg">Tỉnh Thành</div>
               </div>
             </div>
          </div>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, ChevronDown, ShoppingCart, User, LogOut } from "lucide-react";
+import { Menu, X, ChevronDown, ShoppingCart, User, LogOut } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
@@ -145,10 +145,11 @@ export function Header() {
         <div className="flex h-[70px] md:h-[90px] items-center justify-between">
           {/* Mobile Menu Button */}
           <button 
-            className="md:hidden p-2 text-[#13426E]"
+            className="md:hidden p-2 text-[#13426E] rounded-lg hover:bg-gray-100 transition-colors"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label={isMobileMenuOpen ? "Đóng menu" : "Mở menu"}
           >
-            <Menu className="h-6 w-6" />
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
 
           {/* Logo */}
@@ -311,41 +312,48 @@ export function Header() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden border-t bg-white shadow-lg absolute w-full left-0 h-screen z-40">
-          <nav className="container mx-auto px-4 py-4 flex flex-col gap-4">
-             {siteConfig.navigation.map((item) => {
-                let dropdownItems = item.items;
-                if (item.title === "Sản phẩm") {
-                  dropdownItems = categories.length > 0 
-                    ? categories.map(c => ({ title: c.name, href: `/san-pham?category=${c.slug}` }))
-                    : item.items;
-                }
-                
-                return (
-                  <div key={item.title}>
-                    {item.href ? (
-                      <Link href={item.href} className="text-[#13426E] font-extrabold text-lg uppercase block py-2.5" onClick={() => setIsMobileMenuOpen(false)}>
-                        {item.title}
-                      </Link>
-                    ) : (
-                      <div className="text-[#13426E] font-extrabold text-lg uppercase py-2.5">
-                        {item.title}
-                      </div>
-                    )}
-                    {dropdownItems && (
-                      <div className="pl-4 flex flex-col gap-2 mt-1">
-                        {dropdownItems.map((subItem) => (
-                           <Link key={subItem.title} href={subItem.href} className="text-base text-[#325B7F] font-bold block py-1.5" onClick={() => setIsMobileMenuOpen(false)}>
-                             {subItem.title}
-                           </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-             })}
-          </nav>
-        </div>
+        <>
+          {/* Backdrop */}
+          <div 
+            className="md:hidden fixed inset-0 top-[70px] bg-black/40 backdrop-blur-xs z-30 transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="md:hidden border-t bg-white shadow-xl absolute w-full left-0 top-[70px] max-h-[calc(100vh-70px)] overflow-y-auto pb-24 z-40 animate-in slide-in-from-top-2 duration-200">
+            <nav className="container mx-auto px-4 py-4 flex flex-col gap-3 divide-y divide-gray-100">
+               {siteConfig.navigation.map((item) => {
+                  let dropdownItems = item.items;
+                  if (item.title === "Sản phẩm") {
+                    dropdownItems = categories.length > 0 
+                      ? categories.map(c => ({ title: c.name, href: `/san-pham?category=${c.slug}` }))
+                      : item.items;
+                  }
+                  
+                  return (
+                    <div key={item.title} className="pt-2 first:pt-0">
+                      {item.href ? (
+                        <Link href={item.href} className="text-[#13426E] font-extrabold text-base uppercase block py-2 hover:text-[#80BF49] transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                          {item.title}
+                        </Link>
+                      ) : (
+                        <div className="text-[#13426E] font-extrabold text-base uppercase py-2">
+                          {item.title}
+                        </div>
+                      )}
+                      {dropdownItems && (
+                        <div className="pl-3 flex flex-col gap-1.5 mt-1 border-l-2 border-[#80BF49]/30 ml-1">
+                          {dropdownItems.map((subItem) => (
+                             <Link key={subItem.title} href={subItem.href} className="text-sm text-[#325B7F] font-semibold block py-1 hover:text-[#80BF49] transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
+                               {subItem.title}
+                             </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+               })}
+            </nav>
+          </div>
+        </>
       )}
 
       {/* Mini Cart Drawer */}

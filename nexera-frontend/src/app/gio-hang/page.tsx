@@ -190,10 +190,13 @@ export default function CartPage() {
                           >
                             {item.name}
                           </Link>
+                          <div className="md:hidden text-xs text-gray-500 font-medium mt-1">
+                            Đơn giá: <span className="text-gray-700 font-bold">{new Intl.NumberFormat("vi-VN").format(item.price)}₫</span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => removeItem(item.id)}
-                            className="text-red-500 text-sm hover:underline mt-2 w-fit flex items-center gap-1"
+                            className="text-red-500 text-xs sm:text-sm hover:underline mt-1.5 w-fit flex items-center gap-1 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Xóa
@@ -206,25 +209,21 @@ export default function CartPage() {
                         {new Intl.NumberFormat("vi-VN").format(item.price)}₫
                       </div>
 
-                      {/* Quantity & Price (Mobile + Desktop) */}
-                      <div className="col-span-1 md:col-span-4 flex items-center justify-between md:contents">
-                        <div className="md:hidden font-medium text-[#E30019]">
-                          {new Intl.NumberFormat("vi-VN").format(item.price)}₫
-                        </div>
-
+                      {/* Quantity & Subtotal (Mobile + Desktop) */}
+                      <div className="col-span-1 md:col-span-4 flex items-center justify-between gap-3 md:contents pt-3 md:pt-0 border-t border-gray-100 md:border-0">
                         {/* Quantity Controls */}
-                        <div className="md:col-span-2 flex justify-center">
-                          <div className="flex items-center border border-gray-200 rounded-lg bg-white h-9 w-28 overflow-hidden">
+                        <div className="md:col-span-2 flex justify-start md:justify-center">
+                          <div className="flex items-center border border-gray-200 rounded-lg bg-white h-8 sm:h-9 w-24 sm:w-28 overflow-hidden">
                             <button
                               type="button"
                               onClick={() =>
                                 updateQuantity(item.id, item.quantity - 1)
                               }
-                              className="w-9 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-[#13426E] transition-colors"
+                              className="w-8 sm:w-9 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-[#13426E] transition-colors cursor-pointer"
                             >
-                              <Minus className="w-4 h-4" />
+                              <Minus className="w-3.5 h-3.5" />
                             </button>
-                            <span className="flex-1 text-center font-medium text-gray-800">
+                            <span className="flex-1 text-center font-semibold text-xs sm:text-sm text-gray-800">
                               {item.quantity}
                             </span>
                             <button
@@ -232,15 +231,16 @@ export default function CartPage() {
                               onClick={() =>
                                 updateQuantity(item.id, item.quantity + 1)
                               }
-                              className="w-9 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-[#13426E] transition-colors"
+                              className="w-8 sm:w-9 h-full flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:text-[#13426E] transition-colors cursor-pointer"
                             >
-                              <Plus className="w-4 h-4" />
+                              <Plus className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
 
                         {/* Subtotal */}
                         <div className="md:col-span-2 text-right pr-0 md:pr-4 font-bold text-[#E30019] text-base md:text-lg">
+                          <span className="md:hidden text-xs text-gray-400 font-normal mr-1">Thành tiền:</span>
                           {new Intl.NumberFormat("vi-VN").format(
                             item.price * item.quantity
                           )}

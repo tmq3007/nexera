@@ -160,7 +160,7 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
   return (
     <div className="max-w-7xl mx-auto">
       {/* Sticky top bar */}
-      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100 -mx-6 px-6 py-3 mb-6 flex items-center justify-between">
+      <div className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-100 -mx-3 md:-mx-5 px-3 md:px-5 py-3 mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             type="button"

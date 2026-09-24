@@ -117,28 +117,28 @@ export default function CustomerRegisterPage() {
       <div className="relative z-10 flex flex-col md:flex-row w-full min-h-screen">
         
         {/* Left Side - Text & Branding */}
-        <div className="flex-1 flex flex-col justify-center p-8 md:p-16 lg:p-24 text-white pt-24 md:pt-16">
+        <div className="flex-1 flex flex-col justify-center p-6 sm:p-8 md:p-16 lg:p-24 text-white pt-20 md:pt-16">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <UserCircle2 className="w-12 h-12 text-[#80BF49]" />
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">NEXERA</h1>
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <UserCircle2 className="w-10 h-10 sm:w-12 sm:h-12 text-[#80BF49]" />
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">NEXERA</h1>
             </div>
-            <h2 className="text-3xl md:text-4xl font-light mb-6 leading-tight">
+            <h2 className="text-xl sm:text-2xl md:text-4xl font-light mb-3 sm:mb-6 leading-tight">
               Tham gia cộng đồng <br />
               <span className="font-bold text-[#80BF49]">Năng lượng & Công nghệ xanh</span>
             </h2>
-            <p className="text-white/80 text-lg mb-8 max-w-xl leading-relaxed">
+            <p className="hidden sm:block text-white/80 text-base md:text-lg mb-8 max-w-xl leading-relaxed">
               Tạo tài khoản ngay để nhận ưu đãi thành viên, dễ dàng theo dõi tiến độ thi công và quản lý đơn hàng.
             </p>
           </div>
         </div>
 
         {/* Right Side - Register Form */}
-        <div className="w-full md:w-[500px] lg:w-[560px] bg-white/10 backdrop-blur-xl border-l border-white/20 flex flex-col justify-center p-8 md:p-12 lg:p-16 shadow-2xl overflow-y-auto">
+        <div className="w-full md:w-[500px] lg:w-[560px] bg-white/10 backdrop-blur-xl border-t md:border-t-0 md:border-l border-white/20 flex flex-col justify-center p-6 sm:p-8 md:p-12 lg:p-16 shadow-2xl overflow-y-auto">
           <div className="w-full max-w-sm mx-auto my-auto">
-            <div className="mb-6 text-center md:text-left">
-              <h3 className="text-3xl font-bold text-white mb-2">Đăng ký tài khoản</h3>
-              <p className="text-white/70 text-sm">Tạo tài khoản khách hàng mới</p>
+            <div className="mb-4 sm:mb-6 text-center md:text-left">
+              <h3 className="text-2xl sm:text-3xl font-bold text-white mb-1.5 sm:mb-2">Đăng ký tài khoản</h3>
+              <p className="text-white/70 text-xs sm:text-sm">Tạo tài khoản khách hàng mới</p>
             </div>
 
             {/* Google OAuth Button */}

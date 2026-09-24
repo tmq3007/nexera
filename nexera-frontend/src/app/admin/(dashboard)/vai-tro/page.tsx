@@ -233,24 +233,24 @@ export default function RolesAndPermissionsPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7.5rem)] overflow-hidden">
+    <div className="flex flex-col h-auto lg:h-[calc(100vh-7.5rem)] overflow-y-auto lg:overflow-hidden">
 
       {/* Toolbar */}
       <div className="mb-4 flex-shrink-0 flex items-center justify-end">
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
+          className="bg-[var(--primary)] hover:bg-[var(--primary-light)] text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Tạo Vai Trò Mới
         </button>
       </div>
 
-      {/* Fixed Main Grid (2 Independent Scroll Panels) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0 overflow-hidden">
+      {/* Main Grid: 1 col on mobile, 4 cols on desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0 overflow-y-auto lg:overflow-hidden pb-8 lg:pb-0">
 
-        {/* Left Column: Role List (Internal Scrollable) */}
-        <div className="lg:col-span-1 flex flex-col h-full min-h-0 overflow-hidden space-y-3">
+        {/* Left Column: Role List */}
+        <div className="lg:col-span-1 flex flex-col max-h-60 lg:max-h-none lg:h-full min-h-0 space-y-3 shrink-0">
           <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider px-1 flex items-center gap-2 flex-shrink-0">
             <Layers className="w-4 h-4 text-[var(--primary)]" /> Danh Sách Vai Trò ({roles.length})
           </h2>
@@ -293,10 +293,10 @@ export default function RolesAndPermissionsPage() {
           </div>
         </div>
 
-        {/* Right Column: Permission Matrix for Selected Role (Internal Scrollable) */}
-        <div className="lg:col-span-3 flex flex-col h-full min-h-0 overflow-hidden">
+        {/* Right Column: Permission Matrix for Selected Role */}
+        <div className="lg:col-span-3 flex flex-col min-h-[420px] lg:h-full lg:min-h-0 overflow-hidden">
           {selectedRole ? (
-            <div className="bg-white rounded-xl border border-gray-100 p-6 flex flex-col h-full overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-6 flex flex-col h-full overflow-hidden">
 
               {/* Role Header Info (Fixed Top) */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4 flex-shrink-0">

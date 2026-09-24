@@ -59,9 +59,12 @@ export function HeroSlider() {
             <div className="flex-[0_0_100%] min-w-0 relative h-full" key={slide.id}>
               <Image src="/doi.png" alt={slide.title} fill className="object-cover" />
               <div className="absolute inset-0 bg-[#13426E]/60 flex flex-col justify-center items-center text-center px-4">
-                 <h2 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4 leading-tight">{slide.title}</h2>
-                 <p className="text-lg md:text-2xl text-white/90 max-w-3xl">{slide.description}</p>
-                 <button className="mt-8 px-8 py-3 bg-[#80BF49] text-white font-bold rounded-full hover:bg-white hover:text-[#13426E] transition-colors">
+                 <h2 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-3 sm:mb-4 leading-tight max-w-4xl">{slide.title}</h2>
+                 <p className="text-sm sm:text-lg md:text-2xl text-white/90 max-w-3xl">{slide.description}</p>
+                 <button 
+                   onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
+                   className="mt-6 sm:mt-8 px-6 sm:px-8 py-2.5 sm:py-3 bg-[#80BF49] text-white font-bold rounded-full hover:bg-white hover:text-[#13426E] transition-colors text-sm sm:text-base cursor-pointer shadow-md"
+                 >
                    NHẬN TƯ VẤN NGAY
                  </button>
               </div>
@@ -71,17 +74,19 @@ export function HeroSlider() {
       </div>
 
       <button
-        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-all z-10"
+        className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-all z-10"
         onClick={scrollPrev}
+        aria-label="Slide trước"
       >
-        <ChevronLeft className="w-8 h-8" />
+        <ChevronLeft className="w-5 h-5 sm:w-8 sm:h-8" />
       </button>
 
       <button
-        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-all z-10"
+        className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-12 sm:h-12 flex items-center justify-center bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-all z-10"
         onClick={scrollNext}
+        aria-label="Slide tiếp theo"
       >
-        <ChevronRight className="w-8 h-8" />
+        <ChevronRight className="w-5 h-5 sm:w-8 sm:h-8" />
       </button>
 
       <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-10">

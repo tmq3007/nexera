@@ -15,7 +15,8 @@ import {
   Paperclip,
   X,
   Zap,
-  MessageSquarePlus
+  MessageSquarePlus,
+  ChevronLeft
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { playNotificationChime, playSendFeedback } from "@/lib/audio-chime";
@@ -147,7 +148,8 @@ export function LiveChatManager({
 
   const [isCustomerTyping, setIsCustomerTyping] = useState(false);
   const [isSoundMuted, setIsSoundMuted] = useState(false);
-  const [isCrmOpen, setIsCrmOpen] = useState(true);
+  const [isCrmOpen, setIsCrmOpen] = useState(false);
+  const [mobileActiveView, setMobileActiveView] = useState<"list" | "chat">("list");
 
   // Product Selector Modal
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -194,6 +196,13 @@ export function LiveChatManager({
       }
     }
     loadAdmin();
+  }, []);
+
+  // Tự động mở CRM trên màn hình lớn (Desktop >= 1280px), ẩn mặc định trên Mobile/Tablet
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1280) {
+      setIsCrmOpen(true);
+    }
   }, []);
 
   // Load custom canned responses from Local Storage
@@ -755,7 +764,9 @@ export function LiveChatManager({
   return (
     <div className="flex h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)] bg-white rounded-2xl border border-gray-200/90 shadow-2xs overflow-hidden">
       {/* ===================== CỘT 1: DANH SÁCH HỘI THOẠI ===================== */}
-      <div className="w-80 md:w-88 border-r border-gray-200/80 flex flex-col bg-gray-50/40 shrink-0">
+      <div className={`w-full md:w-80 lg:w-88 border-r border-gray-200/80 flex flex-col bg-gray-50/40 shrink-0 ${
+        mobileActiveView === "chat" ? "hidden md:flex" : "flex"
+      }`}>
         {/* Header & Search */}
         <div className="p-3.5 border-b border-gray-200/70 space-y-2.5">
           <div className="flex items-center justify-between">
@@ -821,7 +832,10 @@ export function LiveChatManager({
               return (
                 <button
                   key={conv.id}
-                  onClick={() => setSelectedConvId(conv.id)}
+                  onClick={() => {
+                    setSelectedConvId(conv.id);
+                    setMobileActiveView("chat");
+                  }}
                   className={`w-full text-left p-3 transition-colors flex items-start gap-3 relative ${
                     isSelected
                       ? "bg-white border-l-4 border-l-[#13426e] shadow-2xs"
@@ -878,43 +892,56 @@ export function LiveChatManager({
       </div>
 
       {/* ===================== CỘT 2: CỬA SỔ CHAT TRUNG TÂM ===================== */}
-      <div className="flex-1 flex flex-col min-w-0 bg-white">
+      <div className={`flex-1 flex flex-col min-w-0 bg-white ${
+        mobileActiveView === "list" ? "hidden md:flex" : "flex"
+      }`}>
         {activeConversation ? (
           <>
             {/* Chat Header */}
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-white shrink-0">
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-bold text-gray-900 text-sm">
-                    {getConversationDisplayName(activeConversation)}
-                  </h3>
-                  {activeConversation.customer &&
-                    activeConversation.guest_name &&
-                    activeConversation.guest_name !== "Khách vãng lai" &&
-                    activeConversation.guest_name !== activeConversation.customer.full_name && (
-                      <span className="text-[10px] text-gray-500">
-                        (Người chat: <strong>{activeConversation.guest_name}</strong>)
-                      </span>
-                    )}
-                  <span
-                    className={`text-xs font-semibold ${
-                      activeConversation.status === "RESOLVED"
-                        ? "text-gray-500"
-                        : "text-emerald-600"
-                    }`}
-                  >
-                    {activeConversation.status === "RESOLVED" ? "· Đã giải quyết" : "· Đang mở"}
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-500 mt-0.5">
-                  {activeConversation.customer?.phone || activeConversation.guest_phone ? (
-                    <span className="font-mono">
-                      {activeConversation.customer?.phone || activeConversation.guest_phone}
+            <div className="px-3 md:px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-white shrink-0 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => setMobileActiveView("list")}
+                  className="md:hidden p-1.5 -ml-1 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
+                  title="Quay lại danh sách hội thoại"
+                  aria-label="Quay lại danh sách"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-gray-900 text-sm truncate max-w-[160px] sm:max-w-xs">
+                      {getConversationDisplayName(activeConversation)}
+                    </h3>
+                    {activeConversation.customer &&
+                      activeConversation.guest_name &&
+                      activeConversation.guest_name !== "Khách vãng lai" &&
+                      activeConversation.guest_name !== activeConversation.customer.full_name && (
+                        <span className="text-[10px] text-gray-500 hidden sm:inline">
+                          (Người chat: <strong>{activeConversation.guest_name}</strong>)
+                        </span>
+                      )}
+                    <span
+                      className={`text-xs font-semibold shrink-0 ${
+                        activeConversation.status === "RESOLVED"
+                          ? "text-gray-500"
+                          : "text-emerald-600"
+                      }`}
+                    >
+                      {activeConversation.status === "RESOLVED" ? "· Đã giải quyết" : "· Đang mở"}
                     </span>
-                  ) : (
-                    <span className="italic text-gray-400">Chưa có số điện thoại</span>
-                  )}
-                </p>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">
+                    {activeConversation.customer?.phone || activeConversation.guest_phone ? (
+                      <span className="font-mono">
+                        {activeConversation.customer?.phone || activeConversation.guest_phone}
+                      </span>
+                    ) : (
+                      <span className="italic text-gray-400">Chưa có số điện thoại</span>
+                    )}
+                  </p>
+                </div>
               </div>
 
               {/* Actions & Controls */}
@@ -1227,14 +1254,31 @@ export function LiveChatManager({
 
       {/* ===================== CỘT 3: HỒ SƠ NGỮ CẢNH KHÁCH HÀNG (CRM) ===================== */}
       {activeConversation && isCrmOpen && (
-        <div className="w-72 md:w-80 border-l border-gray-200 flex flex-col bg-white shrink-0 overflow-y-auto">
-          <div className="p-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-800 text-xs uppercase tracking-wider mb-3">
-              Hồ sơ khách hàng (CRM)
-            </h3>
+        <>
+          {/* Mobile & Tablet Backdrop (< xl) */}
+          <div
+            className="fixed inset-0 bg-black/40 z-40 xl:hidden backdrop-blur-xs animate-in fade-in"
+            onClick={() => setIsCrmOpen(false)}
+          />
+          <div className="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-white border-l border-gray-200 flex flex-col shadow-2xl xl:shadow-none xl:static xl:z-auto xl:w-72 2xl:w-80 shrink-0 overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="font-bold text-gray-800 text-xs uppercase tracking-wider">
+                Hồ sơ khách hàng (CRM)
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsCrmOpen(false)}
+                className="xl:hidden p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                title="Đóng hồ sơ"
+                aria-label="Đóng hồ sơ"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-            {/* User Profile Info */}
-            <div className="pb-3 border-b border-gray-100 space-y-1">
+            <div className="p-4 border-b border-gray-100">
+              {/* User Profile Info */}
+              <div className="pb-3 border-b border-gray-100 space-y-1">
               <h4 className="font-bold text-sm text-gray-900">
                 {activeConversation.customer?.full_name ||
                   activeConversation.guest_name ||
@@ -1501,6 +1545,7 @@ export function LiveChatManager({
             )}
           </div>
         </div>
+        </>
       )}
 
       {/* Product Selector Modal */}

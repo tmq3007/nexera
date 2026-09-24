@@ -603,8 +603,8 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
       {/* ================= MODAL: QUICK VIEW ================= */}
       {quickViewProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#13426E]/50 backdrop-blur-sm transition-opacity" onClick={() => setQuickViewProduct(null)}>
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row relative border border-gray-100" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-[#13426E]/50 backdrop-blur-sm transition-opacity" onClick={() => setQuickViewProduct(null)}>
+          <div className="bg-white w-full max-w-4xl max-h-[92vh] overflow-y-auto md:overflow-visible rounded-2xl shadow-xl flex flex-col md:flex-row relative border border-gray-100" onClick={e => e.stopPropagation()}>
             <button
               onClick={() => setQuickViewProduct(null)}
               className="absolute top-4 right-4 z-10 w-8 h-8 bg-white border border-gray-200 hover:bg-gray-50 rounded-full flex items-center justify-center transition-colors shadow-sm"
@@ -613,26 +613,26 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
             </button>
 
             {/* Left: Image Gallery */}
-            <div className="w-full md:w-1/2 bg-gray-50 p-6 md:p-8 flex flex-col items-center justify-start border-b md:border-b-0 md:border-r border-gray-100 h-[300px] md:h-auto">
-              <div className="w-full flex-1 flex items-center justify-center bg-white rounded-xl mb-4 p-4 border border-gray-200">
+            <div className="w-full md:w-1/2 bg-gray-50 p-4 sm:p-6 md:p-8 flex flex-col items-center justify-start border-b md:border-b-0 md:border-r border-gray-100 shrink-0">
+              <div className="w-full flex-1 flex items-center justify-center bg-white rounded-xl mb-3 sm:mb-4 p-3 sm:p-4 border border-gray-200">
                 <button onClick={() => setZoomedImage(activeModalImage || quickViewProduct.image_url)} className="w-full h-full cursor-zoom-in">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={activeModalImage || quickViewProduct.image_url || "/doi.png"}
                     alt={quickViewProduct.name}
-                    className="w-full h-full max-h-[250px] md:max-h-[350px] object-contain transition-opacity duration-300 hover:scale-105"
+                    className="w-full h-full max-h-[220px] sm:max-h-[280px] md:max-h-[350px] object-contain transition-opacity duration-300 hover:scale-105"
                   />
                 </button>
               </div>
 
               {/* Thumbnails */}
               {quickViewProduct.images && Array.isArray(quickViewProduct.images) && quickViewProduct.images.length > 0 && (
-                <div className="flex items-center justify-center gap-3 w-full overflow-x-auto py-2 custom-scrollbar shrink-0">
+                <div className="flex items-center justify-center gap-2 sm:gap-3 w-full overflow-x-auto py-1 sm:py-2 custom-scrollbar shrink-0">
                   {quickViewProduct.images.map((img: any, idx: number) => (
                     <button
                       key={idx}
                       onClick={() => setActiveModalImage(img.url)}
-                      className={`w-16 h-16 md:w-20 md:h-20 rounded-lg border-2 p-1 bg-white shrink-0 transition-all ${(activeModalImage || quickViewProduct.image_url) === img.url
+                      className={`w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-lg border-2 p-1 bg-white shrink-0 transition-all ${(activeModalImage || quickViewProduct.image_url) === img.url
                           ? "border-[#13426E] opacity-100 shadow-md"
                           : "border-gray-200 opacity-60 hover:opacity-100"
                         }`}
@@ -646,7 +646,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
             </div>
 
             {/* Right: Details */}
-            <div className="w-full md:w-1/2 p-6 md:p-8 flex flex-col h-[50vh] md:h-auto overflow-hidden">
+            <div className="w-full md:w-1/2 p-4 sm:p-6 md:p-8 flex flex-col h-auto md:h-auto">
               <div className="mb-3 shrink-0">
                 <span className="inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
                   {quickViewProduct.type === "EQUIPMENT" ? "Thiết bị" : "Gói lắp đặt"}

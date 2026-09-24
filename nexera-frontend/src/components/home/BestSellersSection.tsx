@@ -375,34 +375,34 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
         </button>
       </div>
 
-        {/* Carousel Pagination Dots */}
-        {scrollSnaps.length > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-8">
-            {scrollSnaps.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => scrollTo(index)}
-                className={`h-2.5 rounded-full transition-all cursor-pointer ${
-                  index === selectedIndex
-                    ? "bg-[#80BF49] w-8"
-                    : "bg-gray-300 hover:bg-gray-400 w-2.5"
-                }`}
-                title={`Chuyển đến slide ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
-
-        {/* View All Button */}
-        <div className="flex justify-center mt-10">
-          <Link
-            href="/san-pham"
-            className="flex items-center gap-2 bg-[#13426E] text-white px-8 py-3 rounded-full hover:bg-[#80BF49] hover:shadow-lg transition-all font-semibold shadow-md"
-          >
-            Xem tất cả sản phẩm <ChevronRight className="w-5 h-5" />
-          </Link>
+      {/* Carousel Pagination Dots */}
+      {scrollSnaps.length > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-8">
+          {scrollSnaps.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => scrollTo(index)}
+              className={`h-2.5 rounded-full transition-all cursor-pointer ${
+                index === selectedIndex
+                  ? "bg-[#80BF49] w-8"
+                  : "bg-gray-300 hover:bg-gray-400 w-2.5"
+              }`}
+              title={`Chuyển đến slide ${index + 1}`}
+            />
+          ))}
         </div>
+      )}
+
+      {/* View All Button */}
+      <div className="flex justify-center mt-10">
+        <Link
+          href="/san-pham"
+          className="flex items-center gap-2 bg-[#13426E] text-white px-8 py-3 rounded-full hover:bg-[#80BF49] hover:shadow-lg transition-all font-semibold shadow-md"
+        >
+          Xem tất cả sản phẩm <ChevronRight className="w-5 h-5" />
+        </Link>
       </div>
+    </div>
 
       {/* Consultation Modal */}
 

@@ -52,27 +52,27 @@ export default function EcosystemPage() {
       <PageHeader title="Hệ Sinh Thái Giải Pháp" breadcrumb="Hệ sinh thái" />
 
       {/* Intro */}
-      <section className="py-16 bg-white">
+      <section className="py-12 sm:py-16 bg-white">
         <div className="container mx-auto px-4 text-center max-w-4xl">
-          <h2 className="text-3xl font-bold text-[#13426E] mb-6 uppercase">Hệ Sinh Thái Giải Pháp Nexera</h2>
-          <p className="text-lg text-gray-700 leading-relaxed">
+          <h2 className="text-2xl sm:text-3xl font-bold text-[#13426E] mb-4 sm:mb-6 uppercase">Hệ Sinh Thái Giải Pháp Nexera</h2>
+          <p className="text-base sm:text-lg text-gray-700 leading-relaxed">
             Chúng tôi cung cấp một hệ sinh thái toàn diện, từ công nghệ số, năng lượng tái tạo đến hạ tầng và quản trị doanh nghiệp. Với mô hình <strong>Giải pháp Trọn gói</strong>, khách hàng chỉ cần một đối tác duy nhất cho toàn bộ vòng đời dự án.
           </p>
         </div>
       </section>
 
       {/* Solutions Grid */}
-      <section className="py-16 bg-[#F0F7FB]">
+      <section className="py-12 sm:py-16 bg-[#F0F7FB]">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             {solutions.map((sol) => (
-              <div key={sol.id} id={sol.id} className="bg-white scroll-mt-24 rounded-2xl shadow-lg p-8 hover:-translate-y-1 transition-transform duration-300">
-                <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                  <div className="w-16 h-16 bg-[#F0F7FB] rounded-full flex items-center justify-center text-[#80BF49]">
-                    <sol.icon className="w-8 h-8" />
+              <div key={sol.id} id={sol.id} className="bg-white scroll-mt-24 rounded-2xl shadow-lg p-5 sm:p-8 hover:-translate-y-1 transition-transform duration-300">
+                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6 pb-4 sm:pb-6 border-b border-gray-100">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#F0F7FB] rounded-full flex items-center justify-center text-[#80BF49] shrink-0">
+                    <sol.icon className="w-6 h-6 sm:w-8 sm:h-8" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-[#13426E]">{sol.title}</h3>
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#13426E]">{sol.title}</h3>
                   </div>
                 </div>
                 <div className="space-y-6">

@@ -151,8 +151,8 @@ export default async function Home() {
       <section className="py-16 bg-[#F0F7FB] text-[#13426E]">
          <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-               <h2 className="text-3xl font-bold uppercase mb-2">GIẢI PHÁP LẮP ĐẶT ĐIỆN MẶT TRỜI</h2>
-               <h3 className="text-4xl font-bold text-[#80BF49] uppercase">THÔNG MINH NEXERA SOLAR</h3>
+               <h2 className="text-xl sm:text-2xl md:text-3xl font-bold uppercase mb-2">GIẢI PHÁP LẮP ĐẶT ĐIỆN MẶT TRỜI</h2>
+               <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#80BF49] uppercase">THÔNG MINH NEXERA SOLAR</h3>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

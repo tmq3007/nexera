@@ -55,17 +55,17 @@ export default function AdminLoginPage() {
       <div className="relative z-10 flex flex-col md:flex-row w-full min-h-screen">
         
         {/* Left Side - Text & Branding */}
-        <div className="flex-1 flex flex-col justify-center p-8 md:p-16 lg:p-24 text-white">
+        <div className="flex-1 flex flex-col justify-center p-6 sm:p-8 md:p-16 lg:p-24 text-white pt-20 md:pt-16">
           <div className="max-w-2xl">
-            <div className="flex items-center gap-3 mb-6">
-              <ShieldCheck className="w-12 h-12 text-[#80BF49]" />
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">NEXERA</h1>
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
+              <ShieldCheck className="w-10 h-10 sm:w-12 sm:h-12 text-[#80BF49]" />
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight">NEXERA</h1>
             </div>
-            <h2 className="text-3xl md:text-4xl font-light mb-6">
+            <h2 className="text-xl sm:text-2xl md:text-4xl font-light mb-3 sm:mb-6 leading-tight">
               Hệ thống quản trị nội bộ <br />
               <span className="font-bold text-[#80BF49]">Nexera Group</span>
             </h2>
-            <p className="text-white/70 text-lg mb-8 max-w-xl">
+            <p className="hidden sm:block text-white/70 text-base md:text-lg mb-8 max-w-xl">
               Nền tảng quản lý tập trung các dịch vụ điện mặt trời, công nghệ thông minh và phát triển bền vững. Xin vui lòng đăng nhập để tiếp tục.
             </p>
             <div className="hidden md:flex items-center text-white/50 text-sm">
@@ -76,10 +76,10 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Right Side - Login Form (No border frame, blending) */}
-        <div className="w-full md:w-[480px] lg:w-[540px] bg-black/20 backdrop-blur-md flex flex-col justify-center p-8 md:p-12 lg:p-16">
+        <div className="w-full md:w-[480px] lg:w-[540px] bg-black/20 backdrop-blur-md flex flex-col justify-center p-6 sm:p-8 md:p-12 lg:p-16">
           <div className="w-full max-w-sm mx-auto">
             <h3 className="text-2xl font-bold text-white mb-2">Đăng nhập</h3>
-            <p className="text-white/60 mb-8">Vui lòng nhập thông tin xác thực.</p>
+            <p className="text-white/60 mb-6 sm:mb-8 text-xs sm:text-sm">Vui lòng nhập thông tin xác thực.</p>
 
             <form onSubmit={handleLogin} className="space-y-6">
               
