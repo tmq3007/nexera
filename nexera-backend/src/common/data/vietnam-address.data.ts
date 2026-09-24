@@ -1,4 +1,17 @@
-[
+export interface WardItem {
+  code: number;
+  name: string;
+  division_type?: string;
+}
+
+export interface ProvinceItem {
+  code: number;
+  name: string;
+  division_type?: string;
+  wards: WardItem[];
+}
+
+export const VIETNAM_ADDRESS: ProvinceItem[] = [
   {
     "code": 1,
     "name": "Thành phố Hà Nội",
@@ -16842,4 +16855,4 @@
       }
     ]
   }
-]
+];
