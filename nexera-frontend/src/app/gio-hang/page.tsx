@@ -12,12 +12,17 @@ import {
   QrCode,
   Banknote,
   CheckCircle2,
+  ChevronDown,
+  MapPin,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { useRouter } from "next/navigation";
 import { ordersApi } from "@/lib/api/orders.api";
+import { locationsApi, Province, Ward } from "@/lib/api/locations.api";
+import { createClient } from "@/utils/supabase/client";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, totalPrice, clearCart } = useCartStore();
@@ -29,15 +34,58 @@ export default function CartPage() {
     name: "",
     phone: "",
     email: "",
-    address: "",
     notes: "",
   });
+
+  // State địa giới hành chính (v2 sau sáp nhập - Offline JSON từ Backend)
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [wards, setWards] = useState<Ward[]>([]);
+
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<number | "">("");
+  const [selectedProvinceName, setSelectedProvinceName] = useState<string>("");
+
+  const [selectedWardCode, setSelectedWardCode] = useState<number | "">("");
+  const [selectedWardName, setSelectedWardName] = useState<string>("");
+
+  const [streetAddress, setStreetAddress] = useState<string>("");
+
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingWards, setLoadingWards] = useState(false);
 
   const [paymentMethod, setPaymentMethod] = useState<"PAYOS" | "COD">("PAYOS");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+
+    // Tải danh sách Tỉnh/Thành phố sau sáp nhập từ backend (Offline JSON v2)
+    setLoadingProvinces(true);
+    locationsApi.getProvinces()
+      .then((data) => {
+        if (data && data.length > 0) {
+          setProvinces(data);
+        }
+      })
+      .finally(() => {
+        setLoadingProvinces(false);
+      });
+
+    // Điền trước thông tin nếu khách hàng đã đăng nhập
+    try {
+      const supabase = createClient();
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) {
+          setFormData((prev) => ({
+            ...prev,
+            email: prev.email || user.email || "",
+            name: prev.name || user.user_metadata?.full_name || "",
+            phone: prev.phone || user.user_metadata?.phone || "",
+          }));
+        }
+      });
+    } catch {
+      // Bỏ qua lỗi auth
+    }
   }, []);
 
   const handleInputChange = (
@@ -47,6 +95,41 @@ export default function CartPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleProvinceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value ? parseInt(e.target.value, 10) : "";
+    setSelectedProvinceCode(code);
+    const prov = provinces.find((p) => p.code === code);
+    setSelectedProvinceName(prov ? prov.name : "");
+
+    // Reset cấp xã/phường
+    setSelectedWardCode("");
+    setSelectedWardName("");
+    setWards([]);
+
+    if (code) {
+      setLoadingWards(true);
+      try {
+        const data = await locationsApi.getWards(code);
+        setWards(data);
+      } catch (err) {
+        console.error("Lỗi lấy danh sách xã/phường:", err);
+      } finally {
+        setLoadingWards(false);
+      }
+    }
+  };
+
+  const handleWardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value ? parseInt(e.target.value, 10) : "";
+    setSelectedWardCode(code);
+    const w = wards.find((item) => item.code === code);
+    setSelectedWardName(w ? w.name : "");
+  };
+
+  // Chuỗi địa chỉ xem trước
+  const fullAddressParts = [streetAddress.trim(), selectedWardName, selectedProvinceName].filter(Boolean);
+  const fullAddressPreview = fullAddressParts.length > 0 ? fullAddressParts.join(", ") : "";
+
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) {
@@ -54,8 +137,23 @@ export default function CartPage() {
       return;
     }
 
-    if (!formData.name.trim() || !formData.phone.trim() || !formData.address.trim()) {
-      toast.error("Vui lòng điền đầy đủ Họ tên, Số điện thoại và Địa chỉ.");
+    if (!formData.name.trim() || !formData.phone.trim()) {
+      toast.error("Vui lòng điền Họ tên và Số điện thoại người nhận.");
+      return;
+    }
+
+    if (!selectedProvinceName) {
+      toast.error("Vui lòng chọn Tỉnh / Thành phố nhận hàng.");
+      return;
+    }
+
+    if (!selectedWardName) {
+      toast.error("Vui lòng chọn Xã / Phường nhận hàng.");
+      return;
+    }
+
+    if (!streetAddress.trim()) {
+      toast.error("Vui lòng nhập số nhà, ngõ/tòa nhà, tên đường cụ thể.");
       return;
     }
 
@@ -66,7 +164,9 @@ export default function CartPage() {
         customerName: formData.name.trim(),
         customerPhone: formData.phone.trim(),
         customerEmail: formData.email.trim() || undefined,
-        shippingAddress: formData.address.trim(),
+        shippingProvince: selectedProvinceName,
+        shippingWard: selectedWardName,
+        shippingAddress: streetAddress.trim(),
         paymentMethod: (paymentMethod === "PAYOS" ? "BANK_TRANSFER" : "COD") as "BANK_TRANSFER" | "COD",
         note: formData.notes.trim() || undefined,
         items: items.map((item) => ({
@@ -413,15 +513,80 @@ export default function CartPage() {
                         className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-[#13426E] focus:ring-1 focus:ring-[#13426E]"
                       />
                     </div>
-                    <input
-                      type="text"
-                      name="address"
-                      required
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      placeholder="Địa chỉ chi tiết nhận hàng *"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-[#13426E] focus:ring-1 focus:ring-[#13426E]"
-                    />
+                    {/* Địa chỉ giao hàng: Xổ xuống Tỉnh và Xã sau sáp nhập (Offline JSON v2) */}
+                    <div className="space-y-2.5 pt-1">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Tỉnh / Thành phố */}
+                        <div className="relative">
+                          <select
+                            value={selectedProvinceCode}
+                            onChange={handleProvinceChange}
+                            required
+                            disabled={loadingProvinces}
+                            className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-[#13426E] focus:ring-1 focus:ring-[#13426E] appearance-none cursor-pointer disabled:bg-gray-100 text-gray-800"
+                          >
+                            <option value="">
+                              {loadingProvinces ? "Đang tải Tỉnh / Thành phố..." : "-- Chọn Tỉnh / Thành phố * --"}
+                            </option>
+                            {provinces.map((p) => (
+                              <option key={p.code} value={p.code}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+
+                        {/* Xã / Phường */}
+                        <div className="relative">
+                          <select
+                            value={selectedWardCode}
+                            onChange={handleWardChange}
+                            disabled={!selectedProvinceCode || loadingWards}
+                            required
+                            className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-200 bg-white focus:outline-none focus:border-[#13426E] focus:ring-1 focus:ring-[#13426E] disabled:bg-gray-100 disabled:text-gray-400 appearance-none cursor-pointer disabled:cursor-not-allowed text-gray-800"
+                          >
+                            <option value="">
+                              {loadingWards
+                                ? "Đang tải Xã / Phường..."
+                                : !selectedProvinceCode
+                                ? "-- Chọn Xã / Phường * --"
+                                : "-- Chọn Xã / Phường * --"}
+                            </option>
+                            {wards.map((w) => (
+                              <option key={w.code} value={w.code}>
+                                {w.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Số nhà, ngõ/ngách, tên đường cụ thể */}
+                      <input
+                        type="text"
+                        name="streetAddress"
+                        required
+                        value={streetAddress}
+                        onChange={(e) => setStreetAddress(e.target.value)}
+                        placeholder="Số nhà, ngõ/ngách, thôn xóm, tên đường cụ thể *"
+                        className="w-full px-3.5 py-2.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-[#13426E] focus:ring-1 focus:ring-[#13426E]"
+                      />
+
+                      {/* Xem trước địa chỉ đầy đủ */}
+                      {fullAddressPreview && (
+                        <div className="p-2.5 bg-blue-50/70 border border-blue-100 rounded-lg text-xs text-[#13426E] flex items-start gap-2 animate-in fade-in duration-150">
+                          <MapPin className="w-4 h-4 text-[#80BF49] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-semibold text-gray-700">Địa chỉ giao hàng:</span>
+                            <p className="font-medium text-[#13426E] mt-0.5 leading-relaxed">
+                              {fullAddressPreview}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <textarea
                       name="notes"
                       value={formData.notes}

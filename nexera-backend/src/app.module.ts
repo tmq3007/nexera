@@ -13,6 +13,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { RbacModule } from './rbac/rbac.module';
 import { UploadModule } from './upload/upload.module';
 import { AuthModule } from './auth/auth.module';
+import { LocationsModule } from './locations/locations.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { AuthModule } from './auth/auth.module';
     RbacModule,
     UploadModule,
     AuthModule,
+    LocationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
