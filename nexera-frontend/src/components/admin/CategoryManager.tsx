@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Edit, Trash2, Tags } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -12,8 +12,8 @@ import { logActivity } from "@/lib/logger";
 import { AdminTableToolbar } from "./AdminTableToolbar";
 
 export function CategoryManager({ 
-  categories,
-  totalCount = 0,
+  categories: initialCategories,
+  totalCount: initialTotalCount = 0,
   currentPage = 1,
   itemsPerPage = 10,
 }: { 
@@ -26,12 +26,39 @@ export function CategoryManager({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
+  // Local state để quản lý danh sách — tự cập nhật sau add/edit/delete
+  const [categoryList, setCategoryList] = useState(initialCategories);
+  const [totalCount, setTotalCount] = useState(initialTotalCount);
+
+  // Sync khi props thay đổi (ví dụ khi navigate pagination)
+  useEffect(() => {
+    setCategoryList(initialCategories);
+    setTotalCount(initialTotalCount);
+  }, [initialCategories, initialTotalCount]);
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any | null>(null);
   
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingCategory, setDeletingCategory] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Fetch lại danh sách từ API client-side
+  const refreshCategories = useCallback(async () => {
+    try {
+      const allCategories = await productsApi.getCategories();
+      const q = searchParams.get("q")?.toLowerCase() || "";
+      const filtered = q
+        ? allCategories.filter((c: any) => c.name.toLowerCase().includes(q) || c.slug.toLowerCase().includes(q))
+        : allCategories;
+
+      const from = (currentPage - 1) * itemsPerPage;
+      setCategoryList(filtered.slice(from, from + itemsPerPage));
+      setTotalCount(filtered.length);
+    } catch (err) {
+      console.error("Lỗi tải lại danh mục:", err);
+    }
+  }, [searchParams, currentPage, itemsPerPage]);
 
   // Helper for URL pagination
   const handlePageChange = (page: number) => {
@@ -83,7 +110,7 @@ export function CategoryManager({
       });
       setIsDeleteOpen(false);
       setDeletingCategory(null);
-      router.refresh();
+      await refreshCategories();
     }
   };
 
@@ -114,7 +141,7 @@ export function CategoryManager({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {(!categories || categories.length === 0) && (
+              {(!categoryList || categoryList.length === 0) && (
                 <tr>
                   <td colSpan={4} className="text-center py-16 text-gray-400 text-sm">
                     <Tags className="w-10 h-10 mx-auto mb-2 text-gray-300" />
@@ -122,7 +149,7 @@ export function CategoryManager({
                   </td>
                 </tr>
               )}
-              {categories?.map((category) => {
+              {categoryList?.map((category) => {
                 const isCompact = density === "compact";
                 const cellPadding = isCompact ? "px-3 py-2" : "px-3 py-3";
 
@@ -178,9 +205,9 @@ export function CategoryManager({
       <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title={editingCategory ? "Chỉnh sửa danh mục" : "Thêm danh mục mới"} maxWidth="max-w-lg">
         <CategoryForm 
           initialData={editingCategory} 
-          onSuccess={() => {
+          onSuccess={async () => {
             setIsFormOpen(false);
-            router.refresh();
+            await refreshCategories();
           }}
           onCancel={() => setIsFormOpen(false)}
         />

@@ -57,7 +57,6 @@ export class ProductsService {
         name: dto.name,
         slug: dto.slug,
         description: dto.description || null,
-        image_url: dto.imageUrl || null,
       })
       .select()
       .single();
@@ -77,7 +76,6 @@ export class ProductsService {
         name: dto.name,
         slug: dto.slug,
         description: dto.description || null,
-        image_url: dto.imageUrl || null,
       })
       .eq('id', id)
       .select()

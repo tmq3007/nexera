@@ -61,7 +61,7 @@ export const productsApi = {
   async getCategories(): Promise<ProductCategory[]> {
     try {
       const res = await fetch(`${BACKEND_URL}/products/categories`, {
-        next: { revalidate: 60 },
+        cache: "no-store",
       });
       if (!res.ok) return [];
       return await res.json();
