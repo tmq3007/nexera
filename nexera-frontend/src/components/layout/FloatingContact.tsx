@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Phone, MessageCircle, MapPin, X } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { NexeraChatWidget } from "@/components/chat/NexeraChatWidget";
+import { getBusinessInfo, BusinessInfo } from "@/utils/policies";
 
 export function FloatingContact() {
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -12,6 +13,14 @@ export function FloatingContact() {
   const [lastAdminMessage, setLastAdminMessage] = useState<string>("");
   const [showTooltip, setShowTooltip] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [companyInfo, setCompanyInfo] = useState<BusinessInfo>({
+    business_name: siteConfig.company.name,
+    tax_code: siteConfig.company.taxCode,
+    address: siteConfig.company.address,
+    phone: siteConfig.company.phone,
+    email: siteConfig.company.email,
+    map_url: siteConfig.company.mapUrl,
+  });
 
   const handleUnreadChange = (count: number, lastMessage?: string) => {
     setUnreadCount(count);
@@ -61,6 +70,22 @@ export function FloatingContact() {
       window.removeEventListener("nexera-auth-changed", handleAuthChanged);
     };
   }, []);
+
+  // Fetch dynamic business info from API
+  useEffect(() => {
+    async function loadCompanyInfo() {
+      try {
+        const info = await getBusinessInfo();
+        if (info) setCompanyInfo(info);
+      } catch {
+        // Fallback to siteConfig defaults (already set in state)
+      }
+    }
+    loadCompanyInfo();
+  }, []);
+
+  const phoneDigits = companyInfo.phone.replace(/\D/g, '');
+  const mapUrl = companyInfo.map_url || siteConfig.company.mapUrl;
 
   return (
     <>
@@ -147,7 +172,7 @@ export function FloatingContact() {
         {/* Zalo */}
         <div className="relative group">
           <Link
-            href={`https://zalo.me/${siteConfig.company.phone.replace(/\D/g, '')}`}
+            href={`https://zalo.me/${phoneDigits}`}
             target="_blank"
             className="w-11 h-11 sm:w-12 sm:h-12 bg-[#0068ff] rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300"
             aria-label="Liên hệ qua Zalo"
@@ -162,7 +187,7 @@ export function FloatingContact() {
         {/* Map */}
         <div className="relative group">
           <Link
-            href={siteConfig.company.mapUrl}
+            href={mapUrl}
             target="_blank"
             className="w-11 h-11 sm:w-12 sm:h-12 bg-[#34a853] rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300"
             aria-label="Chỉ đường trên Google Maps"
@@ -177,17 +202,18 @@ export function FloatingContact() {
         {/* Hotline */}
         <div className="relative group">
           <Link
-            href={`tel:${siteConfig.company.phone.replace(/\D/g, '')}`}
+            href={`tel:${phoneDigits}`}
             className="w-11 h-11 sm:w-12 sm:h-12 bg-[#e11d48] rounded-full flex items-center justify-center text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 animate-shake"
             aria-label="Gọi Hotline"
           >
             <Phone className="w-5 h-5 sm:w-6 sm:h-6" />
           </Link>
           <span className="hidden sm:block absolute right-14 top-1/2 -translate-y-1/2 whitespace-nowrap bg-gray-900/90 text-white text-xs px-2.5 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-md">
-            Hotline: {siteConfig.company.phone}
+            Hotline: {companyInfo.phone}
           </span>
         </div>
       </div>
     </>
   );
 }
+

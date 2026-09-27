@@ -37,6 +37,27 @@ export interface PolicyDetail {
 }
 
 export async function getBusinessInfo(): Promise<BusinessInfo> {
+  try {
+    const data = await contentApi.getBusinessInfo();
+    if (data) {
+      return {
+        business_name: data.business_name || siteConfig.company.name,
+        tax_code: data.tax_code || siteConfig.company.taxCode,
+        address: data.address || siteConfig.company.address,
+        phone: data.phone || siteConfig.company.phone,
+        email: data.email || siteConfig.company.email,
+        website: data.website || undefined,
+        representative: data.representative || undefined,
+        license_issued_date: data.license_issued_date || undefined,
+        license_issued_by: data.license_issued_by || undefined,
+        map_url: data.map_url || siteConfig.company.mapUrl,
+      };
+    }
+  } catch (err) {
+    console.error("Lỗi tải thông tin doanh nghiệp, sử dụng dữ liệu mặc định:", err);
+  }
+
+  // Fallback: trả về dữ liệu tĩnh từ siteConfig nếu API lỗi
   return {
     business_name: siteConfig.company.name,
     tax_code: siteConfig.company.taxCode,
