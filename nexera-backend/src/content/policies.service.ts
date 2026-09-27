@@ -233,6 +233,10 @@ export class PoliciesService {
       license_issued_date: dto.license_issued_date,
       license_issued_by: dto.license_issued_by,
       map_url: dto.map_url,
+      slogan: dto.slogan || null,
+      facebook_url: dto.facebook_url || null,
+      tiktok_url: dto.tiktok_url || null,
+      youtube_url: dto.youtube_url || null,
       updated_at: new Date().toISOString(),
     };
 

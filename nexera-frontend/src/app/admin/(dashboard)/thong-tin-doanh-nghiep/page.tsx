@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { contentApi } from "@/lib/api/content.api";
 import { useToast } from "@/contexts/ToastContext";
-import { Building2, Save, RefreshCw, MapPin, Phone, Mail, FileText, Globe } from "lucide-react";
+import { Building2, Save, RefreshCw, MapPin, Phone, Mail, FileText, Globe, Megaphone } from "lucide-react";
 
 interface BusinessInfoForm {
   id?: string;
@@ -17,6 +17,10 @@ interface BusinessInfoForm {
   license_issued_date: string;
   license_issued_by: string;
   map_url: string;
+  slogan: string;
+  facebook_url: string;
+  tiktok_url: string;
+  youtube_url: string;
 }
 
 export default function BusinessInfoAdminPage() {
@@ -31,6 +35,10 @@ export default function BusinessInfoAdminPage() {
     license_issued_date: "",
     license_issued_by: "",
     map_url: "",
+    slogan: "",
+    facebook_url: "",
+    tiktok_url: "",
+    youtube_url: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -59,6 +67,10 @@ export default function BusinessInfoAdminPage() {
           license_issued_date: data.license_issued_date || "",
           license_issued_by: data.license_issued_by || "",
           map_url: data.map_url || "",
+          slogan: data.slogan || "",
+          facebook_url: data.facebook_url || "",
+          tiktok_url: data.tiktok_url || "",
+          youtube_url: data.youtube_url || "",
         });
       }
     } catch (err: any) {
@@ -254,6 +266,85 @@ export default function BusinessInfoAdminPage() {
               placeholder="https://maps.google.com/?q=..."
             />
           </div>
+        </div>
+
+        {/* Section: Thương hiệu */}
+        <div className="border-t border-gray-100 pt-6">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Slogan */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <Megaphone className="w-4 h-4 text-gray-500" />
+                Slogan Doanh Nghiệp
+              </label>
+              <input
+                type="text"
+                value={formData.slogan}
+                onChange={(e) => setFormData({ ...formData, slogan: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-gray-800 text-sm"
+                placeholder="Năng lượng xanh - vì tương lai bền vững"
+              />
+              <p className="text-xs text-gray-400 mt-1">Hiển thị ở Footer website, dưới mục &quot;VỀ CHÚNG TÔI&quot;</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Section: Mạng xã hội */}
+        <div className="border-t border-gray-100 pt-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <Globe className="w-4 h-4 text-gray-500" />
+            Mạng Xã Hội
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {/* Facebook */}
+            <div>
+
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-[#1877F2]" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" /></svg>
+                Facebook
+              </label>
+              <input
+                type="url"
+                value={formData.facebook_url}
+                onChange={(e) => setFormData({ ...formData, facebook_url: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-gray-800 text-sm"
+                placeholder="https://www.facebook.com/nexerasolar"
+              />
+            </div>
+
+            {/* YouTube */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-[#FF0000]" viewBox="0 0 24 24" fill="currentColor"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" /><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="white" /></svg>
+                YouTube
+              </label>
+              <input
+                type="url"
+                value={formData.youtube_url}
+                onChange={(e) => setFormData({ ...formData, youtube_url: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-gray-800 text-sm"
+                placeholder="https://www.youtube.com/@nexerasolar"
+              />
+            </div>
+
+            {/* TikTok */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-800" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" /></svg>
+                TikTok
+              </label>
+              <input
+                type="url"
+                value={formData.tiktok_url}
+                onChange={(e) => setFormData({ ...formData, tiktok_url: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-gray-800 text-sm"
+                placeholder="https://www.tiktok.com/@nexerasolar"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 mt-3">Các liên kết này hiển thị trên Footer website. Để trống nếu không muốn hiển thị.</p>
         </div>
 
         {/* Submit Button */}

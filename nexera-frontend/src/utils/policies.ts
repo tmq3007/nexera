@@ -12,6 +12,10 @@ export interface BusinessInfo {
   license_issued_date?: string;
   license_issued_by?: string;
   map_url?: string;
+  slogan?: string;
+  facebook_url?: string;
+  tiktok_url?: string;
+  youtube_url?: string;
 }
 
 export interface PolicyItem {
@@ -51,6 +55,10 @@ export async function getBusinessInfo(): Promise<BusinessInfo> {
         license_issued_date: data.license_issued_date || undefined,
         license_issued_by: data.license_issued_by || undefined,
         map_url: data.map_url || siteConfig.company.mapUrl,
+        slogan: data.slogan || siteConfig.description,
+        facebook_url: data.facebook_url || siteConfig.social.facebook,
+        tiktok_url: data.tiktok_url || siteConfig.social.tiktok,
+        youtube_url: data.youtube_url || siteConfig.social.youtube,
       };
     }
   } catch (err) {
@@ -65,6 +73,10 @@ export async function getBusinessInfo(): Promise<BusinessInfo> {
     phone: siteConfig.company.phone,
     email: siteConfig.company.email,
     map_url: siteConfig.company.mapUrl,
+    slogan: siteConfig.description,
+    facebook_url: siteConfig.social.facebook,
+    tiktok_url: siteConfig.social.tiktok,
+    youtube_url: siteConfig.social.youtube,
   };
 }
 
