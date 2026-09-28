@@ -237,6 +237,7 @@ export class PoliciesService {
       facebook_url: dto.facebook_url || null,
       tiktok_url: dto.tiktok_url || null,
       youtube_url: dto.youtube_url || null,
+      map_embed_url: dto.map_embed_url || null,
       updated_at: new Date().toISOString(),
     };
 

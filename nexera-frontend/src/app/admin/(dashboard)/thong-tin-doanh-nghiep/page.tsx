@@ -21,6 +21,7 @@ interface BusinessInfoForm {
   facebook_url: string;
   tiktok_url: string;
   youtube_url: string;
+  map_embed_url: string;
 }
 
 export default function BusinessInfoAdminPage() {
@@ -39,6 +40,7 @@ export default function BusinessInfoAdminPage() {
     facebook_url: "",
     tiktok_url: "",
     youtube_url: "",
+    map_embed_url: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -71,6 +73,7 @@ export default function BusinessInfoAdminPage() {
           facebook_url: data.facebook_url || "",
           tiktok_url: data.tiktok_url || "",
           youtube_url: data.youtube_url || "",
+          map_embed_url: data.map_embed_url || "",
         });
       }
     } catch (err: any) {
@@ -265,6 +268,32 @@ export default function BusinessInfoAdminPage() {
               className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-gray-800 text-sm"
               placeholder="https://maps.google.com/?q=..."
             />
+          </div>
+
+          {/* Google Maps Embed URL */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-gray-500" />
+              Google Maps Embed (Nhúng bản đồ Footer)
+            </label>
+            <textarea
+              rows={3}
+              value={formData.map_embed_url}
+              onChange={(e) => {
+                let value = e.target.value.trim();
+                // Tự động trích xuất src từ iframe tag nếu dán cả đoạn HTML
+                const match = value.match(/src=["']([^"']+)["']/);
+                if (match) {
+                  value = match[1];
+                }
+                setFormData({ ...formData, map_embed_url: value });
+              }}
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[var(--primary)] text-gray-800 text-sm font-mono resize-none"
+              placeholder='Dán iframe từ Google Maps vào đây, ví dụ: <iframe src="https://www.google.com/maps/embed?pb=..."></iframe>'
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Dán cả đoạn {'<iframe>'} từ Google Maps (Share → Embed a map → copy HTML). Hệ thống sẽ tự trích xuất URL.
+            </p>
           </div>
         </div>
 

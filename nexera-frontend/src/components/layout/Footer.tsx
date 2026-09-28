@@ -40,7 +40,7 @@ export function Footer() {
   return (
     <footer className="bg-[#13426E] text-white pt-16 pb-8">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
           {/* Column 1: About */}
           <div>
             <h3 className="text-xl font-bold mb-4">VỀ CHÚNG TÔI</h3>
@@ -132,6 +132,26 @@ export function Footer() {
               ))}
             </ul>
           </div>
+
+          {/* Column 5: Google Maps Embed */}
+          {company.map_embed_url && (
+            <div>
+              <h3 className="text-xl font-bold mb-4">BẢN ĐỒ</h3>
+              <div className="w-12 h-1 bg-[#80BF49] mb-6"></div>
+              <div className="rounded-lg overflow-hidden border border-white/10">
+                <iframe
+                  src={company.map_embed_url}
+                  width="100%"
+                  height="180"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Vị trí công ty trên Google Maps"
+                ></iframe>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom */}

@@ -22,7 +22,7 @@ export class ProductsService {
     const { data, error } = await supabase
       .from('categories')
       .select('*')
-      .order('name', { ascending: true });
+      .order('created_at', { ascending: true });
 
     if (error) {
       this.logger.error('Lỗi lấy danh mục:', error);

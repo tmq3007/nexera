@@ -206,18 +206,7 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Loại sản phẩm <span className="text-red-500">*</span></label>
-          <select
-            value={form.type}
-            onChange={(e) => setForm((prev) => ({ ...prev, type: e.target.value }))}
-            className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all"
-          >
-            <option value="EQUIPMENT">Thiết bị</option>
-            <option value="PACKAGE">Gói lắp đặt</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Danh mục</label>
           <select

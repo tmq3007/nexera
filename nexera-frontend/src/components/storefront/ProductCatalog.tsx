@@ -306,34 +306,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
           </div>
         </div>
 
-        {/* Product Type */}
-        <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-colors">
-          <h3 className="font-semibold text-[#13426E] mb-4 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#80BF49]" />
-            Loại hình
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { id: "all", label: "Tất cả" },
-              { id: "EQUIPMENT", label: "Thiết bị" },
-              { id: "PACKAGE", label: "Trọn gói" },
-            ].map((type) => {
-              const isActive = (selectedType || "all") === type.id;
-              return (
-                <button
-                  key={type.id}
-                  onClick={() => updateUrl({ type: type.id })}
-                  className={`px-4 py-2 rounded-lg text-sm transition-colors ${isActive
-                      ? "bg-[#13426E] text-white font-medium shadow-sm"
-                      : "bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100"
-                    }`}
-                >
-                  {type.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+
 
         {/* Price Range */}
         <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-colors">
@@ -939,22 +912,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
                       ))}
                     </tr>
 
-                    {/* 3. Type */}
-                    <tr className="border-b border-gray-100">
-                      <th className="p-3 sm:p-5 bg-slate-50/95 sticky left-0 z-20 border-r border-gray-200 font-semibold text-gray-700 text-xs sm:text-sm shadow-[2px_0_5px_rgba(0,0,0,0.04)]">
-                        Loại hình
-                      </th>
-                      {compareList.map(p => (
-                        <td key={`type-${p.id}`} className="p-3 sm:p-5 border-r border-gray-100 last:border-0">
-                          <span className="inline-flex px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider bg-gray-100 text-gray-700 border border-gray-200">
-                            {p.type === "EQUIPMENT" ? "Thiết bị lẻ" : "Trọn gói"}
-                          </span>
-                        </td>
-                      ))}
-                      {Array.from({ length: 3 - compareList.length }).map((_, i) => (
-                        <td key={`empty-type-${i}`} className="hidden lg:table-cell border-r border-gray-100 bg-gray-50/40"></td>
-                      ))}
-                    </tr>
+
 
                     {/* 4. Stock */}
                     <tr className="border-b border-gray-100">

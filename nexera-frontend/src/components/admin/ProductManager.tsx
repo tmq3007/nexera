@@ -314,15 +314,6 @@ export function ProductManager({
                 options: categories.map(c => ({ label: c.name, value: c.id }))
               },
               {
-                key: "type",
-                label: "Loại hình",
-                type: "select",
-                options: [
-                  { label: "Thiết bị", value: "EQUIPMENT" },
-                  { label: "Gói lắp đặt", value: "PACKAGE" }
-                ]
-              },
-              {
                 key: "price",
                 label: "Khoảng giá",
                 type: "price_range",
@@ -408,7 +399,7 @@ export function ProductManager({
                 <th className="px-3 py-2.5">Sản phẩm</th>
                 <th className="px-3 py-2.5">Danh mục</th>
                 <th className="px-3 py-2.5">Thương hiệu</th>
-                <th className="px-3 py-2.5">Loại</th>
+
                 <th className="px-3 py-2.5 text-right">Báo giá (VNĐ)</th>
                 <th className="px-3 py-2.5 text-right">Tồn kho</th>
                 <th className="px-3 py-2.5 text-center">Trạng thái</th>
@@ -418,7 +409,7 @@ export function ProductManager({
             <tbody className="divide-y divide-gray-100">
               {(!localProducts || localProducts.length === 0) && (
                 <tr>
-                  <td colSpan={10} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={9} className="text-center py-16 text-gray-400 text-sm">
                     <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                     Chưa có sản phẩm nào phù hợp bộ lọc.{" "}
                     <button onClick={handleOpenAdd} className="text-[var(--primary)] hover:underline font-semibold inline-block mt-2">
@@ -482,9 +473,7 @@ export function ProductManager({
                     <td className={`${cellPadding} text-xs text-gray-700 font-semibold`}>
                       {product.brand || "—"}
                     </td>
-                    <td className={`${cellPadding} text-xs text-gray-600 font-medium`}>
-                      {product.type === "EQUIPMENT" ? "Thiết bị" : "Gói lắp đặt"}
-                    </td>
+
                     <td className={`${cellPadding} text-right`}>
                       <div className="flex flex-col items-end">
                         <div className="font-bold text-gray-900 text-xs md:text-sm tracking-tight">

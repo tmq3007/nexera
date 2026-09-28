@@ -16,6 +16,7 @@ export interface BusinessInfo {
   facebook_url?: string;
   tiktok_url?: string;
   youtube_url?: string;
+  map_embed_url?: string;
 }
 
 export interface PolicyItem {
@@ -59,6 +60,7 @@ export async function getBusinessInfo(): Promise<BusinessInfo> {
         facebook_url: data.facebook_url || siteConfig.social.facebook,
         tiktok_url: data.tiktok_url || siteConfig.social.tiktok,
         youtube_url: data.youtube_url || siteConfig.social.youtube,
+        map_embed_url: data.map_embed_url || undefined,
       };
     }
   } catch (err) {

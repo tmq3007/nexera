@@ -141,8 +141,8 @@ export function ProductDetailView({ product }: { product: any }) {
         {/* Quick Stats Cards (Mobile: 2 cột, Desktop: 2 cột) */}
         <div className="grid grid-cols-2 gap-2.5">
           <div className="bg-gray-50 p-3 rounded-xl border border-gray-200/80 text-center">
-            <span className="text-[11px] text-gray-400 block mb-0.5">Loại hình</span>
-            <span className="text-sm font-semibold text-gray-900">{product.type === "EQUIPMENT" ? "Thiết bị" : "Trọn gói"}</span>
+            <span className="text-[11px] text-gray-400 block mb-0.5">Mã SKU</span>
+            <span className="text-sm font-semibold text-gray-900">{product.sku || "N/A"}</span>
           </div>
           <div className="bg-gray-50 p-3 rounded-xl border border-gray-200/80 text-center">
             <span className="text-[11px] text-gray-400 block mb-0.5">Tồn kho</span>
