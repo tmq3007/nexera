@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { analyticsApi } from "@/lib/api/analytics.api";
 import { ActivityLogManager } from "@/components/admin/ActivityLogManager";
+import { getServerToken } from "@/lib/auth/server";
 
 export default async function ActivityLogsPage({
   searchParams,
@@ -13,13 +14,15 @@ export default async function ActivityLogsPage({
   const entityType = (resolvedParams.entity_type as string) || "";
   const severity = (resolvedParams.severity as string) || "";
 
+  const token = await getServerToken();
+
   const response = await analyticsApi.getActivityLogs({
     page,
     pageSize: 15,
     q,
     entityType,
     severity,
-  });
+  }, token!);
 
   return <ActivityLogManager logs={(response.logs as any) || []} count={response.total || 0} />;
 }

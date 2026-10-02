@@ -1,4 +1,4 @@
-import { BACKEND_URL } from "./config";
+import { api } from './client';
 
 export interface DashboardOverviewData {
   productCount: number;
@@ -64,21 +64,22 @@ export interface ActivityLogsResponse {
   totalPages: number;
 }
 
-export const analyticsApi = {
-  async getDashboardOverview(): Promise<DashboardOverviewData | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/analytics/dashboard-overview`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getDashboardOverview:", err);
-      return null;
-    }
-  },
+export interface GetActivityLogsQuery {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  entityType?: string;
+  severity?: string;
+}
 
-  async logActivity(data: {
+export const analyticsApi = {
+  getDashboardOverview: (token: string) =>
+    api.get<DashboardOverviewData | null>('/analytics/dashboard-overview', {
+      token,
+      revalidate: false,
+    }),
+
+  logActivity: (data: {
     userId?: string;
     userEmail?: string;
     action: string;
@@ -87,45 +88,13 @@ export const analyticsApi = {
     details?: Record<string, any>;
     severity?: "INFO" | "WARNING" | "CRITICAL";
     ipAddress?: string;
-  }): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/analytics/activity-logs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.ok;
-    } catch (err) {
-      console.error("Lỗi logActivity:", err);
-      return false;
-    }
-  },
+  }, token: string) =>
+    api.post<void>('/analytics/activity-logs', data, { token }).then(() => true),
 
-  async getActivityLogs(query: {
-    page?: number;
-    pageSize?: number;
-    q?: string;
-    entityType?: string;
-    severity?: string;
-  } = {}): Promise<ActivityLogsResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (query.page) params.set("page", query.page.toString());
-      if (query.pageSize) params.set("pageSize", query.pageSize.toString());
-      if (query.q) params.set("q", query.q);
-      if (query.entityType) params.set("entityType", query.entityType);
-      if (query.severity) params.set("severity", query.severity);
-
-      const res = await fetch(`${BACKEND_URL}/analytics/activity-logs?${params.toString()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        return { logs: [], total: 0, page: 1, pageSize: 15, totalPages: 0 };
-      }
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getActivityLogs:", err);
-      return { logs: [], total: 0, page: 1, pageSize: 15, totalPages: 0 };
-    }
-  },
+  getActivityLogs: (query: GetActivityLogsQuery = {}, token: string) =>
+    api.get<ActivityLogsResponse>('/analytics/activity-logs', {
+      params: query as Record<string, string | number | boolean | undefined>,
+      token,
+      revalidate: false,
+    }),
 };

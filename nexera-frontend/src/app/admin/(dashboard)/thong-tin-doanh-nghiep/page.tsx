@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { contentApi } from "@/lib/api/content.api";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Building2, Save, RefreshCw, MapPin, Phone, Mail, FileText, Globe, Megaphone } from "lucide-react";
 
 interface BusinessInfoForm {
@@ -46,6 +47,7 @@ export default function BusinessInfoAdminPage() {
   const [saving, setSaving] = useState(false);
 
   const toast = useToast();
+  const { accessToken } = useAuth();
 
   useEffect(() => {
     fetchBusinessInfo();
@@ -89,7 +91,7 @@ export default function BusinessInfoAdminPage() {
     setSaving(true);
 
     try {
-      const res = await contentApi.saveBusinessInfo(formData);
+      const res = await contentApi.saveBusinessInfo(formData, accessToken!);
       if (res && res.id) {
         setFormData((prev) => ({ ...prev, id: res.id }));
       }

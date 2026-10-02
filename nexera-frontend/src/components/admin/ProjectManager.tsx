@@ -11,6 +11,7 @@ import { AdminPagination } from "./AdminPagination";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminTableToolbar } from "./AdminTableToolbar";
 import { logActivity } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
 
 const categoryLabels: Record<string, { label: string; color: string }> = {
   INDUSTRIAL: { label: "Công nghiệp", color: "text-blue-600 font-medium" },
@@ -32,6 +33,7 @@ export function ProjectManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { accessToken } = useAuth();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<any | null>(null);
@@ -75,7 +77,7 @@ export function ProjectManager({
     if (!deletingProject) return;
     setIsDeleting(true);
     
-    const success = await contentApi.deleteProject(deletingProject.id);
+    const success = await contentApi.deleteProject(deletingProject.id, accessToken!);
     
     setIsDeleting(false);
     if (!success) {

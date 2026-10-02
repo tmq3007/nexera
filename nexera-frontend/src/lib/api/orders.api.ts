@@ -1,121 +1,12 @@
-import { BACKEND_URL } from "./config";
+import { api } from './client';
+import type { PaginatedResponse } from '@/types/api';
+import type { 
+  OrderRecord,
+  CheckoutPayload,
+  GetOrdersQuery
+} from '@/types/models/order';
 
-// ==========================================
-// Enums & Types (from @/types/enums)
-// ==========================================
-
-import {
-  OrderStatus,
-  PaymentMethod,
-  PaymentStatus,
-  OrderCancelledBy,
-} from "@/types/enums";
-
-export type PaymentStatusType = PaymentStatus;
-export {
-  OrderStatus,
-  PaymentMethod,
-  PaymentStatus,
-  OrderCancelledBy,
-};
-
-// Nút hành động theo trạng thái hiện tại (Chuẩn 3PL)
-export const STATUS_ACTIONS: Record<OrderStatus, { label: string; nextStatus: OrderStatus; color: string } | null> = {
-  PENDING_PAYMENT: { label: 'Xác nhận Đã TT', nextStatus: 'CONFIRMED', color: 'bg-blue-600 hover:bg-blue-700' },
-  CONFIRMED: { label: 'Duyệt đóng gói', nextStatus: 'PROCESSING', color: 'bg-blue-600 hover:bg-blue-700' },
-  PROCESSING: { label: 'Gửi bưu cục', nextStatus: 'SHIPPED', color: 'bg-purple-600 hover:bg-purple-700' },
-  SHIPPED: { label: 'Đã giao thành công', nextStatus: 'DELIVERED', color: 'bg-emerald-600 hover:bg-emerald-700' },
-  DELIVERED: null,
-  RETURNED: null,
-  CANCELLED: null,
-};
-
-// Trạng thái có thể hủy
-export const CANCELLABLE_STATUSES: OrderStatus[] = ['PENDING_PAYMENT', 'CONFIRMED', 'PROCESSING'];
-
-export interface OrderItem {
-  id?: string;
-  productId?: string;
-  product_id?: string;
-  product_name?: string;
-  product_image?: string;
-  product_sku?: string;
-  quantity: number;
-  unit_price?: number;
-  discount_rate?: number;
-  total_price?: number;
-  products?: {
-    id: string;
-    name: string;
-    image_url?: string;
-    slug?: string;
-  };
-}
-
-export interface StatusHistoryEntry {
-  id: string;
-  from_status: string | null;
-  to_status: string;
-  changed_by: string;
-  note: string | null;
-  created_at: string;
-}
-
-export interface OrderRecord {
-  id: string;
-  order_code?: string;
-  customer_id?: string | null;
-  customer_name?: string;
-  customer_email?: string;
-  customer_phone?: string;
-  shipping_address?: string;
-  shipping_ward?: string;
-  shipping_district?: string;
-  shipping_province?: string;
-  subtotal?: number;
-  shipping_fee?: number;
-  discount_amount?: number;
-  total_amount: number;
-  payment_method: PaymentMethod;
-  payment_status?: PaymentStatusType;
-  paid_at?: string;
-  status: OrderStatus;
-  shipping_carrier?: string;
-  tracking_number?: string;
-  shipped_at?: string;
-  delivered_at?: string;
-  note?: string;
-  admin_note?: string;
-  cancel_reason?: string;
-  cancelled_by?: string;
-  created_at: string;
-  updated_at?: string;
-  payos_order_code?: string;
-  order_items?: OrderItem[];
-  statusHistory?: StatusHistoryEntry[];
-}
-
-export interface GetOrdersResponse {
-  data: OrderRecord[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface CheckoutPayload {
-  authUserId?: string;
-  customerName: string;
-  customerPhone: string;
-  customerEmail?: string;
-  shippingProvince?: string;
-  shippingDistrict?: string;
-  shippingWard?: string;
-  shippingAddress: string;
-  paymentMethod: PaymentMethod;
-  note?: string;
-  items: Array<{ productId: string; quantity: number }>;
-}
+export * from '@/types/models/order';
 
 // ==========================================
 // API Functions
@@ -125,91 +16,47 @@ export const ordersApi = {
   /**
    * Checkout: Tạo đơn hàng mới
    */
-  async checkout(payload: CheckoutPayload): Promise<{
-    success: boolean;
-    order?: { id: string; orderCode: string; status: string; totalAmount: number; paymentMethod: string };
-    checkoutUrl?: string | null;
-    qrCode?: string | null;
-    message?: string;
-  }> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.message || "Tạo đơn hàng thất bại.");
-      }
-      return await res.json();
-    } catch (err: any) {
-      console.error("Lỗi checkout:", err);
-      return { success: false, message: err.message };
-    }
-  },
+  checkout: (payload: CheckoutPayload) =>
+    api.post<{
+      success: boolean;
+      order?: { id: string; orderCode: string; status: string; totalAmount: number; paymentMethod: string };
+      checkoutUrl?: string | null;
+      qrCode?: string | null;
+      message?: string;
+    }>('/orders/checkout', payload),
 
   /**
    * Poll trạng thái thanh toán (cho trang kết quả)
    */
-  async getPaymentStatus(orderId: string): Promise<OrderRecord | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/${orderId}/payment-status`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
-    }
-  },
+  getPaymentStatus: (orderId: string) =>
+    api.get<OrderRecord | null>(`/orders/${orderId}/payment-status`, {
+      revalidate: false,
+    }),
 
   /**
    * Khách xem đơn hàng của mình
    */
-  async getMyOrders(authUserId: string): Promise<OrderRecord[]> {
-    try {
-      const params = new URLSearchParams({ authUserId });
-      const res = await fetch(`${BACKEND_URL}/orders/my-orders?${params.toString()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return [];
-      return await res.json();
-    } catch {
-      return [];
-    }
-  },
+  getMyOrders: (authUserId: string) =>
+    api.get<OrderRecord[]>('/orders/my-orders', {
+      params: { authUserId },
+      revalidate: false,
+    }),
 
   /**
    * Khách hủy đơn hàng
    */
-  async cancelOrder(orderId: string, authUserId: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/${orderId}/cancel`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ authUserId }),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+  cancelOrder: (orderId: string, authUserId: string) =>
+    api.post<void>(`/orders/${orderId}/cancel`, { authUserId })
+      .then(() => true)
+      .catch(() => false),
 
   /**
    * Tra cứu đơn hàng theo mã đơn
    */
-  async getOrderLookup(code: string): Promise<OrderRecord | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/lookup/${code}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
-    }
-  },
+  getOrderLookup: (code: string) =>
+    api.get<OrderRecord | null>(`/orders/lookup/${code}`, {
+      revalidate: false,
+    }),
 
   // ==========================================
   // ADMIN APIs
@@ -218,80 +65,40 @@ export const ordersApi = {
   /**
    * Admin: Danh sách đơn hàng (filter, pagination, search)
    */
-  async getAdminOrders(query: {
-    status?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  } = {}): Promise<GetOrdersResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (query.status) params.set("status", query.status);
-      if (query.search) params.set("search", query.search);
-      if (query.page) params.set("page", query.page.toString());
-      if (query.limit) params.set("limit", query.limit.toString());
-
-      const res = await fetch(`${BACKEND_URL}/orders/admin/list?${params.toString()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
-      return await res.json();
-    } catch {
-      return { data: [], total: 0, page: 1, limit: 20, totalPages: 0 };
-    }
-  },
+  getAdminOrders: (query: GetOrdersQuery = {}, token: string) =>
+    api.get<PaginatedResponse<OrderRecord>>('/orders/admin/list', {
+      params: query as Record<string, string | number | boolean | undefined>,
+      token,
+      revalidate: false,
+    }),
 
   /**
    * Admin: Chi tiết đơn hàng (kèm lịch sử trạng thái)
    */
-  async getAdminOrderDetail(id: string): Promise<OrderRecord | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/admin/${id}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
-    }
-  },
+  getAdminOrderDetail: (id: string, token: string) =>
+    api.get<OrderRecord | null>(`/orders/admin/${id}`, {
+      token,
+      revalidate: false,
+    }),
 
   /**
    * Admin: Đổi trạng thái đơn hàng
    */
-  async updateStatus(id: string, status: string, note?: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/admin/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, note }),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+  updateStatus: (id: string, status: string, note: string | undefined, token: string) =>
+    api.patch<void>(`/orders/admin/${id}/status`, { status, note }, { token })
+      .then(() => true),
 
   /**
    * Admin: Cập nhật thông tin vận chuyển
    */
-  async updateShipping(id: string, data: { shippingCarrier?: string; trackingNumber?: string }): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/admin/${id}/shipping`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+  updateShipping: (id: string, data: { shippingCarrier?: string; trackingNumber?: string }, token: string) =>
+    api.patch<void>(`/orders/admin/${id}/shipping`, data, { token })
+      .then(() => true),
 
   /**
    * Admin: Sửa thông tin người nhận (SĐT/Địa chỉ) khi chưa gửi bưu cục
    */
-  async updateRecipient(
+  updateRecipient: (
     id: string,
     data: {
       customerName?: string;
@@ -301,49 +108,27 @@ export const ordersApi = {
       shippingWard?: string;
       shippingAddress?: string;
       note?: string;
-    }
-  ): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/admin/${id}/recipient`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+    },
+    token: string
+  ) =>
+    api.patch<void>(`/orders/admin/${id}/recipient`, data, { token })
+      .then(() => true),
 
   /**
    * Admin: Xóa đơn hàng
    */
-  async deleteOrder(id: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/admin/${id}`, { method: "DELETE" });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+  deleteOrder: (id: string, token: string) =>
+    api.delete<void>(`/orders/admin/${id}`, { token })
+      .then(() => true),
 
   /**
    * Admin: Cập nhật / xóa hàng loạt
    */
-  async bulkUpdate(payload: {
+  bulkUpdate: (payload: {
     ids: string[];
     status?: string;
     action?: 'delete' | 'update_status';
-  }): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/orders/admin/bulk`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  },
+  }, token: string) =>
+    api.patch<void>('/orders/admin/bulk', payload, { token })
+      .then(() => true),
 };

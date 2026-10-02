@@ -37,6 +37,7 @@ import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminBulkActionBar } from "./AdminBulkActionBar";
 import { AdminTableToolbar } from "./AdminTableToolbar";
 import { logActivity } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
 
 // ==========================================
 // Status UI Config (Chuẩn Vận hành 3PL)
@@ -97,6 +98,7 @@ export function OrderManager({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const toast = useToast();
+  const { accessToken } = useAuth();
 
   const [selectedOrder, setSelectedOrder] = useState<OrderRecord | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -149,7 +151,7 @@ export function OrderManager({
   };
   const handleBulkDelete = async () => {
     if (!confirm(`Xóa ${selectedIds.length} đơn hàng?`)) return;
-    const ok = await ordersApi.bulkUpdate({ ids: selectedIds, action: "delete" });
+    const ok = await ordersApi.bulkUpdate({ ids: selectedIds, action: "delete" }, accessToken!);
     if (ok) {
       toast.success(`Đã xóa ${selectedIds.length} đơn hàng!`);
       setSelectedIds([]);
@@ -189,7 +191,7 @@ export function OrderManager({
   const handleViewDetail = async (order: OrderRecord) => {
     setLoadingDetail(true);
     setSelectedOrder(order);
-    const detail = await ordersApi.getAdminOrderDetail(order.id);
+    const detail = await ordersApi.getAdminOrderDetail(order.id, accessToken!);
     if (detail) setSelectedOrder(detail);
     setLoadingDetail(false);
   };
@@ -197,7 +199,7 @@ export function OrderManager({
   // Đổi trạng thái trực tiếp
   const handleStatusAction = async (orderId: string, nextStatus: OrderStatus, note?: string) => {
     setUpdatingStatus(orderId);
-    const ok = await ordersApi.updateStatus(orderId, nextStatus, note);
+    const ok = await ordersApi.updateStatus(orderId, nextStatus, note, accessToken!);
     setUpdatingStatus(null);
     if (ok) {
       logActivity({
@@ -209,7 +211,7 @@ export function OrderManager({
       toast.success(`Đã chuyển sang "${statusConfig[nextStatus]?.label || nextStatus}"`);
       router.refresh();
       if (selectedOrder?.id === orderId) {
-        const detail = await ordersApi.getAdminOrderDetail(orderId);
+        const detail = await ordersApi.getAdminOrderDetail(orderId, accessToken!);
         if (detail) setSelectedOrder(detail);
       }
     } else {
@@ -244,20 +246,21 @@ export function OrderManager({
       await ordersApi.updateShipping(shippingModalOrder.id, {
         shippingCarrier: finalCarrier,
         trackingNumber: trackingNumber.trim(),
-      });
+      }, accessToken!);
 
       // 2. Chuyển sang SHIPPED
       await ordersApi.updateStatus(
         shippingModalOrder.id,
         "SHIPPED",
-        `Đã gửi qua ${finalCarrier} - Mã: ${trackingNumber.trim()}`
+        `Đã gửi qua ${finalCarrier} - Mã: ${trackingNumber.trim()}`,
+        accessToken!
       );
 
       toast.success(`Đã cập nhật: Đã gửi qua ${finalCarrier}!`);
       setShippingModalOrder(null);
       router.refresh();
       if (selectedOrder?.id === shippingModalOrder.id) {
-        const detail = await ordersApi.getAdminOrderDetail(shippingModalOrder.id);
+        const detail = await ordersApi.getAdminOrderDetail(shippingModalOrder.id, accessToken!);
         if (detail) setSelectedOrder(detail);
       }
     } catch {
@@ -293,14 +296,14 @@ export function OrderManager({
         customerPhone: editRecipientForm.customerPhone.trim(),
         shippingAddress: editRecipientForm.shippingAddress.trim(),
         note: editRecipientForm.note.trim() || undefined,
-      });
+      }, accessToken!);
 
       if (ok) {
         toast.success("Đã cập nhật thông tin nhận hàng!");
         setEditRecipientOrder(null);
         router.refresh();
         if (selectedOrder?.id === editRecipientOrder.id) {
-          const detail = await ordersApi.getAdminOrderDetail(editRecipientOrder.id);
+          const detail = await ordersApi.getAdminOrderDetail(editRecipientOrder.id, accessToken!);
           if (detail) setSelectedOrder(detail);
         }
       } else {

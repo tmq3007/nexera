@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { rbacApi, Role, Permission } from "@/lib/api/rbac.api";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Lock,
   Plus,
@@ -26,6 +27,7 @@ export default function RolesAndPermissionsPage() {
   const [rolePermissions, setRolePermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const { accessToken } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -59,8 +61,8 @@ export default function RolesAndPermissionsPage() {
 
       // 2. Fetch Roles & Permissions
       const [rolesData, permData] = await Promise.all([
-        rbacApi.getRoles(),
-        rbacApi.getPermissions(),
+        rbacApi.getRoles(accessToken!),
+        rbacApi.getPermissions(accessToken!),
       ]);
 
       setRoles(rolesData);
@@ -83,7 +85,7 @@ export default function RolesAndPermissionsPage() {
 
   const fetchPermissionsForRole = async (roleId: string) => {
     try {
-      const perms = await rbacApi.getRolePermissions(roleId);
+      const perms = await rbacApi.getRolePermissions(roleId, accessToken!);
       setRolePermissions(perms);
     } catch (err) {
       console.error("Lỗi fetchPermissionsForRole:", err);
@@ -123,7 +125,7 @@ export default function RolesAndPermissionsPage() {
     setSaveSuccess(false);
 
     try {
-      await rbacApi.updateRolePermissions(selectedRole.id, rolePermissions);
+      await rbacApi.updateRolePermissions(selectedRole.id, rolePermissions, accessToken!);
 
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -143,7 +145,7 @@ export default function RolesAndPermissionsPage() {
       const newRole = await rbacApi.createRole({
         displayName: newRoleDisplayName,
         description: newRoleDescription,
-      });
+      }, accessToken!);
 
       await checkPermissionAndFetchData();
       if (newRole) {
@@ -170,7 +172,7 @@ export default function RolesAndPermissionsPage() {
     if (!confirm(`Bạn có chắc muốn xóa vai trò "${role.display_name}"?`)) return;
 
     try {
-      await rbacApi.deleteRole(role.id);
+      await rbacApi.deleteRole(role.id, accessToken!);
 
       await checkPermissionAndFetchData();
       setSelectedRole(null);

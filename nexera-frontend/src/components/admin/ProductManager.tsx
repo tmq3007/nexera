@@ -13,6 +13,7 @@ import { AdminFilterBar, FilterConfig } from "./AdminFilterBar";
 import { AdminBulkActionBar } from "./AdminBulkActionBar";
 import { AdminTableToolbar } from "./AdminTableToolbar";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { logActivity } from "@/lib/logger";
 import { formatErrorMessage } from "@/lib/messages";
 import { imagePresets } from "@/utils/imageUtils";
@@ -34,6 +35,7 @@ export function ProductManager({
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const toast = useToast();
+  const { accessToken } = useAuth();
 
   const [density, setDensity] = useState<"compact" | "normal">("compact");
   const [showFilters, setShowFilters] = useState(true);
@@ -75,7 +77,7 @@ export function ProductManager({
   const handleBulkDelete = async () => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} sản phẩm đã chọn?`)) return;
     setIsDeleting(true);
-    const success = await productsApi.bulkUpdate({ ids: selectedIds, action: "delete" });
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, action: "delete" }, accessToken!);
     setIsDeleting(false);
     if (success) {
       logActivity({
@@ -93,7 +95,7 @@ export function ProductManager({
   };
 
   const handleBulkToggleActive = async (targetState: boolean) => {
-    const success = await productsApi.bulkUpdate({ ids: selectedIds, isActive: targetState });
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, isActive: targetState }, accessToken!);
     if (success) {
       logActivity({
         action: "TOGGLE_PRODUCTS_ACTIVE_BULK",
@@ -110,7 +112,7 @@ export function ProductManager({
 
   const handleBulkMoveCategory = async () => {
     if (!bulkCategoryTarget) return;
-    const success = await productsApi.bulkUpdate({ ids: selectedIds, categoryId: bulkCategoryTarget });
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, categoryId: bulkCategoryTarget }, accessToken!);
     if (success) {
       logActivity({
         action: "MOVE_PRODUCTS_CATEGORY_BULK",
@@ -130,7 +132,7 @@ export function ProductManager({
   const handleToggleBestseller = async (product: any) => {
     const newStatus = !product.is_bestseller;
     setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_bestseller: newStatus } : p));
-    const success = await productsApi.bulkUpdate({ ids: [product.id], isBestseller: newStatus });
+    const success = await productsApi.bulkUpdate({ ids: [product.id], isBestseller: newStatus }, accessToken!);
     if (success) {
       logActivity({
         action: "TOGGLE_PRODUCT_BESTSELLER",
@@ -147,7 +149,7 @@ export function ProductManager({
   };
 
   const handleBulkToggleBestseller = async (targetState: boolean) => {
-    const success = await productsApi.bulkUpdate({ ids: selectedIds, isBestseller: targetState });
+    const success = await productsApi.bulkUpdate({ ids: selectedIds, isBestseller: targetState }, accessToken!);
     if (success) {
       logActivity({
         action: "TOGGLE_PRODUCTS_BESTSELLER_BULK",
@@ -165,7 +167,7 @@ export function ProductManager({
   const handleToggleActive = async (product: any) => {
     const newStatus = !product.is_active;
     setLocalProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: newStatus } : p));
-    const success = await productsApi.bulkUpdate({ ids: [product.id], isActive: newStatus });
+    const success = await productsApi.bulkUpdate({ ids: [product.id], isActive: newStatus }, accessToken!);
     if (success) {
       logActivity({
         action: "TOGGLE_PRODUCT_ACTIVE",
@@ -220,7 +222,7 @@ export function ProductManager({
     if (!deletingProduct) return;
     setIsDeleting(true);
 
-    const success = await productsApi.deleteProduct(deletingProduct.id);
+    const success = await productsApi.deleteProduct(deletingProduct.id, accessToken!);
 
     setIsDeleting(false);
     if (!success) {

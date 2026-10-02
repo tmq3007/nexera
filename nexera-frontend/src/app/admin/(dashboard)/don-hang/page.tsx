@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { OrderManager } from "@/components/admin/OrderManager";
 import { ordersApi } from "@/lib/api/orders.api";
+import { getServerToken } from "@/lib/auth/server";
 
 export default async function AdminOrdersPage({
   searchParams,
@@ -14,12 +15,14 @@ export default async function AdminOrdersPage({
   const limit = typeof params?.limit === 'string' ? parseInt(params.limit, 10) : 10;
   const status = typeof params?.status === 'string' ? params.status : "";
 
+  const token = await getServerToken();
+
   const response = await ordersApi.getAdminOrders({
     search: q || undefined,
     status: status || undefined,
     page,
     limit,
-  });
+  }, token!);
 
   return (
     <OrderManager 

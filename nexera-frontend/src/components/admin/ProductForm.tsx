@@ -7,6 +7,7 @@ import { ImageUpload } from "@/components/ui/ImageUpload";
 import { MultiImageUpload } from "@/components/ui/MultiImageUpload";
 import { SpecificationsEditor } from "@/components/ui/SpecificationsEditor";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { logActivity } from "@/lib/logger";
 import { formatErrorMessage } from "@/lib/messages";
 import dynamic from "next/dynamic";
@@ -24,6 +25,7 @@ interface ProductFormProps {
 export function ProductForm({ initialData, categories, onSuccess, onCancel }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
   const toast = useToast();
+  const { accessToken } = useAuth();
 
   const [form, setForm] = useState({
     name: initialData?.name || "",
@@ -118,7 +120,7 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
 
     if (initialData?.id) {
       // Update
-      result = await productsApi.updateProduct(initialData.id, dataToSave);
+      result = await productsApi.updateProduct(initialData.id, dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "UPDATE_PRODUCT",
@@ -129,7 +131,7 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
       }
     } else {
       // Insert
-      result = await productsApi.createProduct(dataToSave);
+      result = await productsApi.createProduct(dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "CREATE_PRODUCT",

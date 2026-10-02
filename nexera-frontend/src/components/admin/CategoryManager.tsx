@@ -10,6 +10,7 @@ import { CategoryForm } from "./CategoryForm";
 import { AdminPagination } from "./AdminPagination";
 import { logActivity } from "@/lib/logger";
 import { AdminTableToolbar } from "./AdminTableToolbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function CategoryManager({ 
   categories: initialCategories,
@@ -25,6 +26,7 @@ export function CategoryManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { accessToken } = useAuth();
   
   // Local state để quản lý danh sách — tự cập nhật sau add/edit/delete
   const [categoryList, setCategoryList] = useState(initialCategories);
@@ -95,7 +97,7 @@ export function CategoryManager({
     if (!deletingCategory) return;
     setIsDeleting(true);
 
-    const success = await productsApi.deleteCategory(deletingCategory.id);
+    const success = await productsApi.deleteCategory(deletingCategory.id, accessToken!);
     
     setIsDeleting(false);
     if (!success) {

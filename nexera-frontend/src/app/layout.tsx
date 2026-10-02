@@ -3,6 +3,8 @@ import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 import { StorefrontShell } from "@/components/layout/StorefrontShell";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { QueryProvider } from "@/contexts/QueryProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -62,7 +64,11 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col font-sans bg-white text-[#13426E]">
         <ToastProvider>
-          <StorefrontShell>{children}</StorefrontShell>
+          <AuthProvider>
+            <QueryProvider>
+              <StorefrontShell>{children}</StorefrontShell>
+            </QueryProvider>
+          </AuthProvider>
         </ToastProvider>
       </body>
     </html>

@@ -8,6 +8,7 @@ import { ImageUpload } from "@/components/ui/ImageUpload";
 import { MultiImageUpload } from "@/components/ui/MultiImageUpload";
 import { SpecificationsEditor } from "@/components/ui/SpecificationsEditor";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { logActivity } from "@/lib/logger";
 import { formatErrorMessage } from "@/lib/messages";
 import dynamic from "next/dynamic";
@@ -24,6 +25,7 @@ interface ProductFormPageProps {
 export function ProductFormPage({ mode, initialData, categories }: ProductFormPageProps) {
   const router = useRouter();
   const toast = useToast();
+  const { accessToken } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -118,7 +120,7 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
     let result;
 
     if (mode === "edit" && initialData?.id) {
-      result = await productsApi.updateProduct(initialData.id, dataToSave);
+      result = await productsApi.updateProduct(initialData.id, dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "UPDATE_PRODUCT",
@@ -128,7 +130,7 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
         });
       }
     } else {
-      result = await productsApi.createProduct(dataToSave);
+      result = await productsApi.createProduct(dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "CREATE_PRODUCT",

@@ -1,4 +1,5 @@
 import { analyticsApi } from "@/lib/api/analytics.api";
+import { getServerToken } from "@/lib/auth/server";
 import { RevenueChart } from "@/components/admin/RevenueChart";
 import {
   Package,
@@ -39,7 +40,8 @@ const leadStatusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default async function AdminDashboardPage() {
-  const overview = await analyticsApi.getDashboardOverview();
+  const token = await getServerToken();
+  const overview = await analyticsApi.getDashboardOverview(token!);
 
   const productCount = overview?.productCount ?? 0;
   const orderCount = overview?.orderCount ?? 0;

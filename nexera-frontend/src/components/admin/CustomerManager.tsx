@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AdminPagination } from "./AdminPagination";
 import { AdminTableToolbar, StatusTabItem } from "./AdminTableToolbar";
 import { customersApi } from "@/lib/api/customers.api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Customer {
   id: string;
@@ -63,6 +64,7 @@ export function CustomerManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { accessToken } = useAuth();
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [activeModalTab, setActiveModalTab] = useState<"info" | "orders" | "chat" | "notes">("info");
@@ -125,7 +127,7 @@ export function CustomerManager({
     setIsUpdatingTier(true);
     setEditingTier(newTier);
 
-    const success = await customersApi.updateTier(selectedCustomer.id, newTier);
+    const success = await customersApi.updateTier(selectedCustomer.id, newTier, accessToken!);
 
     if (success) {
       setSelectedCustomer((prev) => (prev ? { ...prev, tier: newTier } : null));
@@ -141,7 +143,7 @@ export function CustomerManager({
 
     setIsAddingNote(true);
 
-    const data = await customersApi.addNote(selectedCustomer.id, newNote.trim());
+    const data = await customersApi.addNote(selectedCustomer.id, newNote.trim(), undefined, accessToken!);
 
     if (data) {
       setSelectedCustomer((prev) => {
@@ -165,7 +167,7 @@ export function CustomerManager({
   const handleSetPrimaryPhone = async (phone: string) => {
     if (!selectedCustomer) return;
     setIsUpdatingContact(true);
-    const updated = await customersApi.updateCustomer(selectedCustomer.id, { phone });
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, { phone }, accessToken!);
     if (updated) {
       setSelectedCustomer((prev) => (prev ? { ...prev, phone } : null));
       router.refresh();
@@ -177,7 +179,7 @@ export function CustomerManager({
   const handleSetPrimaryEmail = async (email: string) => {
     if (!selectedCustomer) return;
     setIsUpdatingContact(true);
-    const updated = await customersApi.updateCustomer(selectedCustomer.id, { email });
+    const updated = await customersApi.updateCustomer(selectedCustomer.id, { email }, accessToken!);
     if (updated) {
       setSelectedCustomer((prev) => (prev ? { ...prev, email } : null));
       router.refresh();
@@ -200,7 +202,7 @@ export function CustomerManager({
     const updated = await customersApi.updateCustomer(selectedCustomer.id, {
       phone: newPrimary,
       phoneNumbers: currentList,
-    });
+    }, accessToken!);
 
     if (updated) {
       setSelectedCustomer((prev) =>
@@ -227,7 +229,7 @@ export function CustomerManager({
     const updated = await customersApi.updateCustomer(selectedCustomer.id, {
       email: newPrimary,
       emails: currentList,
-    });
+    }, accessToken!);
 
     if (updated) {
       setSelectedCustomer((prev) =>
@@ -249,7 +251,7 @@ export function CustomerManager({
     const updated = await customersApi.updateCustomer(selectedCustomer.id, {
       phone: newPrimary || undefined,
       phoneNumbers: currentList,
-    });
+    }, accessToken!);
 
     if (updated) {
       setSelectedCustomer((prev) =>
@@ -270,7 +272,7 @@ export function CustomerManager({
     const updated = await customersApi.updateCustomer(selectedCustomer.id, {
       email: newPrimary || undefined,
       emails: currentList,
-    });
+    }, accessToken!);
 
     if (updated) {
       setSelectedCustomer((prev) =>

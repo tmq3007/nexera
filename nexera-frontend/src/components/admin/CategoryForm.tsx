@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 import { productsApi } from "@/lib/api/products.api";
 import { logActivity } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CategoryFormProps {
   initialData?: any;
@@ -13,6 +14,7 @@ interface CategoryFormProps {
 
 export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormProps) {
   const [loading, setLoading] = useState(false);
+  const { accessToken } = useAuth();
 
   const [form, setForm] = useState({
     name: initialData?.name || "",
@@ -54,7 +56,7 @@ export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormP
     let result;
 
     if (initialData?.id) {
-      result = await productsApi.updateCategory(initialData.id, dataToSave);
+      result = await productsApi.updateCategory(initialData.id, dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "UPDATE_CATEGORY",
@@ -64,7 +66,7 @@ export function CategoryForm({ initialData, onSuccess, onCancel }: CategoryFormP
         });
       }
     } else {
-      result = await productsApi.createCategory(dataToSave);
+      result = await productsApi.createCategory(dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "CREATE_CATEGORY",

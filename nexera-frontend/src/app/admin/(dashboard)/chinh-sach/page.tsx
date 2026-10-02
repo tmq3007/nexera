@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { contentApi } from "@/lib/api/content.api";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Plus,
   History,
@@ -47,6 +48,7 @@ export default function PoliciesAdminPage() {
   const [versionContent, setVersionContent] = useState("");
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const { accessToken } = useAuth();
 
   useEffect(() => {
     fetchPolicies();
@@ -55,7 +57,7 @@ export default function PoliciesAdminPage() {
   const fetchPolicies = async () => {
     setLoading(true);
     try {
-      const data = await contentApi.getAllPoliciesAdmin();
+      const data = await contentApi.getAllPoliciesAdmin(accessToken!);
       setPolicies(data || []);
 
       if (data && data.length > 0 && !selectedPolicy) {
@@ -75,7 +77,7 @@ export default function PoliciesAdminPage() {
     setLoadingVersions(true);
 
     try {
-      const data = await contentApi.getPolicyVersions(policy.id);
+      const data = await contentApi.getPolicyVersions(policy.id, accessToken!);
       setVersions(data || []);
 
       const activeVer = data?.find((v: any) => v.id === policy.current_version_id) || data?.[0];
@@ -97,7 +99,7 @@ export default function PoliciesAdminPage() {
   const togglePolicyStatus = async (policy: Policy) => {
     const newStatus = !policy.is_active;
     try {
-      const success = await contentApi.togglePolicyStatus(policy.id, newStatus);
+      const success = await contentApi.togglePolicyStatus(policy.id, newStatus, accessToken!);
       if (!success) throw new Error("Cập nhật thất bại");
 
       setPolicies((prev) =>
@@ -128,7 +130,8 @@ export default function PoliciesAdminPage() {
       const res = await contentApi.publishNewVersion(
         selectedPolicy.id,
         versionName.trim(),
-        versionContent
+        versionContent,
+        accessToken!
       );
 
       if (!res) throw new Error("Không thể xuất bản phiên bản mới");
@@ -152,7 +155,7 @@ export default function PoliciesAdminPage() {
   const handleActivateVersion = async (version: PolicyVersion) => {
     if (!selectedPolicy) return;
     try {
-      const success = await contentApi.activateVersion(selectedPolicy.id, version.id);
+      const success = await contentApi.activateVersion(selectedPolicy.id, version.id, accessToken!);
       if (!success) throw new Error("Kích hoạt thất bại");
 
       toast.success(`Đã chuyển phiên bản hoạt động sang ${version.version}!`);

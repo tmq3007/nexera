@@ -1,364 +1,90 @@
-import { BACKEND_URL } from "./config";
+import { api } from './client';
+import type { PaginatedResponse } from '@/types/api';
+import type {
+  ProjectItem,
+  GetProjectsQuery,
+  ArticleItem,
+  GetArticlesQuery,
+  PolicyItem
+} from '@/types/models/content';
 
-// ===================== PROJECTS =====================
-export interface ProjectItem {
-  id: string;
-  name: string;
-  slug?: string | null;
-  category: 'INDUSTRIAL' | 'RESIDENTIAL' | 'AGRICULTURAL' | 'SOLAR' | string;
-  description?: string | null;
-  image_url?: string | null;
-  completion_date?: string | null;
-  created_at: string;
-  updated_at?: string;
-}
-
-export interface GetProjectsResponse {
-  data: ProjectItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// ===================== ARTICLES =====================
-export interface ArticleItem {
-  id: string;
-  title: string;
-  slug: string;
-  type?: string;
-  content?: string | null;
-  image_url?: string | null;
-  published_at?: string;
-  created_at: string;
-  updated_at?: string;
-}
-
-export interface GetArticlesResponse {
-  data: ArticleItem[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-// ===================== POLICIES =====================
-export interface PolicyItem {
-  id: string;
-  type: string;
-  slug: string;
-  title: string;
-  summary?: string | null;
-  content?: string;
-  is_active: boolean;
-  version?: {
-    id: string;
-    version_number: number;
-    effective_date: string;
-    change_summary?: string;
-  } | null;
-}
+// Re-export types for backward compatibility
+export type { ProjectItem, GetProjectsQuery, ArticleItem, GetArticlesQuery, PolicyItem } from '@/types/models/content';
+export type { PaginatedResponse as GetProjectsResponse } from '@/types/api';
+export type { PaginatedResponse as GetArticlesResponse } from '@/types/api';
 
 export const contentApi = {
   // ----------------- PROJECTS -----------------
-  async getProjects(query: {
-    category?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  } = {}): Promise<GetProjectsResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (query.category) params.set("category", query.category);
-      if (query.search) params.set("search", query.search);
-      if (query.page) params.set("page", query.page.toString());
-      if (query.limit) params.set("limit", query.limit.toString());
+  getProjects: (query: GetProjectsQuery = {}) =>
+    api.get<PaginatedResponse<ProjectItem>>('/projects', {
+      params: query as Record<string, string | number | boolean | undefined>,
+      revalidate: false,
+    }),
 
-      const res = await fetch(`${BACKEND_URL}/projects?${params.toString()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return { data: [], total: 0, page: 1, limit: 12, totalPages: 0 };
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getProjects:", err);
-      return { data: [], total: 0, page: 1, limit: 12, totalPages: 0 };
-    }
-  },
+  getProject: (idOrSlug: string) =>
+    api.get<ProjectItem | null>(`/projects/${idOrSlug}`, {
+      revalidate: false,
+    }),
 
-  async getProject(idOrSlug: string): Promise<ProjectItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/projects/${idOrSlug}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getProject:", err);
-      return null;
-    }
-  },
+  createProject: (data: any, token: string) =>
+    api.post<ProjectItem>('/projects/admin', data, { token }),
 
-  async createProject(data: any): Promise<ProjectItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/projects/admin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi createProject:", err);
-      return null;
-    }
-  },
+  updateProject: (id: string, data: any, token: string) =>
+    api.put<ProjectItem>(`/projects/admin/${id}`, data, { token }),
 
-  async updateProject(id: string, data: any): Promise<ProjectItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/projects/admin/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi updateProject:", err);
-      return null;
-    }
-  },
-
-  async deleteProject(id: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/projects/admin/${id}`, {
-        method: "DELETE",
-      });
-      return res.ok;
-    } catch (err) {
-      console.error("Lỗi deleteProject:", err);
-      return false;
-    }
-  },
+  deleteProject: (id: string, token: string) =>
+    api.delete<void>(`/projects/admin/${id}`, { token }).then(() => true),
 
   // ----------------- ARTICLES -----------------
-  async getArticles(query: {
-    type?: string;
-    search?: string;
-    page?: number;
-    limit?: number;
-  } = {}): Promise<GetArticlesResponse> {
-    try {
-      const params = new URLSearchParams();
-      if (query.type) params.set("type", query.type);
-      if (query.search) params.set("search", query.search);
-      if (query.page) params.set("page", query.page.toString());
-      if (query.limit) params.set("limit", query.limit.toString());
+  getArticles: (query: GetArticlesQuery = {}) =>
+    api.get<PaginatedResponse<ArticleItem>>('/articles', {
+      params: query as Record<string, string | number | boolean | undefined>,
+      revalidate: false,
+    }),
 
-      const res = await fetch(`${BACKEND_URL}/articles?${params.toString()}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return { data: [], total: 0, page: 1, limit: 10, totalPages: 0 };
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getArticles:", err);
-      return { data: [], total: 0, page: 1, limit: 10, totalPages: 0 };
-    }
-  },
+  getArticle: (idOrSlug: string) =>
+    api.get<ArticleItem | null>(`/articles/${idOrSlug}`, {
+      revalidate: false,
+    }),
 
-  async getArticle(idOrSlug: string): Promise<ArticleItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/articles/${idOrSlug}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getArticle:", err);
-      return null;
-    }
-  },
+  createArticle: (data: any, token: string) =>
+    api.post<ArticleItem>('/articles/admin', data, { token }),
 
-  async createArticle(data: any): Promise<ArticleItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/articles/admin`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi createArticle:", err);
-      return null;
-    }
-  },
+  updateArticle: (id: string, data: any, token: string) =>
+    api.put<ArticleItem>(`/articles/admin/${id}`, data, { token }),
 
-  async updateArticle(id: string, data: any): Promise<ArticleItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/articles/admin/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi updateArticle:", err);
-      return null;
-    }
-  },
-
-  async deleteArticle(id: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/articles/admin/${id}`, {
-        method: "DELETE",
-      });
-      return res.ok;
-    } catch (err) {
-      console.error("Lỗi deleteArticle:", err);
-      return false;
-    }
-  },
+  deleteArticle: (id: string, token: string) =>
+    api.delete<void>(`/articles/admin/${id}`, { token }).then(() => true),
 
   // ----------------- POLICIES -----------------
-  async getActivePolicies(): Promise<PolicyItem[]> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies`, {
-        next: { revalidate: 60 },
-      });
-      if (!res.ok) return [];
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getActivePolicies:", err);
-      return [];
-    }
-  },
+  getActivePolicies: () =>
+    api.get<PolicyItem[]>('/policies', { revalidate: 60 }),
 
-  async getPolicyBySlug(slug: string): Promise<PolicyItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/${slug}`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getPolicyBySlug:", err);
-      return null;
-    }
-  },
+  getPolicyBySlug: (slug: string) =>
+    api.get<PolicyItem | null>(`/policies/${slug}`, { revalidate: false }),
 
-  async updatePolicy(id: string, data: any): Promise<PolicyItem | null> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi updatePolicy:", err);
-      return null;
-    }
-  },
+  updatePolicy: (id: string, data: any, token: string) =>
+    api.put<PolicyItem>(`/policies/admin/${id}`, data, { token }),
 
-  async getAllPoliciesAdmin(): Promise<any[]> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/list`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return [];
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getAllPoliciesAdmin:", err);
-      return [];
-    }
-  },
+  getAllPoliciesAdmin: (token: string) =>
+    api.get<any[]>('/policies/admin/list', { token, revalidate: false }),
 
-  async getPolicyVersions(policyId: string): Promise<any[]> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/${policyId}/versions`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return [];
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getPolicyVersions:", err);
-      return [];
-    }
-  },
+  getPolicyVersions: (policyId: string, token: string) =>
+    api.get<any[]>(`/policies/admin/${policyId}/versions`, { token, revalidate: false }),
 
-  async togglePolicyStatus(id: string, isActive: boolean): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/${id}/toggle-status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive }),
-      });
-      return res.ok;
-    } catch (err) {
-      console.error("Lỗi togglePolicyStatus:", err);
-      return false;
-    }
-  },
+  togglePolicyStatus: (id: string, isActive: boolean, token: string) =>
+    api.patch<void>(`/policies/admin/${id}/toggle-status`, { isActive }, { token }).then(() => true),
 
-  async publishNewVersion(id: string, versionName: string, content: string): Promise<any> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/${id}/publish-version`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ versionName, content }),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi publishNewVersion:", err);
-      return null;
-    }
-  },
+  publishNewVersion: (id: string, versionName: string, content: string, token: string) =>
+    api.post<any>(`/policies/admin/${id}/publish-version`, { versionName, content }, { token }),
 
-  async activateVersion(id: string, versionId: string): Promise<boolean> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/${id}/activate-version/${versionId}`, {
-        method: "PATCH",
-      });
-      return res.ok;
-    } catch (err) {
-      console.error("Lỗi activateVersion:", err);
-      return false;
-    }
-  },
+  activateVersion: (id: string, versionId: string, token: string) =>
+    api.patch<void>(`/policies/admin/${id}/activate-version/${versionId}`, {}, { token }).then(() => true),
 
   // ----------------- BUSINESS INFO -----------------
-  async getBusinessInfo(): Promise<any> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/business-info`, {
-        cache: "no-store",
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi getBusinessInfo:", err);
-      return null;
-    }
-  },
+  getBusinessInfo: () =>
+    api.get<any>('/policies/business-info', { revalidate: false }),
 
-  async saveBusinessInfo(payload: any): Promise<any> {
-    try {
-      const res = await fetch(`${BACKEND_URL}/policies/admin/business-info`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || "Lỗi lưu thông tin doanh nghiệp");
-      }
-      return await res.json();
-    } catch (err) {
-      console.error("Lỗi saveBusinessInfo:", err);
-      throw err;
-    }
-  },
+  saveBusinessInfo: (payload: any, token: string) =>
+    api.post<any>('/policies/admin/business-info', payload, { token }),
 };
-

@@ -11,6 +11,7 @@ import { AdminPagination } from "./AdminPagination";
 import { logActivity } from "@/lib/logger";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminTableToolbar } from "./AdminTableToolbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function ArticleManager({ 
   articles,
@@ -26,6 +27,7 @@ export function ArticleManager({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { accessToken } = useAuth();
   
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingArticle, setEditingArticle] = useState<any | null>(null);
@@ -86,7 +88,7 @@ export function ArticleManager({
     if (!deletingArticle) return;
     setIsDeleting(true);
     
-    const success = await contentApi.deleteArticle(deletingArticle.id);
+    const success = await contentApi.deleteArticle(deletingArticle.id, accessToken!);
     
     setIsDeleting(false);
     if (!success) {

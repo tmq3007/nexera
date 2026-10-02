@@ -65,7 +65,7 @@ export function SpecificationsEditor({
 
   const handleAddRow = () => {
     const newRow: SpecRow = {
-      id: `spec-new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `spec-new-${crypto.randomUUID()}`,
       key: "",
       value: "",
     };

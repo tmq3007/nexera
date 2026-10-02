@@ -21,11 +21,12 @@ export async function logActivity({
   user_email,
 }: LogParams) {
   try {
-    let finalAdminId = admin_id;
+    const finalAdminId = admin_id;
     let finalUserEmail = user_email;
 
+    const supabase = createClient();
+
     if (!finalAdminId || !finalUserEmail) {
-      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         if (!finalUserEmail) finalUserEmail = user.email || user.user_metadata?.full_name || "Admin";
@@ -33,6 +34,10 @@ export async function logActivity({
     }
 
     const sev = severity === "ERROR" ? "CRITICAL" : severity;
+
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return;
 
     await analyticsApi.logActivity({
       userId: finalAdminId,
@@ -42,7 +47,7 @@ export async function logActivity({
       entityId: entity_id,
       details,
       severity: sev as "INFO" | "WARNING" | "CRITICAL",
-    });
+    }, token);
   } catch (err) {
     console.error("Logger error:", err);
   }

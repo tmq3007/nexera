@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { rbacApi, Role, AdminAccount } from "@/lib/api/rbac.api";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Loader2, 
   CheckCircle2, 
@@ -21,6 +22,7 @@ export default function AdminAccountsPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const { accessToken } = useAuth();
   
   // Modal State - Add New Admin
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,8 +58,8 @@ export default function AdminAccountsPage() {
       }
 
       const [rolesData, adminData] = await Promise.all([
-        rbacApi.getRoles(),
-        rbacApi.getAdminAccounts(),
+        rbacApi.getRoles(accessToken!),
+        rbacApi.getAdminAccounts(accessToken!),
       ]);
 
       setRoles(rolesData);
@@ -84,7 +86,7 @@ export default function AdminAccountsPage() {
     if (!confirm(confirmMsg)) return;
 
     try {
-      const updated = await rbacApi.toggleAdminActive(admin.id);
+      const updated = await rbacApi.toggleAdminActive(admin.id, undefined, accessToken!);
       if (updated) {
         setAdmins(admins.map(a => a.id === admin.id ? { ...a, is_active: updated.is_active } : a));
       }
@@ -105,7 +107,7 @@ export default function AdminAccountsPage() {
         password: newPassword,
         displayName: newDisplayName,
         roleId: newRoleId,
-      });
+      }, accessToken!);
 
       setNewEmail("");
       setNewPassword("");
@@ -124,7 +126,7 @@ export default function AdminAccountsPage() {
     if (!editAdmin) return;
     setUpdatingRole(true);
     try {
-      await rbacApi.updateAdminRole(editAdmin.id, editRoleId);
+      await rbacApi.updateAdminRole(editAdmin.id, editRoleId, accessToken!);
       await checkPermissionAndFetchData();
       setEditAdmin(null);
     } catch (err: any) {

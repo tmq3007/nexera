@@ -5,6 +5,7 @@ import { Loader2, Save } from "lucide-react";
 import { contentApi } from "@/lib/api/content.api";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { logActivity } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ArticleFormProps {
   initialData?: any;
@@ -14,6 +15,7 @@ interface ArticleFormProps {
 
 export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormProps) {
   const [loading, setLoading] = useState(false);
+  const { accessToken } = useAuth();
 
   const [form, setForm] = useState({
     title: initialData?.title || "",
@@ -57,7 +59,7 @@ export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormPro
     let result;
 
     if (initialData?.id) {
-      result = await contentApi.updateArticle(initialData.id, dataToSave);
+      result = await contentApi.updateArticle(initialData.id, dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "UPDATE_ARTICLE",
@@ -67,7 +69,7 @@ export function ArticleForm({ initialData, onSuccess, onCancel }: ArticleFormPro
         });
       }
     } else {
-      result = await contentApi.createArticle(dataToSave);
+      result = await contentApi.createArticle(dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "CREATE_ARTICLE",

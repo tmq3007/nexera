@@ -5,6 +5,7 @@ import { Loader2, Save } from "lucide-react";
 import { contentApi } from "@/lib/api/content.api";
 import { ImageUpload } from "@/components/ui/ImageUpload";
 import { logActivity } from "@/lib/logger";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ProjectFormProps {
   initialData?: any;
@@ -14,6 +15,7 @@ interface ProjectFormProps {
 
 export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormProps) {
   const [loading, setLoading] = useState(false);
+  const { accessToken } = useAuth();
 
   const [form, setForm] = useState({
     name: initialData?.name || "",
@@ -38,7 +40,7 @@ export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormPro
     let result;
 
     if (initialData?.id) {
-      result = await contentApi.updateProject(initialData.id, dataToSave);
+      result = await contentApi.updateProject(initialData.id, dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "UPDATE_PROJECT",
@@ -48,7 +50,7 @@ export function ProjectForm({ initialData, onSuccess, onCancel }: ProjectFormPro
         });
       }
     } else {
-      result = await contentApi.createProject(dataToSave);
+      result = await contentApi.createProject(dataToSave, accessToken!);
       if (result) {
         logActivity({
           action: "CREATE_PROJECT",

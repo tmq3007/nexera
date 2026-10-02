@@ -21,6 +21,7 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import { playNotificationChime, playSendFeedback } from "@/lib/audio-chime";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { chatApi } from "@/lib/api/chat.api";
 
 interface Conversation {
@@ -116,6 +117,7 @@ export function LiveChatManager({
   initialConversations?: Conversation[];
 }) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
+  const { accessToken } = useAuth();
   const [selectedConvId, setSelectedConvId] = useState<string | null>(
     initialConversations.length > 0 ? initialConversations[0].id : null
   );
@@ -246,7 +248,7 @@ export function LiveChatManager({
 
   const fetchConversations = async () => {
     try {
-      const data = await chatApi.getAdminConversations();
+      const data = await chatApi.getAdminConversations(accessToken!);
       if (Array.isArray(data)) {
         setConversations(data as Conversation[]);
         if (!selectedConvId && data.length > 0) {
@@ -366,7 +368,7 @@ export function LiveChatManager({
     async function loadContext() {
       const cId = activeConversation!.customer_id!;
       try {
-        const details = await chatApi.getCustomerDetails(cId);
+        const details = await chatApi.getCustomerDetails(cId, accessToken!);
         if (details) {
           setCustomerOrdersCount(details.orders?.length || 0);
           setCustomerNotes(details.notes || []);
@@ -607,7 +609,7 @@ export function LiveChatManager({
     const newStatus = activeConversation.status === "RESOLVED" ? "OPEN" : "RESOLVED";
 
     try {
-      await chatApi.updateStatus(activeConversation.id, newStatus);
+      await chatApi.updateStatus(activeConversation.id, newStatus, accessToken!);
       setConversations((prev) =>
         prev.map((c) => (c.id === activeConversation.id ? { ...c, status: newStatus } : c))
       );
@@ -625,7 +627,7 @@ export function LiveChatManager({
     const cId = activeConversation.customer_id;
 
     try {
-      const res = await chatApi.addCustomerNote(cId, newNoteContent.trim(), adminUser.name);
+      const res = await chatApi.addCustomerNote(cId, newNoteContent.trim(), adminUser.name, accessToken!);
       if (res.success && res.note) {
         setCustomerNotes((prev) => [res.note as CustomerNote, ...prev]);
         setNewNoteContent("");
@@ -698,7 +700,7 @@ export function LiveChatManager({
       await chatApi.adminConvert({
         conversationId: activeConversation.id,
         phone: newPhone,
-      });
+      }, accessToken!);
       fetchConversations();
     } catch (e) {
       console.error("Lỗi cập nhật số điện thoại chính:", e);
@@ -712,7 +714,7 @@ export function LiveChatManager({
       await chatApi.adminConvert({
         conversationId: activeConversation.id,
         email: newEmail,
-      });
+      }, accessToken!);
       fetchConversations();
     } catch (e) {
       console.error("Lỗi cập nhật email chính:", e);
@@ -726,7 +728,7 @@ export function LiveChatManager({
       await chatApi.adminConvert({
         conversationId: activeConversation.id,
         fullName: newName.trim(),
-      });
+      }, accessToken!);
       fetchConversations();
     } catch (e) {
       console.error("Lỗi cập nhật tên tài khoản:", e);
