@@ -14,6 +14,17 @@ Write-Host "  Build Local → SCP → Deploy lên nexeragroup.vn" -ForegroundCol
 Write-Host "==========================================================" -ForegroundColor Cyan
 Write-Host ""
 
+# Đảm bảo PATH chứa thư mục Docker Desktop (cả máy cài per-user hoặc per-machine)
+$DockerPaths = @(
+    "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin",
+    "C:\Program Files\Docker\Docker\resources\bin"
+)
+foreach ($dPath in $DockerPaths) {
+    if ((Test-Path $dPath) -and ($env:Path -notlike "*$dPath*")) {
+        $env:Path = "$dPath;$env:Path"
+    }
+}
+
 # ── 0. Load cấu hình ──────────────────────────────────────────
 $DeployEnvPath = Join-Path $ProjectRoot ".deploy.env"
 $EnvPath       = Join-Path $ProjectRoot ".env"

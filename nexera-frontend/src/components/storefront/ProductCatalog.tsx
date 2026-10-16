@@ -236,8 +236,8 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
     return true;
   });
 
-  // Gom các màu/phiên bản cùng Loại thành 1 thẻ + sắp xếp ngầm theo Loại
-  const groups = sortGroups(buildGroups(filteredProducts));
+  // Gom các màu/phiên bản cùng Loại thành 1 thẻ + sắp xếp ngầm theo cụm Danh mục › Hãng › Loại
+  const groups = sortGroups(buildGroups(filteredProducts), categories.map(c => c.id));
 
   // Pagination Logic
   const itemsPerPage = 9;

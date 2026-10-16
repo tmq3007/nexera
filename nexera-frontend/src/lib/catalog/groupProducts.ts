@@ -19,6 +19,8 @@ export interface ProductGroup {
   brandSlug: string | null;
   brandName: string | null;
   typeSlug: string | null;
+  typeName: string | null;
+  categoryId: string | null;
   variants: CatalogVariant[];
 }
 
@@ -116,6 +118,8 @@ export function buildGroups(products: any[]): ProductGroup[] {
           brandSlug: brand?.slug ?? null,
           brandName: brand?.name ?? null,
           typeSlug: type.slug,
+          typeName: type.name,
+          categoryId: p.category_id ?? null,
           variants: [],
         };
         byType.set(type.id, g);
@@ -131,6 +135,8 @@ export function buildGroups(products: any[]): ProductGroup[] {
         brandSlug: brand?.slug ?? null,
         brandName: brand?.name ?? null,
         typeSlug: null,
+        typeName: null,
+        categoryId: p.category_id ?? null,
         variants: [{ product: p, label: p.name, color: null }],
       });
     }
@@ -145,20 +151,30 @@ export function buildGroups(products: any[]): ProductGroup[] {
 }
 
 /**
- * Sắp xếp ngầm (không cần bộ lọc): ưu tiên các Loại (thẻ gom màu) lên trước,
- * xếp theo Hãng → tên Loại; sản phẩm lẻ chưa có Loại xếp sau, theo Hãng → tên.
+ * Sắp xếp ngầm theo cụm (không cần bộ lọc): Danh mục → Thương hiệu → Loại.
+ * - Danh mục theo thứ tự trong `categoryOrder` (thứ tự sidebar)
+ * - Trong cùng hãng: các Loại trước, sản phẩm lẻ chưa có Loại sau
+ * - Thiếu hãng / danh mục thì xếp cuối cụm tương ứng
  */
-export function sortGroups(groups: ProductGroup[]): ProductGroup[] {
+export function sortGroups(groups: ProductGroup[], categoryOrder: string[] = []): ProductGroup[] {
   const cmp = (a?: string | null, b?: string | null) => {
     if (a && !b) return -1;
     if (!a && b) return 1;
     return (a || "").localeCompare(b || "", "vi", { sensitivity: "base" });
   };
+  const catIndex = (id: string | null) => {
+    const i = id ? categoryOrder.indexOf(id) : -1;
+    return i >= 0 ? i : Number.MAX_SAFE_INTEGER;
+  };
   return [...groups].sort((a, b) => {
-    const aTyped = a.typeSlug ? 0 : 1;
-    const bTyped = b.typeSlug ? 0 : 1;
+    const byCat = catIndex(a.categoryId) - catIndex(b.categoryId);
+    if (byCat !== 0) return byCat;
+    const byBrand = cmp(a.brandName, b.brandName);
+    if (byBrand !== 0) return byBrand;
+    const aTyped = a.typeName ? 0 : 1;
+    const bTyped = b.typeName ? 0 : 1;
     if (aTyped !== bTyped) return aTyped - bTyped;
-    return cmp(a.brandName, b.brandName) || cmp(a.title, b.title);
+    return cmp(a.typeName, b.typeName) || cmp(a.title, b.title);
   });
 }
 
