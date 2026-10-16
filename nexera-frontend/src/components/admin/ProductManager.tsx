@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Edit, Trash2, Star, Eye, Package } from "lucide-react";
+import { Fragment, useState, useEffect } from "react";
+import { Plus, Edit, Trash2, Star, Eye, Package, ArrowUp, ArrowDown, ArrowUpDown, Layers } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { productsApi } from "@/lib/api/products.api";
@@ -21,12 +21,18 @@ import { imagePresets } from "@/utils/imageUtils";
 export function ProductManager({
   products,
   categories,
+  brands = [],
+  productTypes = [],
+  groupByType = true,
   totalCount = 0,
   currentPage = 1,
   itemsPerPage = 10,
 }: {
   products: any[];
   categories: any[];
+  brands?: { id: string; name: string }[];
+  productTypes?: { id: string; name: string; brand_id: string }[];
+  groupByType?: boolean;
   totalCount?: number;
   currentPage?: number;
   itemsPerPage?: number;
@@ -270,13 +276,68 @@ export function ProductManager({
     router.push(`${pathname}?${params.toString()}`);
   };
 
-  const filterKeys = ["category_id", "type", "price_min", "price_max", "sort_by"];
+  const currentSortBy = searchParams.get("sort_by") || "";
+
+  const handleSortColumn = (field: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (currentSortBy === `${field}|asc`) {
+      params.set("sort_by", `${field}|desc`);
+    } else {
+      params.set("sort_by", `${field}|asc`);
+    }
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  const filterKeys = ["category_id", "brand_id", "product_type_id", "type", "price_min", "price_max", "sort_by"];
   const activeFiltersCount = filterKeys.filter(k => {
     const val = searchParams.get(k);
     if (!val) return false;
     if (k === "sort_by" && val === "created_at|desc") return false;
     return true;
   }).length;
+
+  // ---- Lọc theo Hãng -> Loại ----
+  const selectedBrandFilter = searchParams.get("brand_id") || "";
+  const selectedTypeFilter = searchParams.get("product_type_id") || "";
+  const brandNameById = new Map(brands.map(b => [b.id, b.name]));
+  const typeOptions = productTypes
+    .filter(t => !selectedBrandFilter || t.brand_id === selectedBrandFilter)
+    .map(t => ({
+      label: selectedBrandFilter ? t.name : `${brandNameById.get(t.brand_id) ?? "?"} › ${t.name}`,
+      value: t.id,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+
+  // Đổi hãng mà loại đang lọc không thuộc hãng mới -> bỏ lọc loại
+  useEffect(() => {
+    if (!selectedBrandFilter || !selectedTypeFilter) return;
+    const t = productTypes.find(pt => pt.id === selectedTypeFilter);
+    if (t && t.brand_id !== selectedBrandFilter) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("product_type_id");
+      router.replace(`${pathname}?${params.toString()}`);
+    }
+  }, [selectedBrandFilter, selectedTypeFilter, productTypes, searchParams, pathname, router]);
+
+  const handleToggleGroup = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (groupByType) params.set("group", "0");
+    else params.delete("group");
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
+  // Khóa nhóm cho từng sản phẩm (Hãng -> Loại)
+  const getBrandName = (p: any) => p.brands?.name || p.brand || "";
+  const getTypeName = (p: any) => p.product_types?.name || "";
+  const getGroupKey = (p: any) => `${p.brand_id || getBrandName(p).toLowerCase()}|${p.product_type_id || ""}`;
+  const groupCounts = localProducts.reduce<Record<string, number>>((acc, p) => {
+    const k = getGroupKey(p);
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  const TABLE_COLS = 10;
 
   return (
     <div className="flex flex-col h-[calc(100vh-6.5rem)] md:h-[calc(100vh-7rem)]">
@@ -302,6 +363,23 @@ export function ProductManager({
           icon: Plus,
           onClick: handleOpenAdd,
         }}
+        extraActions={
+          <button
+            type="button"
+            id="toggle-group-by-type"
+            onClick={handleToggleGroup}
+            aria-pressed={groupByType}
+            title={groupByType
+              ? "Đang gom: sản phẩm cùng hãng & cùng loại đứng liền nhau. Bấm để xem danh sách phẳng."
+              : "Đang xem danh sách phẳng. Bấm để gom theo Hãng › Loại."}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${groupByType
+              ? "bg-emerald-50/70 border-emerald-300 text-emerald-900"
+              : "bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300"}`}
+          >
+            <Layers className="w-3.5 h-3.5 text-gray-500" />
+            <span className="hidden sm:inline">Gom nhóm</span>
+          </button>
+        }
       />
 
       {/* Filters Bar (collapsible) */}
@@ -315,6 +393,18 @@ export function ProductManager({
                 type: "select",
                 options: categories.map(c => ({ label: c.name, value: c.id }))
               },
+              ...(brands.length > 0 ? [{
+                key: "brand_id",
+                label: "Thương hiệu",
+                type: "select" as const,
+                options: [...brands.map(b => ({ label: b.name, value: b.id })), { label: "(Chưa có hãng)", value: "none" }],
+              }] : []),
+              ...(typeOptions.length > 0 ? [{
+                key: "product_type_id",
+                label: "Loại",
+                type: "select" as const,
+                options: [...typeOptions, { label: "(Chưa có loại)", value: "none" }],
+              }] : []),
               {
                 key: "price",
                 label: "Khoảng giá",
@@ -326,10 +416,13 @@ export function ProductManager({
                 type: "sort",
                 options: [
                   { label: "Mới nhất", value: "created_at|desc" },
+                  { label: "Cũ nhất", value: "created_at|asc" },
                   { label: "Giá tăng dần", value: "price|asc" },
                   { label: "Giá giảm dần", value: "price|desc" },
                   { label: "Tồn kho thấp nhất", value: "stock|asc" },
+                  { label: "Tồn kho cao nhất", value: "stock|desc" },
                   { label: "Tên A→Z", value: "name|asc" },
+                  { label: "Tên Z→A", value: "name|desc" },
                 ]
               },
             ]}
@@ -398,12 +491,58 @@ export function ProductManager({
                   />
                 </th>
                 <th className="text-center px-2 py-2.5 w-10" title="Ghim sản phẩm Bán Chạy">Hot</th>
-                <th className="px-3 py-2.5">Sản phẩm</th>
+                <th 
+                  className="px-3 py-2.5 cursor-pointer hover:text-gray-800 transition-colors select-none group"
+                  onClick={() => handleSortColumn("name")}
+                  title="Nhấp để sắp xếp theo tên sản phẩm"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Sản phẩm</span>
+                    {currentSortBy === "name|asc" ? (
+                      <ArrowUp className="w-3 h-3 text-[var(--primary)]" />
+                    ) : currentSortBy === "name|desc" ? (
+                      <ArrowDown className="w-3 h-3 text-[var(--primary)]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-70 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-3 py-2.5">Danh mục</th>
                 <th className="px-3 py-2.5">Thương hiệu</th>
+                <th className="px-3 py-2.5">Loại</th>
 
-                <th className="px-3 py-2.5 text-right">Báo giá (VNĐ)</th>
-                <th className="px-3 py-2.5 text-right">Tồn kho</th>
+                <th 
+                  className="px-3 py-2.5 text-right cursor-pointer hover:text-gray-800 transition-colors select-none group"
+                  onClick={() => handleSortColumn("price")}
+                  title="Nhấp để sắp xếp theo giá"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Báo giá (VNĐ)</span>
+                    {currentSortBy === "price|asc" ? (
+                      <ArrowUp className="w-3 h-3 text-[var(--primary)]" />
+                    ) : currentSortBy === "price|desc" ? (
+                      <ArrowDown className="w-3 h-3 text-[var(--primary)]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-70 transition-opacity" />
+                    )}
+                  </div>
+                </th>
+                <th 
+                  className="px-3 py-2.5 text-right cursor-pointer hover:text-gray-800 transition-colors select-none group"
+                  onClick={() => handleSortColumn("stock")}
+                  title="Nhấp để sắp xếp theo số lượng tồn kho"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Tồn kho</span>
+                    {currentSortBy === "stock|asc" ? (
+                      <ArrowUp className="w-3 h-3 text-[var(--primary)]" />
+                    ) : currentSortBy === "stock|desc" ? (
+                      <ArrowDown className="w-3 h-3 text-[var(--primary)]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-70 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-3 py-2.5 text-center">Trạng thái</th>
                 <th className="px-3 py-2.5 text-center w-24">Thao tác</th>
               </tr>
@@ -411,7 +550,7 @@ export function ProductManager({
             <tbody className="divide-y divide-gray-100">
               {(!localProducts || localProducts.length === 0) && (
                 <tr>
-                  <td colSpan={9} className="text-center py-16 text-gray-400 text-sm">
+                  <td colSpan={TABLE_COLS} className="text-center py-16 text-gray-400 text-sm">
                     <Package className="w-10 h-10 text-gray-300 mx-auto mb-2" />
                     Chưa có sản phẩm nào phù hợp bộ lọc.{" "}
                     <button onClick={handleOpenAdd} className="text-[var(--primary)] hover:underline font-semibold inline-block mt-2">
@@ -420,15 +559,40 @@ export function ProductManager({
                   </td>
                 </tr>
               )}
-              {localProducts?.map((product) => {
+              {localProducts?.map((product, index) => {
                 const isCompact = density === "compact";
                 const cellPadding = isCompact ? "px-3 py-2" : "px-3 py-3";
 
                 // Tính trạng thái tồn kho thông minh
                 const stockQty = Number(product.stock || 0);
 
+                // Dòng tiêu đề nhóm khi bắt đầu 1 nhóm Hãng -> Loại mới
+                const groupKey = getGroupKey(product);
+                const showGroupHeader =
+                  groupByType && (index === 0 || getGroupKey(localProducts[index - 1]) !== groupKey);
+                const brandName = getBrandName(product);
+                const typeName = getTypeName(product);
+
                 return (
-                  <tr key={product.id} className="hover:bg-slate-50/70 transition-colors group">
+                  <Fragment key={product.id}>
+                  {showGroupHeader && (
+                    <tr className="bg-slate-50/90">
+                      <td colSpan={TABLE_COLS} className="px-3 py-1.5">
+                        <div className="flex items-center gap-2 text-xs">
+                          <Layers className="w-3.5 h-3.5 text-[var(--primary)]" />
+                          <span className="font-bold text-gray-800">{brandName || "Chưa có thương hiệu"}</span>
+                          <span className="text-gray-300">›</span>
+                          <span className={typeName ? "font-semibold text-gray-700" : "italic text-gray-400"}>
+                            {typeName || "Chưa phân loại"}
+                          </span>
+                          <span className="ml-1 px-1.5 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] font-semibold text-gray-500">
+                            {groupCounts[groupKey]} SP
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="hover:bg-slate-50/70 transition-colors group">
                     <td className={`text-center ${cellPadding} w-10`}>
                       <input
                         type="checkbox"
@@ -473,7 +637,16 @@ export function ProductManager({
                       {(product.categories as { name: string } | null)?.name ?? "—"}
                     </td>
                     <td className={`${cellPadding} text-xs text-gray-700 font-semibold`}>
-                      {product.brand || "—"}
+                      {brandName || "—"}
+                    </td>
+                    <td className={`${cellPadding} text-xs`}>
+                      {typeName ? (
+                        <span className="inline-block px-2 py-0.5 rounded-md bg-[var(--primary)]/10 text-[var(--primary)] font-semibold whitespace-nowrap">
+                          {typeName}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300">—</span>
+                      )}
                     </td>
 
                     <td className={`${cellPadding} text-right`}>
@@ -537,6 +710,7 @@ export function ProductManager({
                       </div>
                     </td>
                   </tr>
+                  </Fragment>
                 );
               })}
             </tbody>

@@ -3,13 +3,15 @@ import type { PaginatedResponse } from '@/types/api';
 import type { 
   ProductCategory, 
   ProductItem, 
+  ProductBrand,
+  ProductTypeItem,
   GetProductsQuery,
   CreateProductDto,
   UpdateProductDto
 } from '@/types/models/product';
 
 // Re-export types for backward compatibility
-export type { ProductCategory, ProductItem, GetProductsQuery, CreateProductDto, UpdateProductDto } from '@/types/models/product';
+export type { ProductCategory, ProductItem, ProductBrand, ProductTypeItem, GetProductsQuery, CreateProductDto, UpdateProductDto } from '@/types/models/product';
 export type { PaginatedResponse as GetProductsResponse } from '@/types/api';
 
 export const productsApi = {
@@ -98,4 +100,37 @@ export const productsApi = {
    */
   deleteCategory: (id: string, token: string) =>
     api.delete<void>(`/products/admin/categories/${id}`, { token }).then(() => true),
+
+  // ===================== THƯƠNG HIỆU =====================
+
+  /** Danh sách thương hiệu (kèm product_count) */
+  getBrands: () =>
+    api.get<ProductBrand[]>('/products/brands', { revalidate: false }),
+
+  createBrand: (data: { name: string }, token: string) =>
+    api.post<ProductBrand>('/products/admin/brands', data, { token }),
+
+  updateBrand: (id: string, data: { name?: string; sort_order?: number }, token: string) =>
+    api.put<ProductBrand>(`/products/admin/brands/${id}`, data, { token }),
+
+  deleteBrand: (id: string, token: string) =>
+    api.delete<void>(`/products/admin/brands/${id}`, { token }).then(() => true),
+
+  // ===================== LOẠI (theo thương hiệu) =====================
+
+  /** Danh sách loại; truyền brandId để chỉ lấy loại của 1 hãng */
+  getProductTypes: (brandId?: string) =>
+    api.get<ProductTypeItem[]>('/products/types', {
+      params: { brand_id: brandId },
+      revalidate: false,
+    }),
+
+  createProductType: (data: { brand_id: string; name: string }, token: string) =>
+    api.post<ProductTypeItem>('/products/admin/types', data, { token }),
+
+  updateProductType: (id: string, data: { name?: string; sort_order?: number }, token: string) =>
+    api.put<ProductTypeItem>(`/products/admin/types/${id}`, data, { token }),
+
+  deleteProductType: (id: string, token: string) =>
+    api.delete<void>(`/products/admin/types/${id}`, { token }).then(() => true),
 };

@@ -17,10 +17,15 @@ export class ArticlesService {
     let dbQuery = supabase
       .from('articles')
       .select('*', { count: 'exact' })
-      .order('published_at', { ascending: false });
-
     if (query.type && query.type !== 'ALL') {
       dbQuery = dbQuery.eq('type', query.type);
+    }
+
+    if (query.date && query.date.trim()) {
+      const cleanDate = query.date.trim();
+      const startOfDay = `${cleanDate}T00:00:00.000Z`;
+      const endOfDay = `${cleanDate}T23:59:59.999Z`;
+      dbQuery = dbQuery.gte('published_at', startOfDay).lte('published_at', endOfDay);
     }
 
     if (query.search) {
@@ -28,6 +33,26 @@ export class ArticlesService {
       dbQuery = dbQuery.or(`title.ilike.%${q}%,slug.ilike.%${q}%`);
     }
 
+    const rawSort = String(query.sort_by || query.sort || '').trim();
+    let sortField = 'published_at';
+    let ascending = false;
+
+    if (rawSort.includes('|')) {
+      const [field, dir] = rawSort.split('|');
+      const validFields = ['published_at', 'title', 'created_at'];
+      if (validFields.includes(field.trim())) {
+        sortField = field.trim();
+      }
+      ascending = dir?.trim().toLowerCase() === 'asc';
+    } else if (rawSort === 'oldest') {
+      sortField = 'published_at';
+      ascending = true;
+    } else if (rawSort === 'newest') {
+      sortField = 'published_at';
+      ascending = false;
+    }
+
+    dbQuery = dbQuery.order(sortField, { ascending, nullsFirst: false });
     dbQuery = dbQuery.range(offset, offset + limit - 1);
 
     const { data, count, error } = await dbQuery;

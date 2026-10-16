@@ -2,12 +2,38 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { ProductCatalog } from "@/components/storefront/ProductCatalog";
 import { Suspense } from "react";
 import { productsApi } from "@/lib/api/products.api";
+import type { ProductItem } from "@/types/models/product";
+
+const PAGE_SIZE = 100; // Backend giới hạn tối đa 100 sp / lần
+const MAX_PAGES = 10;
+
+/** Lấy toàn bộ sản phẩm ĐANG BÁN, đã sắp theo Hãng › Loại */
+async function fetchAllActiveProducts(): Promise<ProductItem[]> {
+  const query = { limit: PAGE_SIZE, is_active: true, group_by_type: true };
+  try {
+    const first = await productsApi.getProducts({ ...query, page: 1 });
+    const all = [...(first.data || [])];
+    const totalPages = Math.min(first.totalPages || 1, MAX_PAGES);
+    if (totalPages > 1) {
+      const rest = await Promise.all(
+        Array.from({ length: totalPages - 1 }, (_, i) =>
+          productsApi.getProducts({ ...query, page: i + 2 }).catch(() => null),
+        ),
+      );
+      rest.forEach((res) => res?.data && all.push(...res.data));
+    }
+    return all;
+  } catch {
+    return [];
+  }
+}
 
 export default async function ProductsPage() {
-  const [categories, productsRes] = await Promise.all([
+  const [categories, products] = await Promise.all([
     productsApi.getCategories(),
-    productsApi.getProducts({ limit: 100 }),
+    fetchAllActiveProducts(),
   ]);
+  const productsRes = { data: products };
 
   return (
     <>

@@ -14,6 +14,8 @@ export interface ProjectItem {
 export interface GetProjectsQuery {
   category?: string;
   search?: string;
+  sort?: string;
+  sort_by?: string;
   page?: number;
   limit?: number;
 }
@@ -34,6 +36,9 @@ export interface ArticleItem {
 export interface GetArticlesQuery {
   type?: string;
   search?: string;
+  date?: string;
+  sort?: string;
+  sort_by?: string;
   page?: number;
   limit?: number;
 }

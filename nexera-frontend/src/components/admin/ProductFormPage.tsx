@@ -11,6 +11,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { logActivity } from "@/lib/logger";
 import { formatErrorMessage } from "@/lib/messages";
+import { ProductClassificationFields } from "./ProductClassificationFields";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
@@ -32,6 +33,8 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
     name: initialData?.name || "",
     slug: initialData?.slug || "",
     category_id: initialData?.category_id || "",
+    brand_id: initialData?.brand_id || "",
+    product_type_id: initialData?.product_type_id || "",
     type: initialData?.type || "EQUIPMENT",
     price: initialData?.price || "",
     import_price: initialData?.import_price || "",
@@ -96,6 +99,8 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
       name: form.name,
       slug: form.slug,
       category_id: form.category_id || null,
+      brand_id: form.brand_id || null,
+      product_type_id: form.product_type_id || null,
       type: form.type,
       price,
       import_price: importPrice,
@@ -119,6 +124,7 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
 
     let result;
 
+    try {
     if (mode === "edit" && initialData?.id) {
       result = await productsApi.updateProduct(initialData.id, dataToSave, accessToken!);
       if (result) {
@@ -139,6 +145,11 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
           details: { product_name: form.name },
         });
       }
+    }
+    } catch (err) {
+      setLoading(false);
+      toast.error(formatErrorMessage(err, "Lỗi khi lưu sản phẩm"));
+      return;
     }
 
     setLoading(false);
@@ -224,29 +235,51 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Slug (URL)</label>
-                <input
-                  type="text"
-                  value={form.slug}
-                  onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-4">
-
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Slug (URL) <span className="text-gray-400 font-normal">· tự sinh từ tên</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={form.slug}
+                    onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all"
+                  />
+                </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">SKU</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Mã SKU</label>
                   <input
                     type="text"
                     value={form.sku}
                     onChange={(e) => setForm((prev) => ({ ...prev, sku: e.target.value }))}
-                    placeholder="VD: SP-NL-550W"
+                    placeholder="VD: VS-BLUS-TX"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all"
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Card: Phân loại (Danh mục | Thương hiệu -> Loại) */}
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h2 className="text-sm font-semibold text-gray-700">Phân loại</h2>
+                <span className="text-xs text-gray-400 hidden sm:inline">Chọn hãng trước, sau đó chọn loại của hãng</span>
+              </div>
+              <ProductClassificationFields
+                categories={categories}
+                legacyBrandName={form.brand}
+                value={{ category_id: form.category_id, brand_id: form.brand_id, product_type_id: form.product_type_id }}
+                onChange={(patch) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    ...patch,
+                    // Bỏ chọn hãng -> xóa luôn tên hãng dạng text cũ
+                    ...(patch.brand_id === "" ? { brand: "" } : {}),
+                  }))
+                }
+                layout="grid"
+              />
             </div>
 
             {/* Card: Giá & Kho */}
@@ -450,23 +483,6 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
               </div>
             </div>
 
-            {/* Card: Danh mục */}
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
-              <h2 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-3">Phân loại</h2>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Danh mục</label>
-                <select value={form.category_id}
-                  onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all text-sm"
-                >
-                  <option value="">— Chọn danh mục —</option>
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Card: Ảnh */}
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
               <h2 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-3">Hình ảnh</h2>
@@ -492,8 +508,7 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 space-y-4">
               <h2 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-3">Thông tin thương mại</h2>
               {[
-                { key: "brand", label: "Thương hiệu", placeholder: "VD: LG, Panasonic" },
-                { key: "origin", label: "Xuất xứ", placeholder: "VD: Hàn Quốc" },
+                { key: "origin", label: "Xuất xứ", placeholder: "VD: Việt Nam" },
                 { key: "warranty_info", label: "Bảo hành", placeholder: "VD: 12 tháng" },
                 { key: "supplier", label: "Nhà cung cấp", placeholder: "VD: Công ty ABC" },
               ].map(({ key, label, placeholder }) => (

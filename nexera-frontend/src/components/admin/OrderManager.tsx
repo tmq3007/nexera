@@ -20,6 +20,9 @@ import {
   Edit2,
   Send,
   AlertTriangle,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import {
@@ -185,7 +188,20 @@ export function OrderManager({
 
   const [density, setDensity] = useState<"compact" | "normal">("compact");
   const [showFilters, setShowFilters] = useState(false);
+  const currentSortBy = searchParams.get("sort_by") || "";
   const hasActiveDateFilter = Boolean(searchParams.get("date"));
+  const hasActiveSortFilter = Boolean(currentSortBy && currentSortBy !== "created_at|desc");
+
+  const handleSortColumn = (field: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (currentSortBy === `${field}|asc`) {
+      params.set("sort_by", `${field}|desc`);
+    } else {
+      params.set("sort_by", `${field}|asc`);
+    }
+    params.delete("page");
+    router.push(`${pathname}?${params.toString()}`);
+  };
 
   // Xem chi tiết
   const handleViewDetail = async (order: OrderRecord) => {
@@ -411,7 +427,7 @@ export function OrderManager({
         showFilterToggle={true}
         isFiltersOpen={showFilters}
         onToggleFilters={() => setShowFilters((p) => !p)}
-        activeFiltersCount={hasActiveDateFilter ? 1 : 0}
+        activeFiltersCount={(hasActiveDateFilter ? 1 : 0) + (hasActiveSortFilter ? 1 : 0)}
         density={density}
         onDensityChange={setDensity}
       />
@@ -419,7 +435,20 @@ export function OrderManager({
       {showFilters && (
         <div className="shrink-0 animate-in fade-in duration-200">
           <AdminFilterBar
-            filters={[{ key: "date", label: "Ngày đặt hàng", type: "date" }]}
+            filters={[
+              { key: "date", label: "Ngày đặt hàng", type: "date" },
+              {
+                key: "sort_by",
+                label: "Sắp xếp",
+                type: "sort",
+                options: [
+                  { label: "Mới nhất", value: "created_at|desc" },
+                  { label: "Cũ nhất", value: "created_at|asc" },
+                  { label: "Tổng tiền cao nhất", value: "total_amount|desc" },
+                  { label: "Tổng tiền thấp nhất", value: "total_amount|asc" },
+                ],
+              },
+            ]}
           />
         </div>
       )}
@@ -446,9 +475,39 @@ export function OrderManager({
                     className="w-3.5 h-3.5 rounded border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)] cursor-pointer"
                   />
                 </th>
-                <th className="px-3 py-2.5">Mã đơn</th>
+                <th 
+                  className="px-3 py-2.5 cursor-pointer hover:text-gray-800 transition-colors select-none group"
+                  onClick={() => handleSortColumn("order_code")}
+                  title="Nhấp để sắp xếp theo mã đơn"
+                >
+                  <div className="flex items-center gap-1">
+                    <span>Mã đơn</span>
+                    {currentSortBy === "order_code|asc" ? (
+                      <ArrowUp className="w-3 h-3 text-[var(--primary)]" />
+                    ) : currentSortBy === "order_code|desc" ? (
+                      <ArrowDown className="w-3 h-3 text-[var(--primary)]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-70 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-3 py-2.5">Khách hàng & Nhận hàng</th>
-                <th className="px-3 py-2.5 text-right">Tổng tiền</th>
+                <th 
+                  className="px-3 py-2.5 text-right cursor-pointer hover:text-gray-800 transition-colors select-none group"
+                  onClick={() => handleSortColumn("total_amount")}
+                  title="Nhấp để sắp xếp theo tổng tiền"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Tổng tiền</span>
+                    {currentSortBy === "total_amount|asc" ? (
+                      <ArrowUp className="w-3 h-3 text-[var(--primary)]" />
+                    ) : currentSortBy === "total_amount|desc" ? (
+                      <ArrowDown className="w-3 h-3 text-[var(--primary)]" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-70 transition-opacity" />
+                    )}
+                  </div>
+                </th>
                 <th className="px-3 py-2.5 text-center">Dòng tiền</th>
                 <th className="px-3 py-2.5 text-center">Vận hành (3PL)</th>
                 <th className="px-3 py-2.5">Bưu cục & Vận đơn</th>

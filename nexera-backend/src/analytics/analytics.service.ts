@@ -136,12 +136,20 @@ export class AnalyticsService {
       );
     }
 
-    if (query.entityType && query.entityType !== 'all') {
-      dbQuery = dbQuery.eq('entity_type', query.entityType);
+    const entityType = query.entityType || query.entity_type;
+    if (entityType && entityType !== 'all') {
+      dbQuery = dbQuery.eq('entity_type', entityType);
     }
 
     if (query.severity && query.severity !== 'all') {
       dbQuery = dbQuery.eq('severity', query.severity);
+    }
+
+    if (query.date && query.date.trim()) {
+      const cleanDate = query.date.trim();
+      const startOfDay = `${cleanDate}T00:00:00.000Z`;
+      const endOfDay = `${cleanDate}T23:59:59.999Z`;
+      dbQuery = dbQuery.gte('created_at', startOfDay).lte('created_at', endOfDay);
     }
 
     const { data, count, error } = await dbQuery;

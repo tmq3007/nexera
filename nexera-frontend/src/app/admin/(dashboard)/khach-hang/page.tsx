@@ -26,8 +26,8 @@ export default async function AdminCustomersPage({
 
   return (
     <CustomerManager 
-      customers={(response.data as any) || []} 
-      totalCount={response.total || 0}
+      customers={(response?.data as any) || (response as any)?.customers || []} 
+      totalCount={response?.total ?? (response as any)?.totalCount ?? 0}
       currentPage={page}
       itemsPerPage={limit}
     />

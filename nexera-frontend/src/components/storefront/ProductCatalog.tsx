@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, Tags, Zap, BadgeDollarSign, ChevronRight, ChevronLeft, ShoppingCart, Eye, Scale, Plus, Check, X, ArrowLeftRight, Minus, ShoppingBag, Star, MessageSquare, Calendar } from "lucide-react";
+import { Search, Filter, Tags, BadgeDollarSign, ChevronRight, ChevronLeft, ShoppingCart, Scale, Plus, X, ArrowLeftRight, Minus, ShoppingBag } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import { useCartStore } from "@/store/cartStore";
 import { createClient } from "@/utils/supabase/client";
+import { buildBrandTree, buildGroups, getBrandInfo, getTypeInfo, type ProductGroup } from "@/lib/catalog/groupProducts";
+import { formatCurrency, getProductPriceInfo } from "@/lib/catalog/price";
+import { ProductGroupCard } from "./ProductGroupCard";
+
+// Giữ export cũ để các nơi khác import từ ProductCatalog không bị lỗi
+export { formatCurrency, getProductPriceInfo };
 
 
 function stripHtml(html: string | null | undefined): string {
@@ -20,30 +26,6 @@ function stripHtml(html: string | null | undefined): string {
     .replace(/&#39;/gi, "'")
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 2
-  }).format(amount);
-}
-
-export function getProductPriceInfo(product: any) {
-  const originalPrice = Number(product?.price || 0);
-  const discountRate = Number(product?.discount_rate || 0);
-  const discountedPrice = discountRate > 0
-    ? originalPrice * (1 - discountRate / 100)
-    : originalPrice;
-  const hasDiscount = discountRate > 0 && discountedPrice < originalPrice;
-
-  return {
-    originalPrice,
-    discountRate,
-    discountedPrice,
-    hasDiscount,
-  };
 }
 
 export function ProductCatalog({ initialProducts, categories }: { initialProducts: any[], categories: any[] }) {
@@ -113,7 +95,12 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
   const urlPrice = searchParams.get("price");
   const urlType = searchParams.get("type");
   const urlQuery = searchParams.get("q");
+  const urlBrand = searchParams.get("brand");
+  const urlLine = searchParams.get("line");
 
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(urlBrand);
+  const [selectedLine, setSelectedLine] = useState<string | null>(urlLine);
+  const [showMoreFilters, setShowMoreFilters] = useState<boolean>(!!urlPrice && urlPrice !== "all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(urlCategory);
   const [selectedPrice, setSelectedPrice] = useState<string | null>(urlPrice);
   const [selectedType, setSelectedType] = useState<string | null>(urlType);
@@ -134,6 +121,8 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
     setSelectedPrice(searchParams.get("price"));
     setSelectedType(searchParams.get("type"));
     setSearchQuery(searchParams.get("q") || "");
+    setSelectedBrand(searchParams.get("brand"));
+    setSelectedLine(searchParams.get("line"));
   }, [searchParams]);
 
   const updateUrl = (params: Record<string, string | null>) => {
@@ -186,38 +175,80 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
     toast.info("Đã xoá danh sách so sánh");
   };
 
-  // Filter Logic
-  const filteredProducts = initialProducts.filter((p) => {
-    let matches = true;
-    if (selectedCategory && selectedCategory !== "all") {
-      const cat = categories.find(c => c.slug === selectedCategory);
-      if (cat && p.category_id !== cat.id) matches = false;
-    }
-    if (selectedType && selectedType !== "all") {
-      if (p.type !== selectedType) matches = false;
-    }
-    if (selectedPrice && selectedPrice !== "all") {
-      if (selectedPrice === "under-10" && p.price >= 10000000) matches = false;
-      else if (selectedPrice === "10-50" && (p.price < 10000000 || p.price > 50000000)) matches = false;
-      else if (selectedPrice === "over-50" && p.price <= 50000000) matches = false;
-    }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!p.name.toLowerCase().includes(q) && !p.description.toLowerCase().includes(q)) matches = false;
-    }
-    return matches;
+  // ===== Cụm: Danh mục › Thương hiệu › Loại =====
+  const categoryObj = selectedCategory && selectedCategory !== "all"
+    ? categories.find(c => c.slug === selectedCategory) || null
+    : null;
+  const productsInCategory = categoryObj
+    ? initialProducts.filter(p => p.category_id === categoryObj.id)
+    : initialProducts;
+  const brandTree = buildBrandTree(productsInCategory);
+  const activeBrand = selectedBrand ? brandTree.find(b => b.slug === selectedBrand) || null : null;
+  const activeLine = activeBrand && selectedLine ? activeBrand.types.find(t => t.slug === selectedLine) || null : null;
+
+  const categoryCounts = new Map<string, number>();
+  initialProducts.forEach(p => {
+    if (p.category_id) categoryCounts.set(p.category_id, (categoryCounts.get(p.category_id) || 0) + 1);
   });
+
+  // Cây Hãng › Loại cho từng danh mục (sidebar xổ xuống)
+  const treeByCategory = new Map(
+    categories.map(c => [c.id, buildBrandTree(initialProducts.filter(p => p.category_id === c.id))] as const)
+  );
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleExpand = (key: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  // Tự mở nhánh đang được chọn
+  const selectedCategoryId = categoryObj?.id;
+  useEffect(() => {
+    if (!selectedCategoryId) return;
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.add(`c:${selectedCategoryId}`);
+      if (selectedBrand) next.add(`b:${selectedCategoryId}:${selectedBrand}`);
+      return next;
+    });
+  }, [selectedCategoryId, selectedBrand]);
+
+  // Filter Logic
+  const filteredProducts = productsInCategory.filter((p) => {
+    if (selectedBrand && getBrandInfo(p)?.slug !== selectedBrand) return false;
+    if (selectedLine && getTypeInfo(p)?.slug !== selectedLine) return false;
+    if (selectedType && selectedType !== "all" && p.type !== selectedType) return false;
+    if (selectedPrice && selectedPrice !== "all") {
+      const price = Number(p.price) || 0;
+      if (selectedPrice === "under-10" && price >= 10000000) return false;
+      if (selectedPrice === "10-50" && (price < 10000000 || price > 50000000)) return false;
+      if (selectedPrice === "over-50" && price <= 50000000) return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const haystack = [p.name, stripHtml(p.description), getBrandInfo(p)?.name, getTypeInfo(p)?.name, p.sku]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Gom các màu/phiên bản cùng Loại thành 1 thẻ
+  const groups = buildGroups(filteredProducts);
 
   // Pagination Logic
   const itemsPerPage = 9;
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const totalPages = Math.ceil(groups.length / itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, selectedType, selectedPrice, searchQuery]);
+  }, [selectedCategory, selectedBrand, selectedLine, selectedType, selectedPrice, searchQuery]);
 
-  const currentProducts = filteredProducts.slice(
+  const currentGroups = groups.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -225,10 +256,34 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
   // Count active filters for badge
   const activeFilterCount = [
     selectedCategory && selectedCategory !== "all",
+    selectedBrand,
+    selectedLine,
     selectedType && selectedType !== "all",
     selectedPrice && selectedPrice !== "all",
     searchQuery,
   ].filter(Boolean).length;
+  const priceActive = !!selectedPrice && selectedPrice !== "all";
+
+  // Breadcrumb: Tất cả › Danh mục › Hãng › Loại
+  const breadcrumb: { label: string; onClick?: () => void }[] = [
+    { label: "Tất cả sản phẩm", onClick: () => updateUrl({ category: null, brand: null, line: null }) },
+  ];
+  if (categoryObj) breadcrumb.push({ label: categoryObj.name, onClick: () => updateUrl({ brand: null, line: null }) });
+  if (activeBrand) breadcrumb.push({ label: activeBrand.name, onClick: () => updateUrl({ line: null }) });
+  if (activeLine) breadcrumb.push({ label: activeLine.name });
+
+  const renderGroupCard = (group: ProductGroup) => (
+    <ProductGroupCard
+      key={group.key}
+      group={group}
+      isAdmin={isAdmin}
+      isCompared={(id) => compareList.some(p => p.id === id)}
+      onQuickView={(p) => { setActiveModalImage(null); setQuickViewProduct(p); }}
+      onToggleCompare={toggleCompare}
+      onAddToCart={handleAddToCart}
+      onBuyNow={handleBuyNow}
+    />
+  );
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
@@ -274,238 +329,206 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
           </form>
         </div>
 
-        {/* Categories */}
+        {/* Danh mục › Thương hiệu › Loại (cây xổ xuống) */}
         <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-colors">
           <h3 className="font-semibold text-[#13426E] mb-4 flex items-center gap-2">
             <Tags className="w-4 h-4 text-[#80BF49]" />
             Danh mục
           </h3>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             <button
-              onClick={() => updateUrl({ category: "all" })}
-              className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${!selectedCategory || selectedCategory === "all"
-                  ? "bg-[#13426E] text-white font-medium shadow-sm"
-                  : "bg-transparent text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
+              type="button"
+              onClick={() => updateUrl({ category: null, brand: null, line: null })}
+              className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between ${!categoryObj
+                ? "bg-[#13426E] text-white font-medium shadow-sm"
+                : "bg-transparent text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
                 }`}
             >
-              Tất cả danh mục
+              <span>Tất cả sản phẩm</span>
+              <span className="text-xs opacity-70">{initialProducts.length}</span>
             </button>
-            {categories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => updateUrl({ category: cat.slug })}
-                className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center justify-between group ${selectedCategory === cat.slug
-                    ? "bg-[#13426E] text-white font-medium shadow-sm"
-                    : "bg-transparent text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
-                  }`}
-              >
-                {cat.name}
-                <ChevronRight className={`w-4 h-4 transition-transform ${selectedCategory === cat.slug ? "translate-x-1" : "opacity-0 group-hover:opacity-100 group-hover:translate-x-1"}`} />
-              </button>
-            ))}
-          </div>
-        </div>
 
-
-
-        {/* Price Range */}
-        <div className="bg-white p-5 md:p-6 rounded-xl border border-gray-100 shadow-sm transition-colors">
-          <h3 className="font-semibold text-[#13426E] mb-4 flex items-center gap-2">
-            <BadgeDollarSign className="w-4 h-4 text-[#80BF49]" />
-            Khoảng giá
-          </h3>
-          <div className="flex flex-col gap-1.5">
-            {[
-              { id: "all", label: "Tất cả các mức giá" },
-              { id: "under-10", label: "Dưới 10 triệu VNĐ" },
-              { id: "10-50", label: "Từ 10 - 50 triệu VNĐ" },
-              { id: "over-50", label: "Trên 50 triệu VNĐ" },
-            ].map((price) => {
-              const isActive = (selectedPrice || "all") === price.id;
+            {categories.map((cat) => {
+              const catKey = `c:${cat.id}`;
+              const brands = treeByCategory.get(cat.id) || [];
+              const catOpen = expanded.has(catKey);
+              const catSelected = categoryObj?.id === cat.id;
+              const catExact = catSelected && !selectedBrand;
               return (
-                <button
-                  key={price.id}
-                  onClick={() => updateUrl({ price: price.id })}
-                  className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${isActive
-                      ? "bg-[#13426E]/10 text-[#13426E] font-medium border border-[#13426E]/20"
-                      : "bg-transparent text-gray-600 hover:bg-gray-50 border border-transparent"
-                    }`}
-                >
-                  {price.label}
-                </button>
+                <div key={cat.id}>
+                  <div
+                    className={`flex items-center rounded-lg text-sm transition-colors ${catExact
+                      ? "bg-[#13426E] text-white font-medium shadow-sm"
+                      : catSelected
+                        ? "bg-[#13426E]/5 text-[#13426E] font-semibold"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
+                      }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => brands.length > 0 && toggleExpand(catKey)}
+                      aria-label={catOpen ? `Thu gọn ${cat.name}` : `Mở rộng ${cat.name}`}
+                      aria-expanded={catOpen}
+                      className={`w-8 h-10 flex items-center justify-center shrink-0 ${brands.length > 0 ? "" : "invisible"}`}
+                    >
+                      <ChevronRight className={`w-4 h-4 transition-transform duration-200 ${catOpen ? "rotate-90" : ""}`} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateUrl({ category: cat.slug, brand: null, line: null })}
+                      className="flex-1 min-w-0 flex items-center justify-between gap-2 py-2.5 pr-4 text-left"
+                    >
+                      <span className="truncate">{cat.name}</span>
+                      <span className="text-xs opacity-70 shrink-0">{categoryCounts.get(cat.id) || 0}</span>
+                    </button>
+                  </div>
+
+                  {catOpen && brands.length > 0 && (
+                    <div className="ml-4 pl-2 border-l-2 border-[#80BF49]/30 flex flex-col gap-0.5 my-1">
+                      {brands.map((b) => {
+                        const brandKey = `b:${cat.id}:${b.slug}`;
+                        const brandOpen = expanded.has(brandKey);
+                        const bSelected = catSelected && selectedBrand === b.slug;
+                        const bExact = bSelected && !selectedLine;
+                        return (
+                          <div key={b.slug}>
+                            <div
+                              className={`flex items-center rounded-lg text-sm transition-colors ${bExact
+                                ? "bg-[#13426E] text-white font-medium"
+                                : bSelected
+                                  ? "bg-[#13426E]/5 text-[#13426E] font-semibold"
+                                  : "text-gray-600 hover:bg-gray-50 hover:text-[#13426E]"
+                                }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => b.types.length > 0 && toggleExpand(brandKey)}
+                                aria-label={brandOpen ? `Thu gọn ${b.name}` : `Mở rộng ${b.name}`}
+                                aria-expanded={brandOpen}
+                                className={`w-7 h-9 flex items-center justify-center shrink-0 ${b.types.length > 0 ? "" : "invisible"}`}
+                              >
+                                <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-200 ${brandOpen ? "rotate-90" : ""}`} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateUrl({ category: cat.slug, brand: b.slug, line: null })}
+                                className="flex-1 min-w-0 flex items-center justify-between gap-2 py-2 pr-3 text-left"
+                              >
+                                <span className="truncate">{b.name}</span>
+                                <span className="text-xs opacity-70 shrink-0">{b.count}</span>
+                              </button>
+                            </div>
+
+                            {brandOpen && b.types.length > 0 && (
+                              <div className="ml-6 flex flex-col gap-0.5 my-1">
+                                {b.types.map((t) => {
+                                  const tActive = bSelected && selectedLine === t.slug;
+                                  return (
+                                    <button
+                                      key={t.slug}
+                                      type="button"
+                                      onClick={() => updateUrl({ category: cat.slug, brand: b.slug, line: t.slug })}
+                                      className={`w-full text-left px-3 py-1.5 rounded-md text-[13px] flex items-center gap-2 transition-colors ${tActive
+                                        ? "bg-[#80BF49]/10 text-[#4d8a1f] font-semibold"
+                                        : "text-gray-500 hover:text-[#13426E] hover:bg-gray-50"
+                                        }`}
+                                    >
+                                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tActive ? "bg-[#80BF49]" : "bg-gray-300"}`} />
+                                      <span className="truncate flex-1">{t.name}</span>
+                                      <span className="text-[11px] text-gray-400">{t.count}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>
+        </div>
+
+        {/* Lọc thêm (thu gọn) */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm transition-colors">
+          <button
+            type="button"
+            onClick={() => setShowMoreFilters(v => !v)}
+            aria-expanded={showMoreFilters}
+            className="w-full px-5 md:px-6 py-4 flex items-center justify-between font-semibold text-[#13426E]"
+          >
+            <span className="flex items-center gap-2">
+              <BadgeDollarSign className="w-4 h-4 text-[#80BF49]" />
+              Lọc thêm theo giá
+              {priceActive && <span className="w-2 h-2 rounded-full bg-[#80BF49]" />}
+            </span>
+            <ChevronRight className={`w-4 h-4 transition-transform ${showMoreFilters ? "rotate-90" : ""}`} />
+          </button>
+          {showMoreFilters && (
+            <div className="px-5 md:px-6 pb-5 flex flex-col gap-1.5">
+              {[
+                { id: "all", label: "Tất cả các mức giá" },
+                { id: "under-10", label: "Dưới 10 triệu VNĐ" },
+                { id: "10-50", label: "Từ 10 - 50 triệu VNĐ" },
+                { id: "over-50", label: "Trên 50 triệu VNĐ" },
+              ].map((price) => {
+                const isActive = (selectedPrice || "all") === price.id;
+                return (
+                  <button
+                    key={price.id}
+                    type="button"
+                    onClick={() => updateUrl({ price: price.id === "all" ? null : price.id })}
+                    className={`text-left px-4 py-2.5 rounded-lg text-sm transition-colors ${isActive
+                      ? "bg-[#13426E]/10 text-[#13426E] font-medium border border-[#13426E]/20"
+                      : "bg-transparent text-gray-600 hover:bg-gray-50 border border-transparent"
+                      }`}
+                  >
+                    {price.label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       </div>
 
       {/* ================= RIGHT SIDE: PRODUCT GRID ================= */}
       <div className="lg:col-span-9 flex flex-col min-h-[60vh] lg:min-h-[1200px]">
-        {/* Results Info */}
-        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-6 flex justify-between items-center shrink-0 transition-colors">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center border border-gray-100">
-              <Filter className="w-4 h-4 text-gray-500" />
-            </div>
-            <p className="text-gray-600 text-sm">
-              Tìm thấy <strong className="text-[#13426E] text-base mx-1 font-bold">{filteredProducts.length}</strong> sản phẩm phù hợp
-            </p>
-          </div>
+        {/* Breadcrumb + Results Info */}
+        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shrink-0 transition-colors">
+          <nav aria-label="Breadcrumb" className="flex items-center flex-wrap gap-1 text-sm min-w-0">
+            {breadcrumb.map((item, idx) => {
+              const last = idx === breadcrumb.length - 1;
+              return (
+                <span key={`${item.label}-${idx}`} className="flex items-center gap-1 min-w-0">
+                  {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />}
+                  {last ? (
+                    <span className="font-bold text-[#13426E] truncate">{item.label}</span>
+                  ) : (
+                    <button type="button" onClick={item.onClick} className="text-gray-500 hover:text-[#13426E] transition-colors truncate">
+                      {item.label}
+                    </button>
+                  )}
+                </span>
+              );
+            })}
+          </nav>
+          <p className="text-gray-600 text-sm shrink-0">
+            <strong className="text-[#13426E] text-base font-bold mr-1">{groups.length}</strong>mẫu
+            {filteredProducts.length !== groups.length && (
+              <span className="text-gray-400"> · {filteredProducts.length} sản phẩm</span>
+            )}
+          </p>
         </div>
 
-        {filteredProducts.length > 0 ? (
+        {groups.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 content-start flex-1">
-              {currentProducts.map((product: any) => {
-                const isCompared = compareList.find(p => p.id === product.id);
-                return (
-                  <div key={product.id} className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden flex flex-col group transition-all border border-gray-100 relative">
-
-                    {/* Image Container */}
-                    <div className="relative aspect-[4/3] bg-gray-50 p-6 flex items-center justify-center group/img overflow-hidden border-b border-gray-50">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={product.image_url || "/doi.png"} alt={product.name} className="w-full h-full object-contain group-hover/img:scale-105 transition-transform duration-500" />
-
-                      {/* Top Badges */}
-                      <div className="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-                        {/* Bestseller Badge */}
-                        {product.is_bestseller && (
-                          <div className="bg-amber-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-md shadow-md uppercase tracking-wider flex items-center gap-1">
-                            <Star className="w-3 h-3 fill-white" />
-                            Bán Chạy
-                          </div>
-                        )}
-
-
-                        {/* Discount Badge */}
-                        {product.discount_rate > 0 && (
-                          <div className="bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-md shadow-sm w-fit">
-                            -{product.discount_rate}%
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Hover Overlay - Actions */}
-                      <div className="absolute inset-0 bg-[#13426E]/20 opacity-0 group-hover/img:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[2px] z-20">
-                        <div className="flex items-center gap-3 transform translate-y-4 group-hover/img:translate-y-0 transition-transform duration-300">
-
-                          {/* Quick View Button */}
-                          <div className="relative group/btn">
-                            <button
-                              onClick={() => setQuickViewProduct(product)}
-                              className="w-10 h-10 bg-white text-[#13426E] rounded-full shadow-lg flex items-center justify-center hover:bg-[#13426E] hover:text-white transition-colors"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            {/* Tooltip */}
-                            <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2.5 py-1.5 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium shadow-md">
-                              Xem nhanh
-                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                            </span>
-                          </div>
-
-                          {/* Compare Button */}
-                          <div className="relative group/btn">
-                            <button
-                              onClick={(e) => toggleCompare(product, e)}
-                              className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-colors ${isCompared
-                                  ? "bg-[#13426E] text-white"
-                                  : "bg-white text-[#13426E] hover:bg-[#13426E] hover:text-white"
-                                }`}
-                            >
-                              <Scale className="w-4 h-4" />
-                              {isCompared && <Check className="w-3 h-3 absolute -bottom-1 -right-1 bg-[#80BF49] rounded-full text-white border border-white" />}
-                            </button>
-                            {/* Tooltip */}
-                            <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2.5 py-1.5 rounded opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap pointer-events-none font-medium shadow-md z-30">
-                              {isCompared ? "Bỏ so sánh" : "So sánh"}
-                              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
-                            </span>
-                          </div>
-
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Card Content */}
-                    <div className="p-5 flex-1 flex flex-col">
-                      <h3 className="text-[15px] md:text-[17px] font-bold text-[#13426E] mb-2.5 group-hover:text-[#80BF49] transition-colors line-clamp-2 leading-snug" title={product.name}>
-                        {product.name}
-                      </h3>
-                      <div
-                        className="text-gray-500 mb-4 flex-1 text-sm line-clamp-4 leading-relaxed [&_p]:inline [&_p]:m-0"
-                        dangerouslySetInnerHTML={{ __html: (product.description || "").replace(/&nbsp;/g, " ") }}
-                      />
-
-                      <div className="mt-auto pt-4 flex flex-col gap-3">
-                        {(() => {
-                          const { originalPrice, discountedPrice, hasDiscount } = getProductPriceInfo(product);
-                          return (
-                            <div className="flex flex-col gap-1">
-                              <div className="flex items-start justify-between mb-1">
-                                <div className="flex flex-col">
-                                  {hasDiscount ? (
-                                    <>
-                                      <div className="text-lg md:text-[22px] font-extrabold text-[#E30019] tracking-tight leading-none">
-                                        {formatCurrency(discountedPrice)}
-                                      </div>
-                                      <div className="text-[13px] font-medium text-gray-400 line-through mt-1.5">
-                                        {formatCurrency(originalPrice)}
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <div className="text-lg md:text-[22px] font-extrabold text-[#13426E] tracking-tight leading-none">
-                                      {formatCurrency(originalPrice)}
-                                    </div>
-                                  )}
-                                </div>
-                                <span className={`text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg uppercase tracking-wide shrink-0 ${product.stock > 0 ? "bg-[#80BF49]/10 text-[#80BF49]" : "bg-red-50 text-red-600"}`}>
-                                  {product.stock > 0 ? "Còn hàng" : "Hết hàng"}
-                                </span>
-                              </div>
-
-                              {/* Restock date info if stock = 0 */}
-                              {product.stock <= 0 && product.restock_date && (
-                                <div className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100/50 mt-1">
-                                  <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span>Có hàng: <strong>{new Date(product.restock_date).toLocaleDateString('vi-VN')}</strong></span>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })()}
-                        {!isAdmin && (
-                          product.stock <= 0 ? (
-                            <button
-                              onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
-                              className="w-full py-3 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-600 hover:text-white text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm mt-1"
-                            >
-                              Nhận Tư Vấn Ngay
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-2 mt-1">
-                              <button
-                                onClick={(e) => handleAddToCart(product, e)}
-                                className="w-[46px] h-[46px] bg-gray-50 border border-gray-200 hover:border-[#80BF49] hover:bg-[#80BF49] text-gray-500 hover:text-white rounded-xl flex items-center justify-center transition-all group shrink-0"
-                                title="Thêm vào giỏ"
-                              >
-                                <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
-                              </button>
-                              <button
-                                onClick={(e) => handleBuyNow(product, e)}
-                                className="flex-1 h-[46px] bg-[#13426E] text-white rounded-xl font-bold hover:bg-[#1a5b99] hover:shadow-md transition-all text-[15px] flex items-center justify-center"
-                              >
-                                Mua Ngay
-                              </button>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 content-start flex-1 mt-2">
+              {currentGroups.map(renderGroupCard)}
             </div>
 
             {/* Pagination Controls */}
@@ -565,7 +588,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
             <h3 className="text-xl font-semibold text-[#13426E] mb-2">Không tìm thấy sản phẩm</h3>
             <p className="text-gray-500 mb-6 max-w-md text-sm">Rất tiếc, không có sản phẩm nào khớp với bộ lọc của bạn. Vui lòng thử lại với các tiêu chí khác.</p>
             <button
-              onClick={() => updateUrl({ category: null, price: null, type: null, q: null })}
+              onClick={() => updateUrl({ category: null, brand: null, line: null, price: null, type: null, q: null })}
               className="px-6 py-2.5 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors"
             >
               Xóa bộ lọc ngay

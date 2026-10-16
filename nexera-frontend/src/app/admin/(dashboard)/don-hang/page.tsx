@@ -14,12 +14,16 @@ export default async function AdminOrdersPage({
   const page = typeof params?.page === 'string' ? parseInt(params.page, 10) : 1;
   const limit = typeof params?.limit === 'string' ? parseInt(params.limit, 10) : 10;
   const status = typeof params?.status === 'string' ? params.status : "";
+  const date = typeof params?.date === 'string' ? params.date : "";
+  const sortBy = typeof params?.sort_by === 'string' ? params.sort_by : (typeof params?.sort === 'string' ? params.sort : "");
 
   const token = await getServerToken();
 
   const response = await ordersApi.getAdminOrders({
     search: q || undefined,
     status: status || undefined,
+    date: date || undefined,
+    sort_by: sortBy || undefined,
     page,
     limit,
   }, token!);

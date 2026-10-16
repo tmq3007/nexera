@@ -19,11 +19,19 @@ import {
   BulkUpdateProductsDto,
   CreateCategoryDto,
   UpdateCategoryDto,
+  CreateBrandDto,
+  UpdateBrandDto,
+  CreateProductTypeDto,
+  UpdateProductTypeDto,
 } from './products.dto';
+import { BrandsService } from './brands.service';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly brandsService: BrandsService,
+  ) {}
 
   // ===================== DANH MỤC (CATEGORIES) =====================
 
@@ -53,6 +61,50 @@ export class ProductsController {
   @Delete('admin/categories/:id')
   async deleteCategory(@Param('id') id: string) {
     return this.productsService.deleteCategory(id);
+  }
+
+  // ===================== THƯƠNG HIỆU (BRANDS) =====================
+
+  @Get('brands')
+  async getBrands() {
+    return this.brandsService.getBrands();
+  }
+
+  @Post('admin/brands')
+  async createBrand(@Body() dto: CreateBrandDto) {
+    return this.brandsService.createBrand(dto);
+  }
+
+  @Put('admin/brands/:id')
+  async updateBrand(@Param('id') id: string, @Body() dto: UpdateBrandDto) {
+    return this.brandsService.updateBrand(id, dto);
+  }
+
+  @Delete('admin/brands/:id')
+  async deleteBrand(@Param('id') id: string) {
+    return this.brandsService.deleteBrand(id);
+  }
+
+  // ===================== LOẠI SẢN PHẨM (theo Thương hiệu) =====================
+
+  @Get('types')
+  async getProductTypes(@Query('brand_id') brandId?: string) {
+    return this.brandsService.getProductTypes(brandId || undefined);
+  }
+
+  @Post('admin/types')
+  async createProductType(@Body() dto: CreateProductTypeDto) {
+    return this.brandsService.createProductType(dto);
+  }
+
+  @Put('admin/types/:id')
+  async updateProductType(@Param('id') id: string, @Body() dto: UpdateProductTypeDto) {
+    return this.brandsService.updateProductType(id, dto);
+  }
+
+  @Delete('admin/types/:id')
+  async deleteProductType(@Param('id') id: string) {
+    return this.brandsService.deleteProductType(id);
   }
 
   // ===================== SẢN PHẨM (PRODUCTS) =====================

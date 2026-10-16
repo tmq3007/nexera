@@ -12,9 +12,13 @@ export default async function AdminArticlesPage({
   const q = typeof params?.q === 'string' ? params.q : "";
   const page = typeof params?.page === 'string' ? parseInt(params.page, 10) : 1;
   const limit = typeof params?.limit === 'string' ? parseInt(params.limit, 10) : 10;
+  const date = typeof params?.date === 'string' ? params.date : "";
+  const sortBy = typeof params?.sort_by === 'string' ? params.sort_by : "";
 
   const res = await contentApi.getArticles({
     search: q || undefined,
+    date: date || undefined,
+    sort_by: sortBy || undefined,
     page,
     limit,
   });

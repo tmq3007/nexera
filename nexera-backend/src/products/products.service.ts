@@ -13,7 +13,7 @@ import {
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
 
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(private readonly supabaseService: SupabaseService) { }
 
   // ===================== DANH MỤC (CATEGORIES) =====================
 
@@ -107,22 +107,51 @@ export class ProductsService {
     const limit = Math.max(1, Math.min(100, Number(query.limit) || 12));
     const offset = (page - 1) * limit;
 
-    let dbQuery = supabase
-      .from('products')
-      .select('*, categories(id, name, slug)', { count: 'exact' });
-
-    // Lọc theo Category ID hoặc Category Slug
-    if (query.categoryId) {
-      dbQuery = dbQuery.eq('category_id', query.categoryId);
-    } else if (query.categorySlug) {
+    // Resolve categorySlug -> id trước để builder bên dưới đồng bộ (chạy lại được khi fallback)
+    let resolvedCategoryId: string | null = query.categoryId || null;
+    if (!resolvedCategoryId && query.categorySlug) {
       const { data: cat } = await supabase
         .from('categories')
         .select('id')
         .eq('slug', query.categorySlug)
         .maybeSingle();
+      resolvedCategoryId = cat?.id || null;
+    }
 
-      if (cat) {
-        dbQuery = dbQuery.eq('category_id', cat.id);
+    const groupByType = String(query.group_by_type) === 'true';
+
+    /**
+     * mode:
+     *  - 'full'   : join brands + product_types, gom nhóm theo TÊN hãng -> TÊN loại
+     *  - 'ids'    : join, gom nhóm theo brand_id -> product_type_id (nếu PostgREST không hỗ trợ order theo bảng liên kết)
+     *  - 'legacy' : như cũ, không join (DB chưa chạy migration brands/product_types)
+     */
+    const buildQuery = (mode: 'full' | 'ids' | 'legacy') => {
+    const selectStr =
+      mode === 'legacy'
+        ? '*, categories(id, name, slug)'
+        : '*, categories(id, name, slug), brands(id, name, slug), product_types(id, name, slug)';
+
+    let dbQuery = supabase
+      .from('products')
+      .select(selectStr, { count: 'exact' });
+
+    // Lọc theo Category ID hoặc Category Slug
+    if (resolvedCategoryId) {
+      dbQuery = dbQuery.eq('category_id', resolvedCategoryId);
+    }
+
+    // Lọc theo Thương hiệu / Loại
+    if (mode !== 'legacy') {
+      if (query.brand_id) {
+        dbQuery = query.brand_id === 'none'
+          ? dbQuery.is('brand_id', null)
+          : dbQuery.eq('brand_id', query.brand_id);
+      }
+      if (query.product_type_id) {
+        dbQuery = query.product_type_id === 'none'
+          ? dbQuery.is('product_type_id', null)
+          : dbQuery.eq('product_type_id', query.product_type_id);
       }
     }
 
@@ -135,6 +164,8 @@ export class ProductsService {
     // Lọc bán chạy
     if (String(query.bestseller) === 'true') {
       dbQuery = dbQuery.eq('is_bestseller', true);
+    } else if (String(query.bestseller) === 'false') {
+      dbQuery = dbQuery.eq('is_bestseller', false);
     }
 
     // Lọc theo loại sản phẩm
@@ -142,21 +173,112 @@ export class ProductsService {
       dbQuery = dbQuery.eq('type', query.type);
     }
 
-    // Sắp xếp
-    if (query.sort === 'price_asc') {
-      dbQuery = dbQuery.order('price', { ascending: true });
-    } else if (query.sort === 'price_desc') {
-      dbQuery = dbQuery.order('price', { ascending: false });
-    } else if (query.sort === 'oldest') {
-      dbQuery = dbQuery.order('created_at', { ascending: true });
-    } else {
-      // Mặc định mới nhất
-      dbQuery = dbQuery.order('created_at', { ascending: false });
+    // Lọc theo trạng thái hiển thị (is_active / isActive)
+    const activeVal = query.is_active ?? query.isActive;
+    if (activeVal !== undefined && activeVal !== null && activeVal !== '') {
+      if (String(activeVal) === 'true') {
+        dbQuery = dbQuery.eq('is_active', true);
+      } else if (String(activeVal) === 'false') {
+        dbQuery = dbQuery.eq('is_active', false);
+      }
     }
 
-    dbQuery = dbQuery.range(offset, offset + limit - 1);
+    // Lọc theo trạng thái kho hàng (stock)
+    if (query.stock === 'out_of_stock') {
+      dbQuery = dbQuery.lte('stock', 0);
+    } else if (query.stock === 'in_stock') {
+      dbQuery = dbQuery.gt('stock', 0);
+    }
 
-    const { data, count, error } = await dbQuery;
+    // Lọc theo khoảng giá (price_min / price_max)
+    const minP = query.price_min ?? query.priceMin;
+    if (minP !== undefined && minP !== null && minP !== '') {
+      const numMin = Number(minP);
+      if (!isNaN(numMin)) {
+        dbQuery = dbQuery.gte('price', numMin);
+      }
+    }
+    const maxP = query.price_max ?? query.priceMax;
+    if (maxP !== undefined && maxP !== null && maxP !== '') {
+      const numMax = Number(maxP);
+      if (!isNaN(numMax)) {
+        dbQuery = dbQuery.lte('price', numMax);
+      }
+    }
+
+    // Sắp xếp linh hoạt (sort, sort_by, sortBy, sortOrder)
+    const rawSort = String(query.sort_by || query.sort || query.sortBy || '').trim();
+    let sortField = 'created_at';
+    let ascending = false;
+
+    if (rawSort.includes('|')) {
+      const [field, dir] = rawSort.split('|');
+      const validFields = ['price', 'stock', 'name', 'created_at', 'updated_at'];
+      if (validFields.includes(field.trim())) {
+        sortField = field.trim();
+      }
+      ascending = dir?.trim().toLowerCase() === 'asc';
+    } else if (rawSort === 'price_asc') {
+      sortField = 'price';
+      ascending = true;
+    } else if (rawSort === 'price_desc') {
+      sortField = 'price';
+      ascending = false;
+    } else if (rawSort === 'stock_asc') {
+      sortField = 'stock';
+      ascending = true;
+    } else if (rawSort === 'stock_desc') {
+      sortField = 'stock';
+      ascending = false;
+    } else if (rawSort === 'name_asc') {
+      sortField = 'name';
+      ascending = true;
+    } else if (rawSort === 'name_desc') {
+      sortField = 'name';
+      ascending = false;
+    } else if (rawSort === 'oldest') {
+      sortField = 'created_at';
+      ascending = true;
+    } else if (rawSort === 'newest') {
+      sortField = 'created_at';
+      ascending = false;
+    }
+
+    if (query.sortOrder) {
+      ascending = String(query.sortOrder).toLowerCase() === 'asc';
+    }
+
+    // Gom nhóm: cùng Hãng -> cùng Loại luôn đứng liền nhau, sau đó mới sắp theo tiêu chí đã chọn
+    if (groupByType && mode === 'full') {
+      dbQuery = dbQuery
+        .order('brands(name)', { ascending: true, nullsFirst: false })
+        .order('brand_id', { ascending: true, nullsFirst: false })
+        .order('product_types(name)', { ascending: true, nullsFirst: false })
+        .order('product_type_id', { ascending: true, nullsFirst: false });
+    } else if (groupByType && mode === 'ids') {
+      dbQuery = dbQuery
+        .order('brand_id', { ascending: true, nullsFirst: false })
+        .order('product_type_id', { ascending: true, nullsFirst: false });
+    }
+
+    dbQuery = dbQuery.order(sortField, { ascending, nullsFirst: false });
+    // Khóa phụ ổn định để phân trang không bị nhảy thứ tự
+    if (sortField !== 'name') dbQuery = dbQuery.order('name', { ascending: true });
+
+    return dbQuery.range(offset, offset + limit - 1);
+    };
+
+    let result = await buildQuery('full');
+    if (result.error) {
+      this.logger.warn(`Query sản phẩm (full) lỗi, thử fallback: ${result.error.message}`);
+      result = await buildQuery('ids');
+    }
+    if (result.error) {
+      this.logger.warn(`Query sản phẩm (ids) lỗi, dùng chế độ cũ: ${result.error.message}`);
+      result = await buildQuery('legacy');
+    }
+
+    const { data, count, error } = result;
 
     if (error) {
       this.logger.error('Lỗi lấy danh sách sản phẩm:', error);
@@ -231,7 +353,7 @@ export class ProductsService {
   async createProduct(dto: CreateProductDto) {
     const supabase = this.supabaseService.getClient();
     const d = dto as any; // Hỗ trợ cả camelCase lẫn snake_case từ Frontend
-    const payload = {
+    const payload: any = {
       name: dto.name,
       slug: dto.slug,
       category_id: dto.categoryId || d.category_id || null,
@@ -254,12 +376,18 @@ export class ProductsService {
       is_bestseller: dto.isBestseller ?? d.is_bestseller ?? false,
       restock_date: d.restock_date || null,
     };
+    await this.applyBrandAndType(payload, dto);
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('products')
       .insert(payload)
       .select()
       .single();
+
+    if (error && this.isMissingTaxonomyColumn(error)) {
+      this.stripTaxonomy(payload);
+      ({ data, error } = await supabase.from('products').insert(payload).select().single());
+    }
 
     if (error) {
       this.logger.error('Lỗi tạo sản phẩm:', error);
@@ -295,13 +423,19 @@ export class ProductsService {
       is_bestseller: dto.isBestseller ?? d.is_bestseller ?? false,
       restock_date: d.restock_date || null,
     };
+    await this.applyBrandAndType(payload, dto);
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('products')
       .update(payload)
       .eq('id', id)
       .select()
       .maybeSingle();
+
+    if (error && this.isMissingTaxonomyColumn(error)) {
+      this.stripTaxonomy(payload);
+      ({ data, error } = await supabase.from('products').update(payload).eq('id', id).select().maybeSingle());
+    }
 
     if (error) {
       this.logger.error('Lỗi cập nhật sản phẩm:', error);
@@ -318,6 +452,67 @@ export class ProductsService {
     }
 
     return data;
+  }
+
+  /**
+   * Gán brand_id / product_type_id (chỉ khi client có gửi lên; null = gỡ).
+   * - Có loại mà thiếu hãng -> tự lấy hãng của loại.
+   * - Loại không thuộc hãng đã chọn -> báo lỗi.
+   * - Đồng bộ cột text `brand` = tên hãng (giữ tìm kiếm & Storefront hoạt động như cũ).
+   */
+  private async applyBrandAndType(payload: any, dto: CreateProductDto) {
+    const hasBrand = dto.brand_id !== undefined;
+    const hasType = dto.product_type_id !== undefined;
+    if (!hasBrand && !hasType) return;
+
+    const supabase = this.supabaseService.getClient();
+    let brandId: string | null | undefined = hasBrand ? dto.brand_id || null : undefined;
+    const typeId: string | null | undefined = hasType ? dto.product_type_id || null : undefined;
+
+    if (typeId) {
+      const { data: t, error } = await supabase
+        .from('product_types')
+        .select('id, brand_id')
+        .eq('id', typeId)
+        .maybeSingle();
+      if (error && this.isMissingTaxonomyColumn(error)) return; // DB chưa migrate
+      if (!t) throw new BadRequestException('Loại sản phẩm không tồn tại');
+      if (brandId && t.brand_id !== brandId) {
+        throw new BadRequestException('Loại đã chọn không thuộc thương hiệu này');
+      }
+      if (!brandId) brandId = t.brand_id;
+    }
+
+    if (brandId !== undefined) {
+      payload.brand_id = brandId;
+      if (brandId) {
+        const { data: b } = await supabase.from('brands').select('name').eq('id', brandId).maybeSingle();
+        if (b?.name) payload.brand = b.name;
+      }
+      // brandId = null: giữ nguyên cột text `brand` client gửi lên (dữ liệu cũ chưa map được hãng)
+    }
+    if (typeId !== undefined) {
+      payload.product_type_id = typeId;
+    } else if (hasBrand && !brandId) {
+      payload.product_type_id = null; // gỡ hãng thì gỡ luôn loại
+    }
+  }
+
+  /** DB chưa chạy migration brands/product_types */
+  private isMissingTaxonomyColumn(error: any): boolean {
+    const msg = `${error?.message || ''} ${error?.details || ''}`;
+    return (
+      error?.code === 'PGRST204' ||
+      error?.code === 'PGRST205' ||
+      error?.code === '42703' ||
+      error?.code === '42P01' ||
+      /brand_id|product_type_id|product_types|brands/.test(msg)
+    );
+  }
+
+  private stripTaxonomy(payload: any) {
+    delete payload.brand_id;
+    delete payload.product_type_id;
   }
 
   async deleteProduct(id: string) {

@@ -445,9 +445,6 @@ export class OrdersService {
         '*, order_items(id, product_name, product_image, quantity, unit_price, total_price)',
         { count: 'exact' },
       )
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-
     if (query.status && query.status !== 'all') {
       dbQuery = dbQuery.eq('status', query.status);
     }
@@ -460,12 +457,52 @@ export class OrdersService {
       dbQuery = dbQuery.eq('payment_method', query.paymentMethod);
     }
 
+    if (query.date && query.date.trim()) {
+      const cleanDate = query.date.trim();
+      const startOfDay = `${cleanDate}T00:00:00.000Z`;
+      const endOfDay = `${cleanDate}T23:59:59.999Z`;
+      dbQuery = dbQuery.gte('created_at', startOfDay).lte('created_at', endOfDay);
+    }
+
     if (query.search) {
       const q = query.search.trim();
       dbQuery = dbQuery.or(
         `order_code.ilike.%${q}%,customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%`,
       );
     }
+
+    // Sắp xếp linh hoạt
+    const rawSort = String(query.sort_by || query.sort || query.sortBy || '').trim();
+    let sortField = 'created_at';
+    let ascending = false;
+
+    if (rawSort.includes('|')) {
+      const [field, dir] = rawSort.split('|');
+      const validFields = ['created_at', 'total_amount', 'status', 'order_code'];
+      if (validFields.includes(field.trim())) {
+        sortField = field.trim();
+      }
+      ascending = dir?.trim().toLowerCase() === 'asc';
+    } else if (rawSort === 'amount_asc' || rawSort === 'price_asc') {
+      sortField = 'total_amount';
+      ascending = true;
+    } else if (rawSort === 'amount_desc' || rawSort === 'price_desc') {
+      sortField = 'total_amount';
+      ascending = false;
+    } else if (rawSort === 'oldest') {
+      sortField = 'created_at';
+      ascending = true;
+    } else if (rawSort === 'newest') {
+      sortField = 'created_at';
+      ascending = false;
+    }
+
+    if (query.sortOrder) {
+      ascending = String(query.sortOrder).toLowerCase() === 'asc';
+    }
+
+    dbQuery = dbQuery.order(sortField, { ascending, nullsFirst: false });
+    dbQuery = dbQuery.range(offset, offset + limit - 1);
 
     const { data, count, error } = await dbQuery;
 

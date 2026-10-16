@@ -265,10 +265,15 @@ export class CustomersService {
     // Nếu query bảng customers thành công và có dữ liệu
     if (!error && data && data.length > 0) {
       return {
+        data,
+        total: count || data.length,
         customers: data,
         totalCount: count || data.length,
+        page,
+        limit,
         currentPage: page,
         itemsPerPage: limit,
+        totalPages: Math.ceil((count || data.length) / limit),
       };
     }
 
@@ -282,10 +287,15 @@ export class CustomersService {
 
     if (!convs || convs.length === 0) {
       return {
+        data: [],
+        total: 0,
         customers: [],
         totalCount: 0,
+        page,
+        limit,
         currentPage: page,
         itemsPerPage: limit,
+        totalPages: 0,
       };
     }
 
@@ -334,10 +344,15 @@ export class CustomersService {
     const paginated = allCustomers.slice(from, to + 1);
 
     return {
+      data: paginated,
+      total: totalCount,
       customers: paginated,
       totalCount,
+      page,
+      limit,
       currentPage: page,
       itemsPerPage: limit,
+      totalPages: Math.ceil(totalCount / limit),
     };
   }
 

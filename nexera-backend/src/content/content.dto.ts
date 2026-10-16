@@ -15,6 +15,14 @@ export class GetProjectsQueryDto {
 
   @IsOptional()
   limit?: number | string;
+
+  @IsOptional()
+  @IsString()
+  sort?: string;
+
+  @IsOptional()
+  @IsString()
+  sort_by?: string;
 }
 
 export class CreateProjectDto {
@@ -52,6 +60,18 @@ export class GetArticlesQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  sort?: string;
+
+  @IsOptional()
+  @IsString()
+  sort_by?: string;
 
   @IsOptional()
   page?: number | string;

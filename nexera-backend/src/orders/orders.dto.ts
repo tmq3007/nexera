@@ -131,6 +131,26 @@ export class GetOrdersQueryDto {
 
   @IsOptional()
   limit?: number | string;
+
+  @IsOptional()
+  @IsString()
+  date?: string;
+
+  @IsOptional()
+  @IsString()
+  sort?: string;
+
+  @IsOptional()
+  @IsString()
+  sort_by?: string;
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @IsOptional()
+  @IsString()
+  sortOrder?: string;
 }
 
 export class UpdateOrderStatusDto {

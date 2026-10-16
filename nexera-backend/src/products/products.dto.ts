@@ -14,8 +14,7 @@ export class GetProductsQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsBoolean()
-  bestseller?: boolean;
+  bestseller?: boolean | string;
 
   @IsOptional()
   @IsString()
@@ -29,7 +28,55 @@ export class GetProductsQueryDto {
 
   @IsOptional()
   @IsString()
-  sort?: string; // 'price_asc' | 'price_desc' | 'newest' | 'oldest'
+  sort?: string;
+
+  @IsOptional()
+  @IsString()
+  sort_by?: string;
+
+  @IsOptional()
+  @IsString()
+  sortBy?: string;
+
+  @IsOptional()
+  @IsString()
+  sortOrder?: string;
+
+  @IsOptional()
+  isActive?: boolean | string;
+
+  @IsOptional()
+  is_active?: boolean | string;
+
+  @IsOptional()
+  @IsString()
+  stock?: string;
+
+  @IsOptional()
+  price_min?: number | string;
+
+  @IsOptional()
+  price_max?: number | string;
+
+  @IsOptional()
+  priceMin?: number | string;
+
+  @IsOptional()
+  priceMax?: number | string;
+
+  /** Lọc theo Thương hiệu (brands.id) */
+  @IsOptional()
+  @IsString()
+  brand_id?: string;
+
+  /** Lọc theo Loại sản phẩm (product_types.id), 'none' = chưa có loại */
+  @IsOptional()
+  @IsString()
+  product_type_id?: string;
+
+  /** 'true' = gom sản phẩm cùng Hãng -> cùng Loại đứng liền nhau (dùng cho Admin) */
+  @IsOptional()
+  group_by_type?: boolean | string;
 }
 
 export class CreateProductDto {
@@ -149,9 +196,19 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   meta_description?: string;
+
+  /** Thương hiệu (brands.id). Gửi null để gỡ. */
+  @IsOptional()
+  @IsString()
+  brand_id?: string | null;
+
+  /** Loại sản phẩm (product_types.id). Gửi null để gỡ. */
+  @IsOptional()
+  @IsString()
+  product_type_id?: string | null;
 }
 
-export class UpdateProductDto extends CreateProductDto {}
+export class UpdateProductDto extends CreateProductDto { }
 
 export class BulkUpdateProductsDto {
   @IsArray()
@@ -190,4 +247,45 @@ export class CreateCategoryDto {
   imageUrl?: string;
 }
 
-export class UpdateCategoryDto extends CreateCategoryDto {}
+export class UpdateCategoryDto extends CreateCategoryDto { }
+
+export class CreateBrandDto {
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsNumber()
+  sort_order?: number;
+}
+
+export class UpdateBrandDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sort_order?: number;
+}
+
+export class CreateProductTypeDto {
+  @IsString()
+  brand_id: string;
+
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsNumber()
+  sort_order?: number;
+}
+
+export class UpdateProductTypeDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsNumber()
+  sort_order?: number;
+}

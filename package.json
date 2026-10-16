@@ -1,0 +1,16 @@
+{
+  "name": "nexera-ecosystem",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"BACKEND,FRONTEND\" -c \"cyan,magenta\" --kill-others-on-fail \"npm run start:dev --prefix nexera-backend\" \"npm run dev --prefix nexera-frontend\"",
+    "dev:backend": "npm run start:dev --prefix nexera-backend",
+    "dev:frontend": "npm run dev --prefix nexera-frontend",
+    "build:backend": "npm run build --prefix nexera-backend",
+    "build:frontend": "npm run build --prefix nexera-frontend",
+    "build": "npm run build:backend && npm run build:frontend"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5"
+  }
+}

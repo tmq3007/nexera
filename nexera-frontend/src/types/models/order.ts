@@ -95,7 +95,14 @@ export interface CheckoutPayload {
 
 export interface GetOrdersQuery {
   status?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
   search?: string;
+  date?: string;
+  sort?: string;
+  sort_by?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }

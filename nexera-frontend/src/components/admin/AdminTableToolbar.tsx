@@ -39,6 +39,9 @@ export interface AdminTableToolbarProps {
     icon?: React.ComponentType<{ className?: string }>;
     onClick: () => void;
   };
+
+  /** Nút tùy biến chèn trước nút Bộ lọc (VD: Gom nhóm) */
+  extraActions?: React.ReactNode;
 }
 
 export function AdminTableToolbar({
@@ -56,6 +59,7 @@ export function AdminTableToolbar({
   density = "compact",
   onDensityChange,
   primaryAction,
+  extraActions,
 }: AdminTableToolbarProps) {
   const hasTabs = tabs && tabs.length > 0;
 
@@ -115,6 +119,8 @@ export function AdminTableToolbar({
 
       {/* Bên phải: Nút Bộ lọc, Mật độ dòng và Nút Thêm mới */}
       <div className="flex items-center gap-2 ml-auto">
+        {extraActions}
+
         {/* Toggle Bộ lọc nâng cao */}
         {showFilterToggle && (
           <button
