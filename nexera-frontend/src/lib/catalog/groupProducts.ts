@@ -151,6 +151,28 @@ export function buildGroups(products: any[]): ProductGroup[] {
 }
 
 /**
+ * Không gom: mỗi sản phẩm (mỗi màu) là 1 thẻ riêng, hiển thị tên đầy đủ.
+ * Vẫn giữ thông tin Loại để `sortGroups` xếp các màu cùng Loại đứng cạnh nhau.
+ */
+export function buildSingleGroups(products: any[]): ProductGroup[] {
+  return products.map((p) => {
+    const brand = getBrandInfo(p);
+    const type = getTypeInfo(p);
+    return {
+      key: `p-${p.id}`,
+      isGroup: false,
+      title: p.name,
+      brandSlug: brand?.slug ?? null,
+      brandName: brand?.name ?? null,
+      typeSlug: type?.slug ?? null,
+      typeName: type?.name ?? null,
+      categoryId: p.category_id ?? null,
+      variants: [{ product: p, label: p.name, color: null }],
+    };
+  });
+}
+
+/**
  * Sắp xếp ngầm theo cụm (không cần bộ lọc): Danh mục → Thương hiệu → Loại.
  * - Danh mục theo thứ tự trong `categoryOrder` (thứ tự sidebar)
  * - Trong cùng hãng: các Loại trước, sản phẩm lẻ chưa có Loại sau

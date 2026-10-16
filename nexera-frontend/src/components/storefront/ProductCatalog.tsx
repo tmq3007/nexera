@@ -6,7 +6,7 @@ import { Search, Filter, Tags, BadgeDollarSign, ChevronRight, ChevronLeft, Shopp
 import { useToast } from "@/contexts/ToastContext";
 import { useCartStore } from "@/store/cartStore";
 import { createClient } from "@/utils/supabase/client";
-import { buildBrandTree, buildGroups, sortGroups, getBrandInfo, getTypeInfo, type ProductGroup } from "@/lib/catalog/groupProducts";
+import { buildBrandTree, buildSingleGroups, sortGroups, getBrandInfo, getTypeInfo, type ProductGroup } from "@/lib/catalog/groupProducts";
 import { formatCurrency, getProductPriceInfo } from "@/lib/catalog/price";
 import { ProductGroupCard } from "./ProductGroupCard";
 
@@ -236,8 +236,8 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
     return true;
   });
 
-  // Gom các màu/phiên bản cùng Loại thành 1 thẻ + sắp xếp ngầm theo cụm Danh mục › Hãng › Loại
-  const groups = sortGroups(buildGroups(filteredProducts), categories.map(c => c.id));
+  // Hiển thị từng sản phẩm (từng màu) thành thẻ riêng + sắp xếp ngầm theo cụm Danh mục › Hãng › Loại
+  const groups = sortGroups(buildSingleGroups(filteredProducts), categories.map(c => c.id));
 
   // Pagination Logic
   const itemsPerPage = 9;
@@ -518,10 +518,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
             })}
           </nav>
           <p className="text-gray-600 text-sm shrink-0">
-            <strong className="text-[#13426E] text-base font-bold mr-1">{groups.length}</strong>mẫu
-            {filteredProducts.length !== groups.length && (
-              <span className="text-gray-400"> · {filteredProducts.length} sản phẩm</span>
-            )}
+            <strong className="text-[#13426E] text-base font-bold mr-1">{groups.length}</strong>sản phẩm
           </p>
         </div>
 
