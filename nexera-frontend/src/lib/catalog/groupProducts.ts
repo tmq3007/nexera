@@ -144,6 +144,24 @@ export function buildGroups(products: any[]): ProductGroup[] {
   return groups;
 }
 
+/**
+ * Sắp xếp ngầm (không cần bộ lọc): ưu tiên các Loại (thẻ gom màu) lên trước,
+ * xếp theo Hãng → tên Loại; sản phẩm lẻ chưa có Loại xếp sau, theo Hãng → tên.
+ */
+export function sortGroups(groups: ProductGroup[]): ProductGroup[] {
+  const cmp = (a?: string | null, b?: string | null) => {
+    if (a && !b) return -1;
+    if (!a && b) return 1;
+    return (a || "").localeCompare(b || "", "vi", { sensitivity: "base" });
+  };
+  return [...groups].sort((a, b) => {
+    const aTyped = a.typeSlug ? 0 : 1;
+    const bTyped = b.typeSlug ? 0 : 1;
+    if (aTyped !== bTyped) return aTyped - bTyped;
+    return cmp(a.brandName, b.brandName) || cmp(a.title, b.title);
+  });
+}
+
 /** Cây Thương hiệu › Loại (kèm số lượng) của danh sách sản phẩm */
 export function buildBrandTree(products: any[]): BrandNode[] {
   const map = new Map<string, BrandNode & { typeMap: Map<string, { slug: string; name: string; count: number }> }>();

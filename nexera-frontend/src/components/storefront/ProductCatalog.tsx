@@ -6,7 +6,7 @@ import { Search, Filter, Tags, BadgeDollarSign, ChevronRight, ChevronLeft, Shopp
 import { useToast } from "@/contexts/ToastContext";
 import { useCartStore } from "@/store/cartStore";
 import { createClient } from "@/utils/supabase/client";
-import { buildBrandTree, buildGroups, getBrandInfo, getTypeInfo, type ProductGroup } from "@/lib/catalog/groupProducts";
+import { buildBrandTree, buildGroups, sortGroups, getBrandInfo, getTypeInfo, type ProductGroup } from "@/lib/catalog/groupProducts";
 import { formatCurrency, getProductPriceInfo } from "@/lib/catalog/price";
 import { ProductGroupCard } from "./ProductGroupCard";
 
@@ -236,8 +236,8 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
     return true;
   });
 
-  // Gom các màu/phiên bản cùng Loại thành 1 thẻ
-  const groups = buildGroups(filteredProducts);
+  // Gom các màu/phiên bản cùng Loại thành 1 thẻ + sắp xếp ngầm theo Loại
+  const groups = sortGroups(buildGroups(filteredProducts));
 
   // Pagination Logic
   const itemsPerPage = 9;
