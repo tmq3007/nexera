@@ -206,6 +206,24 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   product_type_id?: string | null;
+
+  /** Chế độ bán lẻ: 'inherit' (theo toàn cục), 'buyable' (luôn cho mua), 'consult_only' (luôn chỉ tư vấn) */
+  @IsOptional()
+  @IsString()
+  sale_mode?: 'inherit' | 'buyable' | 'consult_only';
+
+  @IsOptional()
+  @IsString()
+  saleMode?: 'inherit' | 'buyable' | 'consult_only';
+
+  /** Hiển thị giá: 'show' (hiện giá số), 'contact' (hiện Liên hệ báo giá) */
+  @IsOptional()
+  @IsString()
+  price_display?: 'show' | 'contact';
+
+  @IsOptional()
+  @IsString()
+  priceDisplay?: 'show' | 'contact';
 }
 
 export class UpdateProductDto extends CreateProductDto { }
@@ -228,7 +246,15 @@ export class BulkUpdateProductsDto {
 
   @IsOptional()
   @IsString()
-  action?: 'delete' | 'update_category' | 'update_status' | 'update_bestseller';
+  sale_mode?: 'inherit' | 'buyable' | 'consult_only';
+
+  @IsOptional()
+  @IsString()
+  price_display?: 'show' | 'contact';
+
+  @IsOptional()
+  @IsString()
+  action?: 'delete' | 'update_category' | 'update_status' | 'update_bestseller' | 'update_sale_mode';
 }
 
 export class CreateCategoryDto {

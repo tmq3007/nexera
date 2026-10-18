@@ -652,11 +652,19 @@ export function ProductManager({
                     <td className={`${cellPadding} text-right`}>
                       <div className="flex flex-col items-end">
                         <div className="font-bold text-gray-900 text-xs md:text-sm tracking-tight">
-                          {Number(product.price).toLocaleString("vi-VN")}₫
-                          {product.discount_rate > 0 && (
-                            <span className="ml-1 text-[10px] text-rose-600 font-semibold">
-                              -{product.discount_rate}%
+                          {product.price_display === 'contact' ? (
+                            <span className="text-[11px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                              Liên hệ giá
                             </span>
+                          ) : (
+                            <>
+                              {Number(product.price).toLocaleString("vi-VN")}₫
+                              {product.discount_rate > 0 && (
+                                <span className="ml-1 text-[10px] text-rose-600 font-semibold">
+                                  -{product.discount_rate}%
+                                </span>
+                              )}
+                            </>
                           )}
                         </div>
                         {product.import_price > 0 && (
@@ -676,13 +684,24 @@ export function ProductManager({
                       )}
                     </td>
                     <td className={`${cellPadding} text-center`}>
-                      <button
-                        onClick={() => handleToggleActive(product)}
-                        className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors ${product.is_active ? 'bg-[var(--primary)]' : 'bg-gray-300'}`}
-                        title={product.is_active ? "Đang hiển thị (Click để ẩn)" : "Đang ẩn (Click để hiện)"}
-                      >
-                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-2xs transition-transform ${product.is_active ? 'translate-x-4' : 'translate-x-1'}`} />
-                      </button>
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          onClick={() => handleToggleActive(product)}
+                          className={`relative inline-flex h-4.5 w-8 items-center rounded-full transition-colors ${product.is_active ? 'bg-[var(--primary)]' : 'bg-gray-300'}`}
+                          title={product.is_active ? "Đang hiển thị (Click để ẩn)" : "Đang ẩn (Click để hiện)"}
+                        >
+                          <span className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-2xs transition-transform ${product.is_active ? 'translate-x-4' : 'translate-x-1'}`} />
+                        </button>
+                        {product.sale_mode === 'consult_only' ? (
+                          <span className="text-[10px] px-1 py-0.2 rounded font-semibold bg-amber-50 text-amber-700 border border-amber-200" title="Chỉ tiếp nhận tư vấn">
+                            Tư vấn
+                          </span>
+                        ) : product.sale_mode === 'buyable' ? (
+                          <span className="text-[10px] px-1 py-0.2 rounded font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200" title="Luôn cho mua online">
+                            Cho mua
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className={cellPadding}>
                       <div className="flex items-center justify-center gap-1.5">

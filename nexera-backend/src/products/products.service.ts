@@ -375,6 +375,8 @@ export class ProductsService {
       is_active: dto.isActive ?? d.is_active ?? true,
       is_bestseller: dto.isBestseller ?? d.is_bestseller ?? false,
       restock_date: d.restock_date || null,
+      sale_mode: d.sale_mode ?? d.saleMode ?? 'inherit',
+      price_display: d.price_display ?? d.priceDisplay ?? 'show',
     };
     await this.applyBrandAndType(payload, dto);
 
@@ -422,6 +424,8 @@ export class ProductsService {
       is_active: dto.isActive ?? d.is_active ?? true,
       is_bestseller: dto.isBestseller ?? d.is_bestseller ?? false,
       restock_date: d.restock_date || null,
+      sale_mode: d.sale_mode ?? d.saleMode ?? 'inherit',
+      price_display: d.price_display ?? d.priceDisplay ?? 'show',
     };
     await this.applyBrandAndType(payload, dto);
 
@@ -453,6 +457,7 @@ export class ProductsService {
 
     return data;
   }
+
 
   /**
    * Gán brand_id / product_type_id (chỉ khi client có gửi lên; null = gỡ).
@@ -498,7 +503,7 @@ export class ProductsService {
     }
   }
 
-  /** DB chưa chạy migration brands/product_types */
+  /** DB chưa chạy migration brands/product_types hoặc sale_mode */
   private isMissingTaxonomyColumn(error: any): boolean {
     const msg = `${error?.message || ''} ${error?.details || ''}`;
     return (
@@ -506,13 +511,15 @@ export class ProductsService {
       error?.code === 'PGRST205' ||
       error?.code === '42703' ||
       error?.code === '42P01' ||
-      /brand_id|product_type_id|product_types|brands/.test(msg)
+      /brand_id|product_type_id|product_types|brands|sale_mode|price_display/.test(msg)
     );
   }
 
   private stripTaxonomy(payload: any) {
     delete payload.brand_id;
     delete payload.product_type_id;
+    delete payload.sale_mode;
+    delete payload.price_display;
   }
 
   async deleteProduct(id: string) {
@@ -551,11 +558,28 @@ export class ProductsService {
     if (dto.categoryId) {
       updatePayload.category_id = dto.categoryId;
     }
+    if (dto.sale_mode) {
+      updatePayload.sale_mode = dto.sale_mode;
+    }
+    if (dto.price_display) {
+      updatePayload.price_display = dto.price_display;
+    }
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from('products')
       .update(updatePayload)
       .in('id', dto.ids);
+
+    if (error && this.isMissingTaxonomyColumn(error)) {
+      this.logger.warn('Cột sale_mode chưa có trong DB. Bỏ qua cập nhật sale_mode.');
+      delete updatePayload.sale_mode;
+      delete updatePayload.price_display;
+      if (Object.keys(updatePayload).length > 0) {
+        ({ error } = await supabase.from('products').update(updatePayload).in('id', dto.ids));
+      } else {
+        error = null;
+      }
+    }
 
     if (error) {
       throw new BadRequestException(`Lỗi cập nhật hàng loạt: ${error.message}`);
@@ -564,3 +588,4 @@ export class ProductsService {
     return { success: true, count: dto.ids.length };
   }
 }
+

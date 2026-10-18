@@ -23,9 +23,11 @@ import { useRouter } from "next/navigation";
 import { ordersApi } from "@/lib/api/orders.api";
 import { locationsApi, Province, Ward } from "@/lib/api/locations.api";
 import { createClient } from "@/utils/supabase/client";
+import { useEcommerceConfig } from "@/hooks/useEcommerceConfig";
 
 export default function CartPage() {
   const { items, updateQuantity, removeItem, totalPrice, clearCart } = useCartStore();
+  const { ecommerceEnabled } = useEcommerceConfig();
   const [mounted, setMounted] = useState(false);
   const toast = useToast();
   const router = useRouter();
@@ -233,6 +235,19 @@ export default function CartPage() {
           <ShoppingBag className="w-8 h-8 text-[#80BF49]" />
           Giỏ hàng của bạn
         </h1>
+
+        {!ecommerceEnabled && (
+          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-start gap-3 shadow-xs">
+            <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-amber-950">Chế độ đặt mua trực tuyến đang tạm ngưng</h4>
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                Website hiện đang ở <strong>chế độ tư vấn &amp; báo giá trực tiếp</strong>. Quý khách vui lòng chọn sản phẩm và bấm <strong>&quot;Nhận tư vấn ngay&quot;</strong> hoặc liên hệ hotline để được tư vấn viên hỗ trợ phục vụ.
+              </p>
+            </div>
+          </div>
+        )}
+
 
         {items.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center flex flex-col items-center">
@@ -601,11 +616,13 @@ export default function CartPage() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-4 bg-[#13426E] text-white rounded-xl font-bold text-base hover:bg-[#1a5b99] transition-colors disabled:opacity-70 flex items-center justify-center gap-2 shadow-sm"
+                  disabled={isSubmitting || !ecommerceEnabled}
+                  className="w-full py-4 bg-[#13426E] text-white rounded-xl font-bold text-base hover:bg-[#1a5b99] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
                 >
                   {isSubmitting ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : !ecommerceEnabled ? (
+                    <span>Tạm Ngưng Đặt Hàng Trực Tuyến</span>
                   ) : (
                     <>
                       {paymentMethod === "PAYOS"

@@ -56,6 +56,8 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
     origin: initialData?.origin || "",
     warranty_info: initialData?.warranty_info || "",
     supplier: initialData?.supplier || "",
+    sale_mode: initialData?.sale_mode || "inherit",
+    price_display: initialData?.price_display || "show",
   });
 
   const generateSlug = (name: string) =>
@@ -120,6 +122,8 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
       origin: form.origin || null,
       warranty_info: form.warranty_info || null,
       supplier: form.supplier || null,
+      sale_mode: form.sale_mode,
+      price_display: form.price_display,
     };
 
     let result;
@@ -362,6 +366,44 @@ export function ProductFormPage({ mode, initialData, categories }: ProductFormPa
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all text-sm"
                 />
                 <p className="text-xs text-gray-400 mt-1">Hiển thị cho khách khi tồn kho = 0.</p>
+              </div>
+
+              {/* Chế độ bán lẻ & Hiển thị giá */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Chế độ bán hàng (Ecommerce / Tư vấn)
+                  </label>
+                  <select
+                    value={form.sale_mode}
+                    onChange={(e) => setForm((prev) => ({ ...prev, sale_mode: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all text-sm bg-white"
+                  >
+                    <option value="inherit">Theo cài đặt chung toàn website (Mặc định)</option>
+                    <option value="buyable">Luôn cho mua online (Bỏ qua cài đặt chung)</option>
+                    <option value="consult_only">Chỉ nhận tư vấn &amp; báo giá (Ẩn nút mua)</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    &quot;Chỉ nhận tư vấn&quot; sẽ ẩn nút Thêm giỏ / Mua ngay và hiện nút &quot;Nhận Tư Vấn Ngay&quot;.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Cách hiển thị giá trên website
+                  </label>
+                  <select
+                    value={form.price_display}
+                    onChange={(e) => setForm((prev) => ({ ...prev, price_display: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/30 focus:border-[var(--primary)] transition-all text-sm bg-white"
+                  >
+                    <option value="show">Hiển thị giá bán số (Mặc định)</option>
+                    <option value="contact">Hiển thị chữ &quot;Liên hệ báo giá&quot;</option>
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Chọn &quot;Liên hệ báo giá&quot; để ẩn con số giá bán cụ thể trên website.
+                  </p>
+                </div>
               </div>
             </div>
 

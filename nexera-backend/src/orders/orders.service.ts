@@ -91,12 +91,32 @@ export class OrdersService {
       customerId = newCust?.id || null;
     }
 
-    // 2. Validate sản phẩm: check tồn tại, giá, tồn kho
+    // 2. Validate sản phẩm: check tồn tại, giá, tồn kho, chế độ bán hàng
+    // Lấy cấu hình ecommerce_enabled toàn cục
+    const { data: bInfo } = await supabase
+      .from('business_information')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+    const globalEcommerceEnabled = bInfo?.ecommerce_enabled ?? true;
+
     const productIds = dto.items.map((it) => it.productId);
-    const { data: dbProducts, error: prodErr } = await supabase
+    let dbProducts: any[] = [];
+    let { data: prodsWithSaleMode, error: prodErr } = await supabase
       .from('products')
-      .select('id, name, price, discount_rate, stock, image_url, sku, is_active')
+      .select('id, name, price, discount_rate, stock, image_url, sku, is_active, sale_mode')
       .in('id', productIds);
+
+    if (prodErr && (prodErr.code === '42703' || /sale_mode/.test(prodErr.message))) {
+      const fallback = await supabase
+        .from('products')
+        .select('id, name, price, discount_rate, stock, image_url, sku, is_active')
+        .in('id', productIds);
+      dbProducts = fallback.data || [];
+      prodErr = fallback.error;
+    } else {
+      dbProducts = prodsWithSaleMode || [];
+    }
 
     if (prodErr || !dbProducts || dbProducts.length === 0) {
       throw new BadRequestException('Không tìm thấy thông tin sản phẩm.');
@@ -104,7 +124,7 @@ export class OrdersService {
 
     const productMap = new Map(dbProducts.map((p) => [p.id, p]));
 
-    // 3. Validate stock và tính giá
+    // 3. Validate stock, can_buy và tính giá
     let subtotal = 0;
     const validatedItems: Array<{
       productId: string;
@@ -125,6 +145,22 @@ export class OrdersService {
       if (!prod.is_active) {
         throw new BadRequestException(`Sản phẩm "${prod.name}" hiện không còn bán.`);
       }
+
+      // Kiểm tra chế độ bán hàng (canBuy)
+      const saleMode = prod.sale_mode || 'inherit';
+      let canBuy = globalEcommerceEnabled;
+      if (saleMode === 'consult_only') {
+        canBuy = false;
+      } else if (saleMode === 'buyable') {
+        canBuy = true;
+      }
+
+      if (!canBuy) {
+        throw new ForbiddenException(
+          `Sản phẩm "${prod.name}" hiện chỉ tiếp nhận tư vấn trực tiếp, không hỗ trợ đặt mua trực tuyến. Vui lòng bấm "Nhận tư vấn ngay" hoặc liên hệ tư vấn viên.`,
+        );
+      }
+
       if (prod.stock !== null && prod.stock < item.quantity) {
         throw new BadRequestException(
           `Sản phẩm "${prod.name}" chỉ còn ${prod.stock} sản phẩm trong kho.`,

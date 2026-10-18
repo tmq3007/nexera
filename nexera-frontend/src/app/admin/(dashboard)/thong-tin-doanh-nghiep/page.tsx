@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { contentApi } from "@/lib/api/content.api";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { Building2, Save, RefreshCw, MapPin, Phone, Mail, FileText, Globe, Megaphone } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Building2, Save, RefreshCw, MapPin, Phone, Mail, FileText, Globe, Megaphone, ShoppingCart, ShieldAlert, Loader2, Info } from "lucide-react";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 interface BusinessInfoForm {
   id?: string;
@@ -23,6 +25,7 @@ interface BusinessInfoForm {
   tiktok_url: string;
   youtube_url: string;
   map_embed_url: string;
+  ecommerce_enabled: boolean;
 }
 
 export default function BusinessInfoAdminPage() {
@@ -42,12 +45,16 @@ export default function BusinessInfoAdminPage() {
     tiktok_url: "",
     youtube_url: "",
     map_embed_url: "",
+    ecommerce_enabled: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [isUpdatingEcommerce, setIsUpdatingEcommerce] = useState(false);
 
   const toast = useToast();
   const { accessToken } = useAuth();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     fetchBusinessInfo();
@@ -76,6 +83,7 @@ export default function BusinessInfoAdminPage() {
           tiktok_url: data.tiktok_url || "",
           youtube_url: data.youtube_url || "",
           map_embed_url: data.map_embed_url || "",
+          ecommerce_enabled: data.ecommerce_enabled ?? true,
         });
       }
     } catch (err: any) {
@@ -83,6 +91,43 @@ export default function BusinessInfoAdminPage() {
       toast.error("Không thể tải thông tin doanh nghiệp.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Lưu trực tiếp chế độ bán hàng vào Database ngay khi gạt công tắc / confirm
+   * Không cần người dùng phải bấm "Lưu thay đổi" ở cuối trang.
+   */
+  const handleToggleEcommerce = async (nextState: boolean) => {
+    setIsUpdatingEcommerce(true);
+    try {
+      const payload: BusinessInfoForm = {
+        ...formData,
+        ecommerce_enabled: nextState,
+      };
+
+      const res = await contentApi.saveBusinessInfo(payload, accessToken!);
+      if (res && res.id) {
+        setFormData((prev) => ({ ...prev, id: res.id, ecommerce_enabled: nextState }));
+      } else {
+        setFormData((prev) => ({ ...prev, ecommerce_enabled: nextState }));
+      }
+
+      // Làm mới cache dữ liệu bán hàng toàn hệ thống
+      queryClient.invalidateQueries({ queryKey: ["business-info-ecommerce"] });
+      window.dispatchEvent(new CustomEvent("ecommerce-config-changed", { detail: { enabled: nextState } }));
+
+      if (nextState) {
+        toast.success("Đã BẬT bán hàng trực tuyến! Giỏ hàng & thanh toán online đã hoạt động trở lại.");
+      } else {
+        toast.success("Đã chuyển sang chế độ CHỈ TƯ VẤN. Giỏ hàng & thanh toán online đã được ẩn!");
+      }
+    } catch (err: any) {
+      console.error("Lỗi cập nhật chế độ bán hàng:", err);
+      toast.error(`Không thể cập nhật chế độ bán hàng: ${err.message || "Đã xảy ra lỗi"}`);
+    } finally {
+      setIsUpdatingEcommerce(false);
+      setShowDisableConfirm(false);
     }
   };
 
@@ -95,7 +140,7 @@ export default function BusinessInfoAdminPage() {
       if (res && res.id) {
         setFormData((prev) => ({ ...prev, id: res.id }));
       }
-      toast.success("Cập nhật thông tin doanh nghiệp thành công! Footer website đã đồng bộ.");
+      toast.success("Cập nhật thông tin doanh nghiệp thành công! Footer & chế độ bán hàng website đã đồng bộ.");
     } catch (err: any) {
       console.error("Lỗi cập nhật:", err);
       toast.error(`Cập nhật thất bại: ${err.message || "Đã xảy ra lỗi"}`);
@@ -115,11 +160,91 @@ export default function BusinessInfoAdminPage() {
 
   return (
     <>
-
-
-
       {/* Form Card */}
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6">
+        
+        {/* ============================================================== */}
+        {/* NÚT BẬT / TẮT CHẾ ĐỘ BÁN HÀNG ONLINE (ECOMMERCE & TƯ VẤN)     */}
+        {/* ============================================================== */}
+        <div className={`rounded-xl border p-5 transition-all ${
+          formData.ecommerce_enabled
+            ? "bg-gradient-to-r from-emerald-50/70 to-teal-50/50 border-emerald-200"
+            : "bg-gradient-to-r from-amber-50/80 to-orange-50/60 border-amber-200"
+        }`}>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className={`p-2.5 rounded-xl shrink-0 ${
+                formData.ecommerce_enabled ? "bg-emerald-600 text-white shadow-sm" : "bg-amber-600 text-white shadow-sm"
+              }`}>
+                <ShoppingCart className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h3 className="text-base font-bold text-gray-900">
+                    Chế Độ Bán Hàng Trực Tuyến (Ecommerce)
+                  </h3>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1 ${
+                    formData.ecommerce_enabled 
+                      ? "bg-emerald-100 text-emerald-800 border border-emerald-200" 
+                      : "bg-amber-100 text-amber-800 border border-amber-200"
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${formData.ecommerce_enabled ? "bg-emerald-600 animate-pulse" : "bg-amber-600"}`} />
+                    {formData.ecommerce_enabled ? "Đang BẬT bán hàng" : "Đang TẮT (Chỉ nhận tư vấn)"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                  {formData.ecommerce_enabled ? (
+                    <>Khách hàng có thể <strong>Thêm vào giỏ</strong>, bấm <strong>Mua ngay</strong> và thanh toán đơn hàng online trực tiếp qua PayOS. (Bạn vẫn có thể ép từng sản phẩm sang chế độ &quot;Chỉ tư vấn&quot; trong phần quản lý sản phẩm).</>
+                  ) : (
+                    <>Toàn bộ website chuyển sang <strong>chế độ giới thiệu &amp; tư vấn</strong>: Ẩn nút &quot;Mua ngay&quot;, ẩn &quot;Thêm giỏ&quot;, ẩn icon Giỏ hàng trên thanh Header. Các nút đổi thành <strong>&quot;Nhận Tư Vấn Ngay&quot;</strong> dẫn vào Live Chat hoặc Form liên hệ.</>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Toggle Switch */}
+            <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+              <span className="text-xs font-bold text-gray-500 hidden sm:inline">
+                {isUpdatingEcommerce ? "Đang lưu..." : formData.ecommerce_enabled ? "Bật" : "Tắt"}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                disabled={isUpdatingEcommerce}
+                aria-checked={formData.ecommerce_enabled}
+                onClick={() => {
+                  if (isUpdatingEcommerce) return;
+                  if (formData.ecommerce_enabled) {
+                    setShowDisableConfirm(true);
+                  } else {
+                    handleToggleEcommerce(true);
+                  }
+                }}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--primary)] focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed ${
+                  formData.ecommerce_enabled ? "bg-emerald-600" : "bg-gray-300"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-flex items-center justify-center h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    formData.ecommerce_enabled ? "translate-x-7" : "translate-x-0"
+                  }`}
+                >
+                  {isUpdatingEcommerce && (
+                    <Loader2 className="w-3.5 h-3.5 text-gray-500 animate-spin" />
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {!formData.ecommerce_enabled && (
+            <div className="mt-3 pt-3 border-t border-amber-200/70 flex items-center gap-2 text-xs text-amber-800">
+              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600" />
+              <span>Website đang ở <strong>chế độ Chỉ Tư Vấn</strong> (đã lưu &amp; áp dụng tự động). Khách hàng sẽ kết nối qua Zalo, Hotline hoặc gửi yêu cầu tư vấn thay vì thanh toán online.</span>
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Tên doanh nghiệp */}
           <div className="md:col-span-2">
@@ -399,6 +524,32 @@ export default function BusinessInfoAdminPage() {
           </button>
         </div>
       </form>
+
+      {/* Modal xác nhận chuyển sang chế độ Chỉ Tư Vấn */}
+      <ConfirmModal
+        isOpen={showDisableConfirm}
+        onClose={() => setShowDisableConfirm(false)}
+        onConfirm={() => handleToggleEcommerce(false)}
+        loading={isUpdatingEcommerce}
+        title="Xác nhận tắt chế độ bán hàng trực tuyến"
+        message={
+          <div className="space-y-2 text-sm leading-relaxed">
+            <p>
+              Website sẽ được <strong>lưu &amp; chuyển ngay sang chế độ giới thiệu - tư vấn</strong>:
+            </p>
+            <ul className="list-disc pl-5 space-y-1 text-gray-500">
+              <li>Ẩn toàn bộ nút <strong>&quot;Mua ngay&quot;</strong> và <strong>&quot;Thêm vào giỏ&quot;</strong>.</li>
+              <li>Ẩn biểu tượng Giỏ hàng trên thanh điều hướng Header.</li>
+              <li>Các nút trên sản phẩm chuyển sang <strong>&quot;Nhận Tư Vấn Ngay&quot;</strong> (mở Modal chọn Zalo, Hotline, Live Chat hoặc để lại SĐT).</li>
+            </ul>
+            <p className="text-amber-700 font-medium pt-1">
+              Bạn có chắc chắn muốn tắt chế độ bán hàng online ngay bây giờ không?
+            </p>
+          </div>
+        }
+        confirmText="Xác nhận tắt bán hàng"
+        cancelText="Giữ nguyên"
+      />
     </>
   );
 }

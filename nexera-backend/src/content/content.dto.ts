@@ -126,3 +126,75 @@ export class UpdatePolicyDto {
   @IsBoolean()
   isActive?: boolean;
 }
+
+// ===================== BUSINESS INFO =====================
+export class SaveBusinessInfoDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsOptional()
+  @IsString()
+  business_name?: string;
+
+  @IsOptional()
+  @IsString()
+  tax_code?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @IsOptional()
+  @IsString()
+  representative?: string;
+
+  @IsOptional()
+  @IsString()
+  license_issued_date?: string;
+
+  @IsOptional()
+  @IsString()
+  license_issued_by?: string;
+
+  @IsOptional()
+  @IsString()
+  map_url?: string;
+
+  @IsOptional()
+  @IsString()
+  slogan?: string;
+
+  @IsOptional()
+  @IsString()
+  facebook_url?: string;
+
+  @IsOptional()
+  @IsString()
+  tiktok_url?: string;
+
+  @IsOptional()
+  @IsString()
+  youtube_url?: string;
+
+  @IsOptional()
+  @IsString()
+  map_embed_url?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  ecommerce_enabled?: boolean;
+}
+

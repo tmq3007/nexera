@@ -104,6 +104,8 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
     origin: initialData?.origin || "",
     warranty_info: initialData?.warranty_info || "",
     supplier: initialData?.supplier || "",
+    sale_mode: initialData?.sale_mode || "inherit",
+    price_display: initialData?.price_display || "show",
   });
 
   const set = <K extends keyof typeof form>(key: K, val: (typeof form)[K]) =>
@@ -182,6 +184,8 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
       origin: form.origin || null,
       warranty_info: form.warranty_info || null,
       supplier: form.supplier || null,
+      sale_mode: form.sale_mode,
+      price_display: form.price_display,
     };
 
     let result;
@@ -328,6 +332,46 @@ export function ProductForm({ initialData, categories, onSuccess, onCancel }: Pr
           <input id="pf-restock" type="date" value={form.restock_date}
             onChange={(e) => set("restock_date", e.target.value)} className={inputCls} />
           <p className="text-xs text-gray-400 mt-1">Hiển thị cho khách khi tồn kho = 0.</p>
+        </div>
+
+        {/* Chế độ bán lẻ & Hiển thị giá */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+          <div>
+            <label htmlFor="pf-sale-mode" className={labelCls}>
+              Chế độ bán hàng (Ecommerce / Tư vấn)
+            </label>
+            <select
+              id="pf-sale-mode"
+              value={form.sale_mode}
+              onChange={(e) => set("sale_mode", e.target.value as any)}
+              className={inputCls}
+            >
+              <option value="inherit">Theo cài đặt chung toàn website (Mặc định)</option>
+              <option value="buyable">Luôn cho mua online (Bỏ qua cài đặt chung)</option>
+              <option value="consult_only">Chỉ nhận tư vấn &amp; báo giá (Ẩn nút mua)</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              &quot;Chỉ nhận tư vấn&quot; sẽ ẩn nút Thêm giỏ / Mua ngay và chỉ hiện nút &quot;Nhận Tư Vấn Ngay&quot;.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="pf-price-display" className={labelCls}>
+              Cách hiển thị giá trên website
+            </label>
+            <select
+              id="pf-price-display"
+              value={form.price_display}
+              onChange={(e) => set("price_display", e.target.value as any)}
+              className={inputCls}
+            >
+              <option value="show">Hiển thị giá bán số (Mặc định)</option>
+              <option value="contact">Hiển thị chữ &quot;Liên hệ báo giá&quot;</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              Chọn &quot;Liên hệ báo giá&quot; để ẩn con số giá bán cụ thể trên website.
+            </p>
+          </div>
         </div>
       </Section>
 

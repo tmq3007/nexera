@@ -217,12 +217,15 @@ export class PoliciesService {
       this.logger.error('Lỗi lấy thông tin doanh nghiệp:', error);
       return null;
     }
+    if (data && typeof data.ecommerce_enabled === 'undefined') {
+      data.ecommerce_enabled = true;
+    }
     return data;
   }
 
   async saveBusinessInfo(dto: any) {
     const supabase = this.supabaseService.getClient();
-    const payload = {
+    const payload: any = {
       business_name: dto.business_name,
       tax_code: dto.tax_code,
       address: dto.address,
@@ -241,29 +244,46 @@ export class PoliciesService {
       updated_at: new Date().toISOString(),
     };
 
-    if (dto.id) {
-      const { data, error } = await supabase
-        .from('business_information')
-        .update(payload)
-        .eq('id', dto.id)
-        .select()
-        .single();
-
-      if (error) {
-        throw new BadRequestException(`Không thể cập nhật thông tin doanh nghiệp: ${error.message}`);
-      }
-      return data;
-    } else {
-      const { data, error } = await supabase
-        .from('business_information')
-        .insert([payload])
-        .select()
-        .single();
-
-      if (error) {
-        throw new BadRequestException(`Không thể lưu thông tin doanh nghiệp: ${error.message}`);
-      }
-      return data;
+    if (typeof dto.ecommerce_enabled === 'boolean') {
+      payload.ecommerce_enabled = dto.ecommerce_enabled;
     }
+
+    const executeSave = async (dataPayload: any) => {
+      if (dto.id) {
+        return supabase
+          .from('business_information')
+          .update(dataPayload)
+          .eq('id', dto.id)
+          .select()
+          .single();
+      } else {
+        return supabase
+          .from('business_information')
+          .insert([dataPayload])
+          .select()
+          .single();
+      }
+    };
+
+    let { data, error } = await executeSave(payload);
+
+    // Fallback nếu cột ecommerce_enabled chưa được tạo trên Supabase DB
+    if (error && (error.code === '42703' || /ecommerce_enabled/.test(error.message))) {
+      this.logger.warn(
+        'Cột ecommerce_enabled chưa có trong business_information. Vui lòng chạy file migration 20261018_add_ecommerce_toggle_and_product_sale_mode.sql trên Supabase. Đang lưu các trường khác...',
+      );
+      delete payload.ecommerce_enabled;
+      const retryResult = await executeSave(payload);
+      data = retryResult.data;
+      error = retryResult.error;
+      if (data) {
+        data.ecommerce_enabled = dto.ecommerce_enabled ?? true;
+      }
+    }
+
+    if (error) {
+      throw new BadRequestException(`Không thể lưu thông tin doanh nghiệp: ${error.message}`);
+    }
+    return data;
   }
 }

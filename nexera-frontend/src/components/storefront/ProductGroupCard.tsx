@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Eye, Scale, Check, ShoppingCart, Star, Calendar } from "lucide-react";
+import { Eye, Scale, Check, ShoppingCart, Star, Calendar, PhoneCall } from "lucide-react";
 import type { ProductGroup } from "@/lib/catalog/groupProducts";
 import { formatCurrency, getProductPriceInfo } from "@/lib/catalog/price";
+import { useEcommerceConfig } from "@/hooks/useEcommerceConfig";
 
 interface ProductGroupCardProps {
   group: ProductGroup;
@@ -47,7 +48,10 @@ export function ProductGroupCard({
     return min === max ? null : { min, max };
   }, [group.variants, hasVariants]);
 
+  const { canBuyProduct, isContactPrice } = useEcommerceConfig();
   const inStock = Number(product.stock) > 0;
+  const canBuy = canBuyProduct(product);
+  const contactPrice = isContactPrice(product);
 
   return (
     <div className="bg-white rounded-xl shadow-sm hover:shadow-md overflow-hidden flex flex-col group transition-all border border-gray-100 relative">
@@ -184,7 +188,11 @@ export function ProductGroupCard({
           <div className="flex flex-col gap-1">
             <div className="flex items-start justify-between mb-1">
               <div className="flex flex-col">
-                {hasDiscount ? (
+                {contactPrice ? (
+                  <div className="text-base md:text-lg font-extrabold text-[#13426E] tracking-tight leading-none py-1">
+                    Liên hệ báo giá
+                  </div>
+                ) : hasDiscount ? (
                   <>
                     <div className="text-lg md:text-[22px] font-extrabold text-[#E30019] tracking-tight leading-none">
                       {formatCurrency(discountedPrice)}
@@ -198,7 +206,7 @@ export function ProductGroupCard({
                     {formatCurrency(originalPrice)}
                   </div>
                 )}
-                {priceRange && (
+                {!contactPrice && priceRange && (
                   <div className="text-[11px] text-gray-400 mt-1">
                     Từ {formatCurrency(priceRange.min)} – {formatCurrency(priceRange.max)}
                   </div>
@@ -217,12 +225,13 @@ export function ProductGroupCard({
           </div>
 
           {!isAdmin && (
-            !inStock ? (
+            (!inStock || !canBuy) ? (
               <button
                 type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
-                className="w-full py-3 bg-gray-100 hover:bg-[#80BF49] text-gray-600 hover:text-white text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm mt-1"
+                onClick={() => window.dispatchEvent(new CustomEvent('open-consultation-modal', { detail: { product } }))}
+                className="w-full py-3 bg-gradient-to-r from-emerald-500 to-[#80BF49] hover:from-emerald-600 hover:to-[#70a840] text-white text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md mt-1 cursor-pointer"
               >
+                <PhoneCall className="w-4 h-4 shrink-0" />
                 Nhận Tư Vấn Ngay
               </button>
             ) : (

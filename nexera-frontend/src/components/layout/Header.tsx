@@ -12,6 +12,7 @@ import { ConfirmLogoutModal } from "@/components/ui/ConfirmLogoutModal";
 import { customersApi } from "@/lib/api/customers.api";
 import { productsApi } from "@/lib/api/products.api";
 import { clearAuthCookie } from "@/app/actions/auth";
+import { useEcommerceConfig } from "@/hooks/useEcommerceConfig";
 
 const AUTH_STORAGE_KEY = "nexera_auth_session";
 
@@ -28,6 +29,7 @@ export function Header() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const cartTotalItems = useCartStore((state) => state.totalItems());
+  const { ecommerceEnabled } = useEcommerceConfig();
   const supabase = createClient();
 
   useEffect(() => {
@@ -291,8 +293,8 @@ export function Header() {
                </Link>
              )}
 
-             {/* Giỏ hàng: Chỉ render khi đã xác thực xong và người dùng KHÔNG PHẢI là Admin */}
-             {mounted && !authLoading && !isAdmin && (
+             {/* Giỏ hàng: Chỉ render khi đã xác thực xong, người dùng KHÔNG PHẢI là Admin và Ecommerce đang BẬT */}
+             {mounted && !authLoading && !isAdmin && ecommerceEnabled && (
                <button 
                  className="p-2 text-[#13426E] hover:text-[#80BF49] transition-colors relative rounded-full hover:bg-gray-100 cursor-pointer"
                  onClick={() => setIsCartOpen(true)}
@@ -357,7 +359,9 @@ export function Header() {
       )}
 
       {/* Mini Cart Drawer */}
-      <MiniCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      {ecommerceEnabled && (
+        <MiniCart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      )}
 
       {/* Modal xác nhận đăng xuất */}
       <ConfirmLogoutModal 

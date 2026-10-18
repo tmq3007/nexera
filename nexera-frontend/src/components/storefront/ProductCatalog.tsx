@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, Filter, Tags, BadgeDollarSign, ChevronRight, ChevronLeft, ShoppingCart, Scale, Plus, X, ArrowLeftRight, Minus, ShoppingBag } from "lucide-react";
+import { Search, Filter, Tags, BadgeDollarSign, ChevronRight, ChevronLeft, ShoppingCart, Scale, Plus, X, ArrowLeftRight, Minus, ShoppingBag, PhoneCall } from "lucide-react";
 import { useToast } from "@/contexts/ToastContext";
 import { useCartStore } from "@/store/cartStore";
 import { createClient } from "@/utils/supabase/client";
 import { buildBrandTree, buildSingleGroups, sortGroups, getBrandInfo, getTypeInfo, type ProductGroup } from "@/lib/catalog/groupProducts";
 import { formatCurrency, getProductPriceInfo } from "@/lib/catalog/price";
 import { ProductGroupCard } from "./ProductGroupCard";
+import { useEcommerceConfig } from "@/hooks/useEcommerceConfig";
 
 // Giữ export cũ để các nơi khác import từ ProductCatalog không bị lỗi
 export { formatCurrency, getProductPriceInfo };
@@ -33,6 +34,7 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
   const router = useRouter();
   const toast = useToast();
   const { addItem } = useCartStore();
+  const { canBuyProduct } = useEcommerceConfig();
   const supabase = createClient();
   const [isAdmin, setIsAdmin] = useState(false);
   const [consultProduct, setConsultProduct] = useState<any | null>(null);
@@ -697,22 +699,36 @@ export function ProductCatalog({ initialProducts, categories }: { initialProduct
 
               <div className="flex items-center gap-3 mt-auto pt-4 border-t border-gray-100">
                 {!isAdmin ? (
-                  <>
+                  !canBuyProduct(quickViewProduct) ? (
                     <button
-                      onClick={() => handleBuyNow(quickViewProduct)}
-                      className="flex-1 py-3 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors flex items-center justify-center gap-2"
+                      onClick={() => {
+                        const p = quickViewProduct;
+                        setQuickViewProduct(null);
+                        window.dispatchEvent(new CustomEvent('open-consultation-modal', { detail: { product: p } }));
+                      }}
+                      className="flex-1 py-3 bg-gradient-to-r from-emerald-500 to-[#80BF49] hover:from-emerald-600 hover:to-[#70a840] text-white rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:shadow-md"
                     >
-                      <ShoppingBag className="w-4 h-4" />
-                      Mua ngay
+                      <PhoneCall className="w-4 h-4 shrink-0" />
+                      Nhận Tư Vấn Ngay
                     </button>
-                    <button
-                      onClick={() => handleAddToCart(quickViewProduct)}
-                      className="w-12 h-12 rounded-lg border flex items-center justify-center transition-colors bg-white border-[#13426E] text-[#13426E] hover:bg-gray-50"
-                      title="Thêm vào giỏ"
-                    >
-                      <ShoppingCart className="w-5 h-5" />
-                    </button>
-                  </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => handleBuyNow(quickViewProduct)}
+                        className="flex-1 py-3 bg-[#13426E] text-white rounded-lg text-sm font-medium hover:bg-[#1a5b99] transition-colors flex items-center justify-center gap-2"
+                      >
+                        <ShoppingBag className="w-4 h-4" />
+                        Mua ngay
+                      </button>
+                      <button
+                        onClick={() => handleAddToCart(quickViewProduct)}
+                        className="w-12 h-12 rounded-lg border flex items-center justify-center transition-colors bg-white border-[#13426E] text-[#13426E] hover:bg-gray-50"
+                        title="Thêm vào giỏ"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                      </button>
+                    </>
+                  )
                 ) : (
                   <button
                     onClick={() => setQuickViewProduct(null)}

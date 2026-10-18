@@ -107,6 +107,20 @@ export function NexeraChatWidget({ isOpen, onClose, onUnreadChange }: NexeraChat
     if (saved === "true") setIsSoundMuted(true);
   }, []);
 
+  // Lắng nghe sự kiện mở chat từ nút tư vấn sản phẩm kèm tin nhắn gợi ý
+  useEffect(() => {
+    const handleCustomOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.initialMessage) {
+        setInputValue(detail.initialMessage);
+      }
+    };
+    window.addEventListener("open-nexera-chat", handleCustomOpen);
+    return () => {
+      window.removeEventListener("open-nexera-chat", handleCustomOpen);
+    };
+  }, []);
+
   const toggleSound = () => {
     setIsSoundMuted((prev) => {
       const next = !prev;

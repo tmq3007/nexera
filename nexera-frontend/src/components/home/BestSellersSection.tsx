@@ -3,12 +3,13 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Flame, Star, ShoppingCart, Zap, MessageSquare, ArrowRight, Eye, Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { Flame, Star, ShoppingCart, Zap, MessageSquare, ArrowRight, Eye, Calendar, ChevronLeft, ChevronRight, PhoneCall } from "lucide-react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useCartStore } from "@/store/cartStore";
 import { useToast } from "@/contexts/ToastContext";
 import { createClient } from "@/utils/supabase/client";
+import { useEcommerceConfig } from "@/hooks/useEcommerceConfig";
 
 
 function getProductImages(product: any): string[] {
@@ -122,6 +123,7 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
   const supabase = createClient();
   const addItem = useCartStore((state) => state.addItem);
   const toast = useToast();
+  const { canBuyProduct, isContactPrice } = useEcommerceConfig();
 
   const [isAdmin, setIsAdmin] = useState(false);
   const [consultProduct, setConsultProduct] = useState<any | null>(null);
@@ -300,7 +302,11 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
                           {/* Pricing */}
                           <div className="flex items-start justify-between mb-1">
                             <div className="flex flex-col">
-                              {hasDiscount ? (
+                              {isContactPrice(product) ? (
+                                <div className="text-base md:text-lg font-extrabold text-[#13426E] tracking-tight leading-none py-1">
+                                  Liên hệ báo giá
+                                </div>
+                              ) : hasDiscount ? (
                                 <>
                                   <div className="text-lg md:text-[22px] font-extrabold text-[#E30019] tracking-tight leading-none">
                                     {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(discountedPrice)}
@@ -330,11 +336,12 @@ export function BestSellersSection({ products = [] }: { products: any[] }) {
 
                           {/* Action Buttons Matching ProductCatalog */}
                           {!isAdmin && (
-                            isOutOfStock ? (
+                            (isOutOfStock || !canBuyProduct(product)) ? (
                               <button 
-                                onClick={() => window.dispatchEvent(new CustomEvent('open-nexera-chat'))}
-                                className="w-full py-3 bg-gray-100 hover:bg-[#80BF49] hover:text-white text-gray-600 text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm mt-1"
+                                onClick={() => window.dispatchEvent(new CustomEvent('open-consultation-modal', { detail: { product } }))}
+                                className="w-full py-3 bg-gradient-to-r from-emerald-500 to-[#80BF49] hover:from-emerald-600 hover:to-[#70a840] text-white text-[15px] font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-sm hover:shadow-md mt-1 cursor-pointer"
                               >
+                                <PhoneCall className="w-4 h-4 shrink-0" />
                                 Nhận Tư Vấn Ngay
                               </button>
                             ) : (
